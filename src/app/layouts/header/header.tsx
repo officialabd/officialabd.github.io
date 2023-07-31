@@ -1,5 +1,5 @@
 import staticData from "@/app/staticData";
-import Avatar from "../circlularImage/comp";
+import Avatar from "../circlularImage/avatar";
 import HeaderItem from "./headerItem";
 import Headline from "./headline";
 
