@@ -7,6 +7,7 @@ export class DetailedListItem {
     private endDate?: string | "Present" | undefined;
     private hours?: number | 0 | undefined;
     private links?: Array<[string, string]> | undefined;
+    private tags?: Array<string> | undefined;
 
     constructor(
         id: any,
@@ -16,7 +17,8 @@ export class DetailedListItem {
         startDate?: string,
         endDate?: string,
         hours?: number,
-        links?: Array<[string, string]>
+        links?: Array<[string, string]>,
+        tags?: Array<string>
     ) {
         this.id = id;
         this.title = title;
@@ -26,6 +28,7 @@ export class DetailedListItem {
         this.endDate = endDate;
         this.hours = hours;
         this.links = links;
+        this.tags = tags;
     }
 
     getId() {
@@ -58,6 +61,10 @@ export class DetailedListItem {
 
     getLinks() {
         return this.links;
+    }
+
+    getTags() {
+        return this.tags;
     }
 
 }
