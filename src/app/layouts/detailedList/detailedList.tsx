@@ -1,36 +1,25 @@
 import staticData from "@/app/staticData";
+import Card from "../card/card";
+import HeadingOne from "../headings/headingOne";
 import { DetailedListItem } from "./Item";
 
 export default function DetailedList(
-    { title, items }: {
-        title: string,
-        items: Array<DetailedListItem>
-    }) {
+    { title, items }: { title: string, items: Array<DetailedListItem> }) {
 
-    return <>
-        <div className="py-5 mt-25 sm:py-10">
-            <div className="mx-auto max-w-7xl px-6 lg:px-8">
-                <div className="mx-auto max-w-2xl lg:mx-0">
-                    <h2 className="font-RobotoMono text-[#BFACDF] text-3xl font-bold tracking-tight sm:text-4xl">{title}</h2>
-                </div>
-                <div className="mt-4 border-t border-gray-200" />
-                <div className="mx-auto mt-4 grid w-full max-w-2xl grid-cols-1 gap-x-8 gap-y-4 lg:max-w-none lg:grid-cols-1">
-                    {items.map((item, i) => (
-                        <div key={item.getId()}>
-                            {i ?
-                                <div className="flex justify-center w-full mb-4">
-                                    <div className="w-12 border-t border-gray-200" />
-                                </div>
-                                :
-                                <></>
-                            }
-                            <ListItemNode key={item.getId()} id={item.getId()} item={item} />
-                        </div>
-                    ))}
-                </div>
+    return <Card heading={<HeadingOne text={title} textColor="text-[#BFACDF]" />}>
+        {items.map((item, i) => (
+            <div key={item.getId()}>
+                {i ?
+                    <div className="flex justify-center w-full mb-4">
+                        <div className="w-12 border-t border-gray-200" />
+                    </div>
+                    :
+                    <></>
+                }
+                <ListItemNode key={item.getId()} id={item.getId()} item={item} />
             </div>
-        </div>
-    </>
+        ))}
+    </Card>
 }
 
 const ListItemNode = (
@@ -79,9 +68,9 @@ const ListItemNode = (
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-wrap justify-center content-center  w-full gap-2 mt-8">
+                    <div className="flex flex-wrap justify-center content-center w-full gap-2 mt-8">
                         {item.getTags() && item.getTags()!.map((tag, i) =>
-                            <Tag id={`${id}-tags-${i}`} name={tag} bgColor="bg-teal-400/10" textColor="text-teal-300" />
+                            <Tag key={`${id}-tags-${i}`} id={`${id}-tags-${i}`} name={tag} bgColor="bg-teal-400/10" textColor="text-teal-300" />
                         )}
                     </div>
 
@@ -94,9 +83,7 @@ const ListItemNode = (
 const Tag = (
     { id, name, bgColor, textColor }: { id: any, name: string, bgColor?: string, textColor?: string }
 ) => {
-    return <>
-        <div key={id} id={id} className={`px-3 py-1 rounded-full font-semibold ${bgColor} ${textColor}`}>
-            {name}
-        </div>
-    </>
+    return <div key={id} id={id} className={`px-3 py-1 rounded-full font-semibold ${bgColor} ${textColor}`}>
+        {name}
+    </div>
 }
