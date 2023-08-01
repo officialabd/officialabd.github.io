@@ -21,6 +21,12 @@ module.exports = {
       blur: {
         xs: '2px',
       },
+      fontFamily: {
+        "Nunito": ['Nunito', "sans-serif"],
+        "SourceCodePro": ['Source Code Pro', "monospace"],
+        "Tektur": ['Tektur', "cursive"],
+        "RobotoMono": ['Roboto Mono', "monospace"]
+      },
     },
   },
   plugins: [],
