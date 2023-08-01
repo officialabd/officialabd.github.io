@@ -183,6 +183,7 @@ const technologies = [
     { name: "Java", path: "/assets/svgs/tech_icons/java.svg" },
     { name: "Python", path: "/assets/svgs/tech_icons/python.svg" },
     { name: "JavaScript", path: "/assets/svgs/tech_icons/js.svg" },
+    { name: "TypeScript", path: "/assets/svgs/tech_icons/typescript.svg" },
     { name: "Html", path: "/assets/svgs/tech_icons/html.svg" },
     { name: "CSS", path: "/assets/svgs/tech_icons/css.svg" },
     { name: "Firebase ", path: "/assets/svgs/tech_icons/firebase.svg" },
