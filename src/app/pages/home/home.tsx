@@ -6,17 +6,14 @@ import staticData from "@/app/staticData";
 
 export default function MyHome() {
     return <>
-        {/* <div className="bg-[#26282c]"></div> */}
         <Header />
-        <div className="mt-20" />
-        {/* <Card bgColor="bg-[#17181c]"> */}
+        <div className="mt-10" />
         <DetailedList title="Internships and Courses" items={staticData.internshipsAndCourses} />
-        {/* </Card> */}
-        <div className="mt-20" />
-        {/* <Card bgColor="bg-[#17181c]"> */}
-        {/* <DetailedList title="Projects" items={staticData.projects} /> */}
-        {/* </Card> */}
-        <div className="mt-20" />
-        <Footer />
+        <div className="mt-10" />
+        <DetailedList title="Education" items={staticData.educations} />
+        <div className="mt-10" />
+        <DetailedList title="Projects" items={staticData.projects} />
+        <div className="mt-10" />
+        <Footer id="footer" />
     </>;
 }
