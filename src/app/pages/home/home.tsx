@@ -14,7 +14,7 @@ export default function MyHome() {
         {/* </Card> */}
         <div className="mt-20" />
         {/* <Card bgColor="bg-[#17181c]"> */}
-        <DetailedList title="Projects" items={staticData.projects} />
+        {/* <DetailedList title="Projects" items={staticData.projects} /> */}
         {/* </Card> */}
         <div className="mt-20" />
         <Footer />

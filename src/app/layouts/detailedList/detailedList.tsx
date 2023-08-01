@@ -3,13 +3,12 @@ import { DetailedListItem } from "./Item";
 
 
 const ListItemNode = (
-    { item }: { item: DetailedListItem }
+    { id, item }: { id: any, item: DetailedListItem }
 ) => {
     return <>
-        <div className="relative py-1 w-full ">
+        <div key={id} className="relative py-1 w-full ">
             <div className="relative w-full px-4 py-8 bg-[#1C2136] shadow-lg sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl backdrop-blur-md ">
                 <div className="">
-
                     <div className="flex w-full flex-col items-start justify-between">
                         <div className=" items-center gap-x-1 text-xs grid lg:grid-cols-2 sm:grid-cols-1">
                             <time dateTime={item.getStartDate()} className="">
@@ -30,14 +29,15 @@ const ListItemNode = (
                                 </div>
                             </div>
                             <div className="mt-4 space-y-2">
-                                {item.getDescription() && item.getDescription()!.map(dcp => <>
-                                    <p className="line-clamp-3 text-sm leading-6 text-white">{dcp}</p>
-                                </>)}
+                                {item.getDescription() && item.getDescription()!.map((dcp, i) =>
+                                    <p key={`${id}-description-${i}`} className="line-clamp-3 text-sm leading-6 text-white">{dcp}</p>
+                                )}
                             </div>
                         </div>
                         <div className="flex justify-center content-center w-full gap-2 mt-8">
-                            {item.getLinks() && item.getLinks()!.map(lk => <>
+                            {item.getLinks() && item.getLinks()!.map((lk, i) =>
                                 <a
+                                    key={`${id}-links-${i}`}
                                     target="_blank"
                                     href={lk[1]}
                                     className="flex relative max-w-lg z-10 rounded-full px-3 py-1.5 font-medium bg-slate-400 text-black hover:bg-slate-500"
@@ -48,7 +48,7 @@ const ListItemNode = (
 
                                     {lk[0]}
                                 </a>
-                            </>)}
+                            )}
                         </div>
                     </div>
                 </div>
@@ -72,8 +72,8 @@ export default function DetailedList(
                 </div>
                 <div className="mt-4 border-t border-gray-200" />
                 <div className="mx-auto mt-4 grid w-full max-w-2xl grid-cols-1 gap-x-8 gap-y-4 lg:max-w-none lg:grid-cols-1">
-                    {items.map((itm) => (
-                        <ListItemNode item={itm} />
+                    {items.map((item) => (
+                        <ListItemNode key={item.getId()} id={item.getId()} item={item} />
                     ))}
                 </div>
             </div>
