@@ -56,9 +56,10 @@ const internshipsAndCourses = [
         "Aug 2022",
         300,
         [
-            ["Certificate", "https://drive.google.com/file/d/1kWgxA_HgPgYj7RJlxUG-4cYmJif4_iCG/view"],
+            ["Certificate", "https://drive.google.com/file/d/1kWgxA_HgPgYj7RJlxUG-4cYmJif4_iCG/view?usp=sharing"],
             ["See details", "https://docs.google.com/spreadsheets/d/1S-RwhIjYdjEvTw-Nux4ET6xYeTm5j2Ie/edit#gid=864783695"]
-        ]
+        ],
+        ["QA Automation", "Cypress", "Selenium WebDriver", "Test Plan", "Test Cases", "JUnit", "TestNG", "Bug Report", "Java"]
     ),
 ]
 
@@ -106,7 +107,7 @@ const projects = [
             "Using Selenium and TestNG to create automated test scripts.",
             "Run test scripts using chrome drive"
         ],
-        undefined,
+        "2022",
         undefined,
         undefined,
         [
@@ -122,7 +123,7 @@ const projects = [
             "Included preparing test plans and test cases for the website features.",
             "Using Cypress to create automated test scripts.",
         ],
-        undefined,
+        "2022",
         undefined,
         undefined,
         [
@@ -132,4 +133,22 @@ const projects = [
 
 ]
 
-export default { myInfo, images, routes, icons, internshipsAndCourses, projects }
+const educations = [
+    new DetailedListItem(
+        "edu-1",
+        "Bachelor of Science in Software Engineering",
+        "Bethlehem University - Bethlehem",
+        [
+            "Graduation Project: Mobile Application - NoorBot",
+        ],
+        "Sep 2019",
+        "July 2023",
+        undefined,
+        [
+            ["Certificate", "https://drive.google.com/file/d/1z8VR0FZRfVPZmQHS9vhOxKvgZ06wsga4/view?usp=sharing"],
+        ],
+        ["Java", "Software Principles", "Web Development", "Requirements Engineering", "OOP", "Networks", "UI/UX", "Database", "Service-Oriented", "Cloud", "Architecture & Design", "Computer Ethics", "Testing & QA", "Product Management", "Research Methods", "Security"]
+    ),
+]
+
+export default { myInfo, images, routes, icons, internshipsAndCourses, projects, educations }
