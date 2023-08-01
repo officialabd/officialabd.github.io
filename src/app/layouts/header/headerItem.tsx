@@ -8,8 +8,8 @@ export default function HeaderItem({ name, myRef, width, height }: {
 },
 ) {
     return (
-        <Link href={myRef}>
-            <span className="sm:ml-3">
+        <Link href={myRef} style={{ scrollBehavior: "smooth" }} scroll>
+            <span>
                 <button
                     style={{
                         width: width,
