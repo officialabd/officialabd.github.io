@@ -55,7 +55,7 @@ export default function Footer({ id }: { id: string }) {
                     </div>
                 </div>
                 <p className="mt-12 text-xs text-center text-gray-100">
-                    © 2023 Abd Al-Muttalib's Portfolio
+                    © 2023 Abd Al-Muttalib Portfolio
                 </p>
             </div>
         </footer>
