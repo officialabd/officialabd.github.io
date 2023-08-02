@@ -21,4 +21,5 @@ module.exports = {
     //     loader: 'imgix',
     //     path: 'https://officialabdib-imgs.imgix.net/public/',
     // },
+    output: 'export',
 }
