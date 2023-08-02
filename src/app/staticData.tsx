@@ -59,7 +59,7 @@ const internshipsAndCourses = [
             ["Certificate", "https://drive.google.com/file/d/1kWgxA_HgPgYj7RJlxUG-4cYmJif4_iCG/view?usp=sharing"],
             ["See details", "https://docs.google.com/spreadsheets/d/1S-RwhIjYdjEvTw-Nux4ET6xYeTm5j2Ie/edit#gid=864783695"]
         ],
-        ["QA Automation", "Cypress", "Selenium WebDriver", "Test Plan", "Test Cases", "JUnit", "TestNG", "Bug Report", "Java"]
+        ["QA Automation", "Cypress", "Selenium WebDriver", "Test Plan", "Test Cases", "JUnit", "TestNG", "Bug Report", "Java", "JavaScript", "Puppeteer"]
     ),
 ]
 

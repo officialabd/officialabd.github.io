@@ -27,7 +27,8 @@ const ListItemNode = (
 ) => {
     return <>
         <div key={id} className="relative py-1 w-full ">
-            <div className="relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl hover:bg-slate-800/50 hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] hover:drop-shadow-lg">
+            {/* <div className="relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl hover:bg-slate-800/50 hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] hover:drop-shadow-lg"> */}
+            <div className="relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl bg-slate-800/50 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] drop-shadow-lg">
                 <div className="flex w-full flex-col items-start justify-between">
                     <div className=" items-center gap-x-1 text-xs grid lg:grid-cols-2 sm:grid-cols-1">
                         <time dateTime={item.getStartDate()} className="font-mono">
@@ -70,7 +71,7 @@ const ListItemNode = (
                     </div>
                     <div className="flex flex-wrap justify-center content-center w-full gap-2 mt-8">
                         {item.getTags() && item.getTags()!.map((tag, i) =>
-                            <Tag key={`${id}-tags-${i}`} id={`${id}-tags-${i}`} name={tag} bgColor="bg-teal-400/10" textColor="text-teal-300" />
+                            <Tag key={`${id}-tags-${i}`} id={`${id}-tags-${i}`} name={tag} bgColor="bg-teal-400/10" textColor="text-teal-100" />
                         )}
                     </div>
 
@@ -83,7 +84,7 @@ const ListItemNode = (
 const Tag = (
     { id, name, bgColor, textColor }: { id: any, name: string, bgColor?: string, textColor?: string }
 ) => {
-    return <div key={id} id={id} className={`px-3 py-1 rounded-full font-semibold ${bgColor} ${textColor}`}>
-        {name}
+    return <div key={id} id={id} className={`px-2 py-1 rounded-full text-xs font-medium leading-5 ${bgColor} ${textColor}`}>
+        #{name}
     </div>
 }
