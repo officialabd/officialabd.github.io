@@ -3,7 +3,7 @@ import DetailedList from "@/app/layouts/detailedList/detailedList";
 import Footer from "@/app/layouts/footer/footer";
 import Header from "@/app/layouts/header/header";
 import staticData from "@/app/staticData";
-import Technologies from "./technologies/technologies";
+import Technologies from "./sections/technologies/technologies";
 
 export default function MyHome() {
     return <>
