@@ -4,33 +4,23 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
-        with:
-          # update the Node version to meet your needs
-          node-version: 20
-          cache: npm
-
-      - name: Build
+      - name: Install and Build
         run: |
           npm ci
-          npm ci
           npm run build
-          npm run export
-          touch out/.nojekyll
-          npm set-script build "next build"
-          npm set-script export "next export"
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: main
-          folder: out
+          folder: build
