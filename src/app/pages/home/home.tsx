@@ -9,11 +9,11 @@ export default function MyHome() {
     return <>
         <Header />
         <div className="mt-10" />
-        {/* <div className="flex justify-center">
+        <div className="flex justify-center">
             <div className="bg-red-200 w-fit text-center text-xl font-bold text-black">
                 Demo - Under development
             </div>
-        </div> */}
+        </div>
 
         {/* <Skills /> */}
         <div className="mt-10" />
