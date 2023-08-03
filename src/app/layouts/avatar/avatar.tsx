@@ -9,7 +9,7 @@ export default function Avatar(
         width = 'w-[20%] sm:w-[13%] md:w-[13%] lg:w-[13%] xl:w-[14%]',
         height = 'w-[20%] sm:w-[7%] md:w-[8%] lg:w-[9%] xl:w-[10%]',
         ring = "ring-2",
-        ringColor = "white",
+        ringColor = "ring-white",
         SourceCodePro,
         underline = false,
         bgColor = "bg-none",
@@ -34,7 +34,7 @@ export default function Avatar(
     return (<div>
         <div className="flex justify-center">
             <img
-                className={`${round} ${bgColor} ${padding} ${ring} ring-${ringColor} ${width} ${height}`}
+                className={`${round} ${bgColor} ${padding} ${ring} ${ringColor} ${width} ${height}`}
                 src={image}
                 alt={altText}
             />

@@ -5,7 +5,7 @@ const myInfo = {
     title: "Software Engineer",
     note: "Abd Al-Muttalib Ibreighith's Portfolio",
     email: "officialabdib@gmail.com",
-    phone: "+972 59 5173892",
+    phone: "000",
     links: {
         linkedin: "https://www.linkedin.com/in/abdib-se",
         gmail: "https://mail.google.com/mail/?view=cm&fs=1&to=officialabdib@gmail.com",
@@ -193,23 +193,19 @@ const technologies = [
 ]
 
 const techniqualSkills = [
-    { name: "Agile" },
-    { name: "QA automation" },
-    { name: "JUnit" },
-    { name: "TestNG" },
-    { name: "Database management" },
-    { name: "Advanced Web Development" },
-    { name: "OOP" },
-    { name: "APIs" }
+    "QA automation",
+    "Web Development",
+    "OOP",
+    "Agile",
+    "JUnit",
+    "TestNG",
 ]
 
 const interpersonalSkills = [
-    { name: "Communication" },
-    { name: "Collaboration " },
-    { name: "Time Management" },
-    { name: "Problem-Solving" },
-    { name: "Adaptability" },
-    { name: "Team Work" }
+    "Problem-Solving",
+    "Team Work",
+    "Time Management",
+    "Collaboration ",
 ]
 
 export default {

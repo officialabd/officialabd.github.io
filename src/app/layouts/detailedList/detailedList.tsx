@@ -1,6 +1,7 @@
 import staticData from "@/app/staticData";
 import Card from "../card/card";
 import HeadingOne from "../headings/headingOne";
+import { Tags } from "../tags/tags";
 import { DetailedListItem } from "./Item";
 
 export default function DetailedList(
@@ -69,22 +70,11 @@ const ListItemNode = (
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-wrap justify-center content-center w-full gap-2 mt-8">
-                        {item.getTags() && item.getTags()!.map((tag, i) =>
-                            <Tag key={`${id}-tags-${i}`} id={`${id}-tags-${i}`} name={tag} bgColor="bg-teal-400/10" textColor="text-teal-100" />
-                        )}
-                    </div>
-
+                    {item.getTags() &&
+                        <Tags id={id} tags={item.getTags()!} margin="mt-8" gap="gap-2" />
+                    }
                 </div>
             </div>
         </div>
     </>
-}
-
-const Tag = (
-    { id, name, bgColor, textColor }: { id: any, name: string, bgColor?: string, textColor?: string }
-) => {
-    return <div key={id} id={id} className={`px-2 py-1 rounded-full text-xs font-medium leading-5 ${bgColor} ${textColor}`}>
-        #{name}
-    </div>
 }

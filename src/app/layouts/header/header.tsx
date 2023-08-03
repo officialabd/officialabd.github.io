@@ -1,10 +1,12 @@
 import staticData from "@/app/staticData";
 import Avatar from "../avatar/avatar";
+import { Tags } from "../tags/tags";
 import HeaderItem from "./headerItem";
 import Headline from "./headline";
 
 export default function Header() {
-
+    const techs = staticData.techniqualSkills;
+    const interpersonalSkills = staticData.interpersonalSkills;
     return <header>
         <div className="blur-[2px] hover:blur-none duration-200">
             <img
@@ -18,7 +20,7 @@ export default function Header() {
             />
         </div>
         <div className="absolute -translate-y-[50%] flex justify-center w-full">
-            <Avatar image={staticData.images.myImages.face} altText="My face image" />
+            <Avatar image={staticData.images.myImages.face} altText="My face image" ringColor="ring-white" />
         </div>
         <div className="mt-[50px] ms:mt-[10%] lg:flex lg:items-center lg:justify-center ms-10 me-10">
             <div className="min-w-0 flex-1 z-10">
@@ -35,6 +37,9 @@ export default function Header() {
                         icon={staticData.icons.locationIcon}
                     />
                 </div>
+                <div className="mt-4" />
+                <Tags id={"header"} tags={techs} alignH="" bgColor="" wrap={false} />
+                <Tags id={"header"} tags={interpersonalSkills} alignH="" bgColor="" wrap={false} />
             </div>
             <div className="mt-5 flex justify-center lg:ml-4 lg:mt-0 space-x-3 z-10">
                 <HeaderItem name="Projects" myRef={staticData.routes.projects} />
