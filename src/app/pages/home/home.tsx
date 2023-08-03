@@ -3,9 +3,11 @@ import DetailedList from "@/app/layouts/detailedList/detailedList";
 import Footer from "@/app/layouts/footer/footer";
 import Header from "@/app/layouts/header/header";
 import staticData from "@/app/staticData";
+import { fetchData } from "./controller";
 import Technologies from "./sections/technologies/technologies";
 
 export default function MyHome() {
+    fetchData();
     return <>
         <Header />
         <div className="mt-10" />
