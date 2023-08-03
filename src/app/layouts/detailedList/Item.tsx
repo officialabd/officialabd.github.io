@@ -6,7 +6,7 @@ export class DetailedListItem {
     private startDate?: string | undefined;
     private endDate?: string | "Present" | undefined;
     private hours?: number | 0 | undefined;
-    private links?: Array<[string, string]> | undefined;
+    private links?: Array<{}> | undefined;
     private tags?: Array<string> | undefined;
 
     constructor(
@@ -17,7 +17,7 @@ export class DetailedListItem {
         startDate?: string,
         endDate?: string,
         hours?: number,
-        links?: Array<[string, string]>,
+        links?: Array<{}>,
         tags?: Array<string>
     ) {
         this.id = id;
@@ -66,5 +66,22 @@ export class DetailedListItem {
     getTags() {
         return this.tags;
     }
+
+    toObject() {
+        const obj = {
+            id: this.id,
+            title: this.title,
+            site: this.site,
+            description: this.description,
+            startDate: this.startDate,
+            endDate: this.endDate,
+            hours: this.hours,
+            links: this.links,
+            tags: this.tags,
+        };
+
+        return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
+    }
+
 
 }

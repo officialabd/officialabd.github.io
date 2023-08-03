@@ -53,13 +53,13 @@ const ListItemNode = (
                                     <a
                                         key={`${id}-links-${i}`}
                                         target="_blank"
-                                        href={lk[1]}
+                                        href={`${Object.entries(lk).at(0)?.[1]}`}
                                         className="flex relative justify-center items-center max-w-lg z-10 rounded-full px-3 py-1.5 font-medium hover:bg-[#141d32]"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 me-2 text-blue-400">
                                             <path strokeLinecap="round" strokeLinejoin="round" d={staticData.icons.link} />
                                         </svg>
-                                        {lk[0]}
+                                        {Object.entries(lk).at(0)?.[0]}
                                     </a>
                                 )}
                             </div>

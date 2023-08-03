@@ -13,7 +13,6 @@ const myInfo = {
         leetcode: "https://leetcode.com/officialabdib",
         whatsapp: "https://wa.me/972595173892"
     }
-
 }
 
 const images = {
@@ -44,7 +43,7 @@ const icons = {
 
 const internshipsAndCourses = [
     new DetailedListItem(
-        "internship-1",
+        "001-internship-exalt",
         "Quality Assurance Automation Internship",
         "EXALT Technologies - Ramallah",
         [
@@ -56,8 +55,8 @@ const internshipsAndCourses = [
         "Aug 2022",
         300,
         [
-            ["Certificate", "https://drive.google.com/file/d/1kWgxA_HgPgYj7RJlxUG-4cYmJif4_iCG/view?usp=sharing"],
-            ["See details", "https://docs.google.com/spreadsheets/d/1S-RwhIjYdjEvTw-Nux4ET6xYeTm5j2Ie/edit#gid=864783695"]
+            { Certificate: "https://drive.google.com/file/d/1kWgxA_HgPgYj7RJlxUG-4cYmJif4_iCG/view?usp=sharing" },
+            { "See details": "https://docs.google.com/spreadsheets/d/1S-RwhIjYdjEvTw-Nux4ET6xYeTm5j2Ie/edit#gid=864783695" }
         ],
         ["QA Automation", "Cypress", "Selenium WebDriver", "Test Plan", "Test Cases", "JUnit", "TestNG", "Bug Report", "Java", "JavaScript", "Puppeteer"]
     ),
@@ -65,7 +64,7 @@ const internshipsAndCourses = [
 
 const projects = [
     new DetailedListItem(
-        "project-1",
+        "001-NoorBot",
         "NoorBot",
         undefined,
         [
@@ -84,7 +83,7 @@ const projects = [
         undefined
     ),
     new DetailedListItem(
-        "project-2",
+        "002-HiHalls",
         "HiHalls",
         undefined,
         [
@@ -98,7 +97,7 @@ const projects = [
         undefined
     ),
     new DetailedListItem(
-        "project-3",
+        "003-SeleniumWeDriverShopping",
         "Selenium Web Driver Testing Project - Shopping Website",
         undefined,
         [
@@ -111,11 +110,11 @@ const projects = [
         undefined,
         undefined,
         [
-            ["Source", "https://github.com/ExaltTraining/products-practice"]
+            { Source: "https://github.com/ExaltTraining/products-practice" }
         ]
     ),
     new DetailedListItem(
-        "project-4",
+        "004-CypressShopping",
         "Cypress Testing Project - Shopping Website",
         undefined,
         [
@@ -127,7 +126,7 @@ const projects = [
         undefined,
         undefined,
         [
-            ["Source", "https://github.com/ExaltTraining/shopping-store-cypress"]
+            { Source: "https://github.com/ExaltTraining/shopping-store-cypress" }
         ]
     ),
 
@@ -135,7 +134,7 @@ const projects = [
 
 const educations = [
     new DetailedListItem(
-        "edu-1",
+        "001-BU",
         "Bachelor of Science in Software Engineering",
         "Bethlehem University - Bethlehem",
         [
@@ -145,7 +144,7 @@ const educations = [
         "July 2023",
         undefined,
         [
-            ["Certificate", "https://drive.google.com/file/d/1z8VR0FZRfVPZmQHS9vhOxKvgZ06wsga4/view?usp=sharing"],
+            { Certificate: "https://drive.google.com/file/d/1z8VR0FZRfVPZmQHS9vhOxKvgZ06wsga4/view?usp=sharing" },
         ],
         ["Java", "Software Principles", "Web Development", "Requirements Engineering", "OOP", "Networks", "UI/UX", "Database", "Service-Oriented", "Cloud", "Architecture & Design", "Computer Ethics", "Testing & QA", "Product Management", "Research Methods", "Security"]
     ),
