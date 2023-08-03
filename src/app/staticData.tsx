@@ -1,5 +1,24 @@
 import { DetailedListItem } from "@/app/layouts/detailedList/Item";
 
+
+const firebaseConst = {
+    collections: {
+        educations: "educations",
+        internshipsAndCourses: "internshipsAndCourses",
+        myInfo: {
+            basic: "basic"
+        },
+        projects: "projects",
+        skills: {
+            name: "skills",
+            sub: {
+                interpersonal: "interpersonal",
+                technical: "technical"
+            }
+        }
+    }
+}
+
 const myInfo = {
     name: "Abd Al-Muttalib Ibreighith",
     title: "Software Engineer",
@@ -208,6 +227,7 @@ const interpersonalSkills = [
 ]
 
 export default {
+    firebaseConst,
     myInfo,
     images,
     routes,

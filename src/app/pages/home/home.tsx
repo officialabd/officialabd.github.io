@@ -3,13 +3,35 @@ import DetailedList from "@/app/layouts/detailedList/detailedList";
 import Footer from "@/app/layouts/footer/footer";
 import Header from "@/app/layouts/header/header";
 import staticData from "@/app/staticData";
+import { useLayoutEffect, useState } from 'react';
 import { fetchData } from "./controller";
 import Technologies from "./sections/technologies/technologies";
 
 export default function MyHome() {
-    fetchData();
+    const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
+    const [personalSkills, setPersonalSkills] = useState<Array<string>>([]);
+
+    useLayoutEffect(() => {
+
+        fetchData({
+            colName: staticData.firebaseConst.collections.skills.name,
+            docName: staticData.firebaseConst.collections.skills.sub.technical,
+            successCallback: (data: []) => setTechsSkills(data),
+            errorCallback: (error: any) => console.log(error)
+        });
+
+        fetchData({
+            colName: staticData.firebaseConst.collections.skills.name,
+            docName: staticData.firebaseConst.collections.skills.sub.interpersonal,
+            successCallback: (data: []) => setPersonalSkills(data),
+            errorCallback: (error: any) => console.log(error)
+        });
+
+    }, []);
+
+
     return <>
-        <Header />
+        <Header techs={techsSkills} interpersonalSkills={personalSkills} />
         <div className="mt-10" />
         <div className="flex justify-center">
             <div className="bg-red-200 w-fit text-center text-xl font-bold text-black">

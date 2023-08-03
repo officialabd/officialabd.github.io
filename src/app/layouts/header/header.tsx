@@ -4,9 +4,14 @@ import { Tags } from "../tags/tags";
 import HeaderItem from "./headerItem";
 import Headline from "./headline";
 
-export default function Header() {
-    const techs = staticData.techniqualSkills;
-    const interpersonalSkills = staticData.interpersonalSkills;
+export default function Header(
+    { techs, interpersonalSkills, }:
+        {
+            techs: string[];
+            interpersonalSkills: string[];
+        }) {
+    console.log(techs, staticData.interpersonalSkills);
+
     return <header>
         <div className="blur-[2px] hover:blur-none duration-200">
             <img
@@ -38,8 +43,8 @@ export default function Header() {
                     />
                 </div>
                 <div className="mt-4" />
-                <Tags id={"header"} tags={techs} alignH="" bgColor="" wrap={false} />
-                <Tags id={"header"} tags={interpersonalSkills} alignH="" bgColor="" wrap={false} />
+                <Tags id={"techs"} tags={techs} alignH="" bgColor="" wrap={false} />
+                <Tags id={"interpersonalSkills"} tags={interpersonalSkills} alignH="" bgColor="" wrap={false} />
             </div>
             <div className="mt-5 flex justify-center lg:ml-4 lg:mt-0 space-x-3 z-10">
                 <HeaderItem name="Projects" myRef={staticData.routes.projects} />

@@ -1,26 +1,34 @@
 import { db } from "@/../firebase";
 import { collection, doc, getDoc, setDoc } from "firebase/firestore";
 
-const fetchData = async () => {
+const fetchData = async ({ colName, docName, successCallback, errorCallback }:
+    { colName: string; docName: string; successCallback: Function; errorCallback: Function }) => {
 
-
-    const citiesRef = collection(db, "cities");
-
-    await setDoc(doc(citiesRef, "SF"), {
-        name: "San Francisco", state: "CA", country: "USA",
-        capital: false, population: 860000,
-        regions: ["west_coast", "norcal"]
-    });
-
-    const docRef = doc(db, "cities", "SF");
+    const docRef = doc(db, colName, docName);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        console.log("Document data:", docSnap.data());
+        successCallback(Object.values(docSnap.data()[colName]));
     } else {
-        // docSnap.data() will be undefined in this case
-        console.log("No such document!");
+        errorCallback(docSnap)
     }
 }
 
+const writeCollection = async (
+    {
+        collectionName,
+        docName,
+        object,
+    }: {
+        collectionName: string;
+        docName: string;
+        object: {};
+    }) => {
+
+    const citiesRef = collection(db, collectionName);
+
+    await setDoc(doc(citiesRef, docName), object);
+}
+
 export { fetchData };
+
