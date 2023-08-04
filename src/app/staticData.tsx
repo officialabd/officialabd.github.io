@@ -33,7 +33,7 @@ const myInfo = {
         gmail: "https://mail.google.com/mail/?view=cm&fs=1&to=officialabdib@gmail.com",
         github: "https://github.com/officialabd",
         leetcode: "https://leetcode.com/officialabdib",
-        whatsapp: "https://wa.me/972595173892"
+        whatsapp: "#"
     }
 }
 
