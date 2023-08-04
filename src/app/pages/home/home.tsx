@@ -23,7 +23,7 @@ export default function MyHome() {
         educations: true,
         projects: true,
     });
-    const [myInfo, setMyInfo] = useState<Info>(new Info({}));
+    const [myInfo, setMyInfo] = useState<Info>();
     const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
     const [personalSkills, setPersonalSkills] = useState<Array<string>>([]);
     const [internshipsAndCourses, setInternshipsAndCourses] = useState<Object>([]);
@@ -101,8 +101,6 @@ export default function MyHome() {
                 Demo - Under development
             </div>
         </div>
-
-        {/* <Skills /> */}
         <div className="mt-10" />
         <DetailedList title="Internships and Courses" loading={loading.internshipsAndCourses} items={internshipsAndCourses as DetailedListItem[]} />
         <div className="mt-10" />
@@ -112,6 +110,9 @@ export default function MyHome() {
         <div className="mt-10" />
         <Technologies />
         <div className="mt-10" />
-        <Footer id="footer" />
+        <Footer id="footer"
+            loading={loading.myInfo}
+            myInfo={myInfo}
+        />
     </>;
 }

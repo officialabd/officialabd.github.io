@@ -39,7 +39,7 @@ const ListItemNode = (
                 <div className="flex w-full flex-col items-start justify-between">
                     <div className=" items-center gap-x-1 text-xs grid lg:grid-cols-2 sm:grid-cols-1">
                         <Basic
-                            text={`${item.getStartDate()} ${item.getStartDate() && item.getEndDate() ? "-" : ""} ${item.getEndDate()}`}
+                            text={`${item.getStartDate()!} ${item.getStartDate() && item.getEndDate() ? "-" : ""} ${item.getEndDate()!}`}
                             fontFamily="font-mono"
                             fontSize="sm"
                             loading={loading}

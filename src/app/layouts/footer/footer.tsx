@@ -1,7 +1,20 @@
+import { Info } from "@/app/models/Info";
 import staticData from "@/app/staticData";
+import Basic from "../texts/basic";
+import BasicHRef from "../texts/basicHRef";
 
 
-export default function Footer({ id }: { id: string }) {
+export default function Footer(
+    {
+        id,
+        loading = false,
+        myInfo,
+    }: {
+        id: string,
+        loading?: boolean,
+        myInfo: Info | undefined,
+    }) {
+
     return <>
         <footer id={id} key={id} className="bg-gradient-to-r from-[#16181c] via-[#1e2127] to-[#16181c]">
             <div className="max-w-screen-xl px-4 py-16 mx-auto sm:px-6 lg:px-8">
@@ -14,11 +27,29 @@ export default function Footer({ id }: { id: string }) {
                                 </div>
                             </div>
                             <div className="grid col-span-2 sm:mt-4 space-y-2">
-                                <h4 className="text-white text-lg">{staticData.myInfo.name}</h4>
-                                <h5 className="text-white ml-2 mt-2 font-mono text-sm">{staticData.myInfo.title}</h5>
-                                <p className="mt-4 text-sm text-gray-500">
-                                    {staticData.myInfo.note}
-                                </p>
+                                <Basic
+                                    loading={loading}
+                                    text={myInfo?.getName()!}
+                                    fontSize="text-lg"
+                                    textColor="text-white"
+                                />
+                                <Basic
+                                    loading={loading}
+                                    text={myInfo?.getTitle()!}
+                                    fontSize="text-sm"
+                                    fontFamily="font-mono"
+                                    textColor="text-white"
+                                    margin="ml-2 mt-2"
+                                    linePulseWidth="w-32"
+                                />
+                                <Basic
+                                    loading={loading}
+                                    text={myInfo?.getNote()!}
+                                    fontSize="text-sm"
+                                    fontFamily="font-mono"
+                                    textColor="text-gray-500"
+                                    margin="mt-4"
+                                />
                             </div>
                         </div>
                     </div>
@@ -35,15 +66,35 @@ export default function Footer({ id }: { id: string }) {
                                 </div>
                             </div>
                             <div className="grid col-span-2 sm:mt-4 text-sm text-gray-500">
-                                <a className="hover:opacity-75" target="_blank" href={staticData.myInfo.links.gmail}> {staticData.myInfo.email} </a>
-                                <a className="hover:opacity-75" target="_blank" href={staticData.myInfo.links.whatsapp}> {staticData.myInfo.phone} </a>
+                                <BasicHRef
+                                    loading={loading}
+                                    text={myInfo?.getEmail()!}
+                                    href={myInfo?.getLinks()["gmail"]}
+                                    fontSize="text-sm"
+                                    textColor="text-gray-500"
+                                    other="hover:opacity-75"
+                                />
+                                <BasicHRef
+                                    loading={loading}
+                                    text={myInfo?.getPhone()!}
+                                    href={myInfo?.getLinks()["whatsapp"]}
+                                    fontSize="text-sm"
+                                    textColor="text-gray-500"
+                                    other="hover:opacity-75"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
-                <p className="mt-12 text-xs text-center text-gray-100">
-                    © 2023 Abd Al-Muttalib Portfolio
-                </p>
+                <div className="flex justify-center">
+                    <Basic text={myInfo?.getCopyright()!}
+                        fontSize="text-xs"
+                        textColor="text-gray-100"
+                        margin="mt-12"
+                        loading={loading}
+                        align="text-center"
+                    />
+                </div>
             </div>
         </footer>
     </>

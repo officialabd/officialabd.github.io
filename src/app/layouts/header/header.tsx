@@ -11,7 +11,7 @@ export default function Header(
         {
             techs: string[];
             interpersonalSkills: string[];
-            myInfo: Info,
+            myInfo: Info | undefined,
             loading: boolean;
         }) {
     return <header>
@@ -30,19 +30,19 @@ export default function Header(
         </div>
         <div className="mt-[50px] ms:mt-[10%] lg:flex lg:items-center lg:justify-center ms-10 me-10">
             <div className="min-w-0 flex-1 z-10">
-                <Basic text={myInfo.getName()!} fontSize="text-2xl sm:text-3xl sm:tracking-tight"
+                <Basic text={myInfo?.getName()!} fontSize="text-2xl sm:text-3xl sm:tracking-tight"
                     fontWeight="font-bold" other="leading-7 sm:truncate" loading={loading}
                     linePulseWidth="w-72"
                 />
                 <div className="mt-2 flex content-center flex-col sm:mt-3 sm:flex-row sm:flex-wrap sm:space-x-6">
                     <Headline
-                        text={myInfo.getJobTitle()!}
+                        text={myInfo?.getJobTitle()!}
                         icon={staticData.icons.jobIcon}
                         loading={loading}
                         linePulseWidth="w-32"
                     />
                     <Headline
-                        text={myInfo.getJobLocation()!}
+                        text={myInfo?.getJobLocation()!}
                         icon={staticData.icons.locationIcon}
                         loading={loading}
                         linePulseWidth="w-32"

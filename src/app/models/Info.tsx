@@ -1,5 +1,5 @@
 export class Info {
-    private id: any;
+    // private id: any;
     private name?: string | undefined;
     private title?: string | undefined;
     private jobTitle?: string | undefined;
@@ -7,10 +7,11 @@ export class Info {
     private note?: string | undefined;
     private email?: string | undefined;
     private phone?: string | undefined;
-    private links?: Array<{}> | undefined;
+    private copyright?: string | undefined;
+    private links?: {} | undefined;
 
     constructor(
-        id: any,
+        // id: any,
         name?: string,
         title?: string,
         jobTitle?: string,
@@ -18,9 +19,10 @@ export class Info {
         note?: string,
         email?: string,
         phone?: string,
-        links?: Array<{}>,
+        copyright?: string,
+        links?: {},
     ) {
-        this.id = id;
+        // this.id = id;
         this.name = name;
         this.title = title;
         this.jobTitle = jobTitle;
@@ -28,12 +30,13 @@ export class Info {
         this.note = note;
         this.email = email;
         this.phone = phone;
+        this.copyright = copyright;
         this.links = links;
     }
 
-    getId() {
-        return this.id;
-    }
+    // getId() {
+    //     return this.id;
+    // }
 
     getName() {
         return this.name;
@@ -55,8 +58,8 @@ export class Info {
         return this.note;
     }
 
-    getLinks() {
-        return this.links;
+    getLinks(): any {
+        return this.links!;
     }
 
     getEmail() {
@@ -67,9 +70,13 @@ export class Info {
         return this.phone;
     }
 
+    getCopyright() {
+        return this.copyright;
+    }
+
     toObject() {
         const obj = {
-            id: this.id,
+            // id: this.id,
             name: this.name,
             title: this.title,
             jobTitle: this.jobTitle,
@@ -85,7 +92,7 @@ export class Info {
 
     static toInfo(object: any) {
         return new Info(
-            object["id"],
+            // object["id"],
             object["name"],
             object["title"],
             object["jobTitle"],
@@ -93,6 +100,7 @@ export class Info {
             object["note"],
             object["email"],
             object["phone"],
+            object["copyright"],
             object["links"],
         );
     }

@@ -2,6 +2,8 @@ import LinePulse from "../pulse/line"
 
 export default function Basic(
     {
+        display = "",
+        letterSpacing = "",
         text,
         underline = false,
         textColor = "text-white",
@@ -17,7 +19,10 @@ export default function Basic(
         linePulsePadding = "py-1",
         linePulseColor = "bg-slate-700",
         linePulseLineHeight = "h-2",
+        margin = "",
     }: {
+        display?: string,
+        letterSpacing?: string,
         text: string,
         underline?: boolean,
         textColor?: string,
@@ -33,8 +38,9 @@ export default function Basic(
         linePulsePadding?: string,
         linePulseColor?: string,
         linePulseLineHeight?: string,
+        margin?: string,
     }) {
-    return <>
+    return <div className={`${margin} ${align}`}>
         {loading ?
             <LinePulse
                 color={linePulseColor}
@@ -44,11 +50,12 @@ export default function Basic(
             />
             :
             <>
-                <div className={`flex tracking-tight ${align} ${fontFamily} ${textColor} ${fontSize} ${fontWeight} ${other}`}>
+
+                <div className={`${display} ${letterSpacing} ${align} ${fontFamily} ${fontSize} ${fontWeight} ${textColor} ${other}`}>
                     {text}
                 </div>
                 {underline && <div className={`mt-4 ${lineColor} ${borderWidth}`} />}
             </>
         }
-    </>
+    </div>
 }
