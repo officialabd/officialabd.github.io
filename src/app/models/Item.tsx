@@ -83,5 +83,25 @@ export class DetailedListItem {
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
     }
 
+    static objectsToItemsList(objects: Array<any>) {
+        var items: DetailedListItem[] = [];
+        objects.forEach(ob => {
+
+            items.push(new DetailedListItem(
+                ob["id"],
+                ob["title"],
+                ob["site"],
+                ob["description"],
+                ob["startDate"],
+                ob["endDate"],
+                ob["hours"],
+                ob["links"],
+                ob["tags"],
+            ));
+        });
+
+        return items;
+    }
+
 
 }

@@ -1,4 +1,4 @@
-import { DetailedListItem } from "@/app/layouts/detailedList/Item";
+import { DetailedListItem } from "@/app/models/Item";
 
 
 const firebaseConst = {
@@ -6,7 +6,10 @@ const firebaseConst = {
         educations: "educations",
         internshipsAndCourses: "internshipsAndCourses",
         myInfo: {
-            basic: "basic"
+            name: "myInfo",
+            sub: {
+                basic: "basic"
+            }
         },
         projects: "projects",
         skills: {

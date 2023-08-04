@@ -1,77 +1,105 @@
 import staticData from "@/app/staticData";
+import { DetailedListItem } from "../../models/Item";
 import Card from "../card/card";
 import HeadingOne from "../headings/headingOne";
+import LinePulse from "../pulse/line";
+import MultiLinePulse from "../pulse/multiLine";
 import { Tags } from "../tags/tags";
-import { DetailedListItem } from "./Item";
+import Basic from "../texts/basic";
 
 export default function DetailedList(
-    { title, items }: { title: string, items: Array<DetailedListItem> }) {
+    { title, items, loading = false }: { title: string, items: Array<DetailedListItem>, loading?: boolean }) {
 
     return <Card heading={<HeadingOne text={title} textColor="text-[#BFACDF]" />}>
-        {items.map((item, i) => (
-            <div key={item.getId()}>
-                {i ?
-                    <div className="flex justify-center w-full mb-4">
-                        <div className="w-12 border-t border-gray-200" />
-                    </div>
-                    :
-                    <></>
-                }
-                <ListItemNode key={item.getId()} id={item.getId()} item={item} />
-            </div>
-        ))}
+        {loading ?
+            <ListItemNode key={`temp-loading-${title}`} id={`temp-loading-${title}`} item={new DetailedListItem({})} loading={loading} />
+            :
+            items.map((item, i) => (
+                <div key={item.getId()}>
+                    {i ?
+                        <div className="flex justify-center w-full mb-4">
+                            <div className="w-12 border-t border-gray-200" />
+                        </div>
+                        :
+                        <></>
+                    }
+                    <ListItemNode key={item.getId()} id={item.getId()} item={item} loading={loading} />
+                </div>
+            ))}
     </Card>
 }
 
 const ListItemNode = (
-    { id, item }: { id: any, item: DetailedListItem }
+    { id, item, loading = false }: { id: any, item: DetailedListItem, loading?: boolean }
 ) => {
     return <>
         <div key={id} className="relative py-1 w-full ">
             {/* <div className="relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl hover:bg-slate-800/50 hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] hover:drop-shadow-lg"> */}
-            <div className="relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl bg-slate-800/50 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] drop-shadow-lg">
+            <div className={`${loading ? "animate-pulse" : ""} relative w-full px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl bg-slate-800/50 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] drop-shadow-lg`}>
                 <div className="flex w-full flex-col items-start justify-between">
                     <div className=" items-center gap-x-1 text-xs grid lg:grid-cols-2 sm:grid-cols-1">
-                        <time dateTime={item.getStartDate()} className="font-mono">
-                            {item.getStartDate()} {item.getStartDate() && item.getEndDate() ? "-" : ""} {item.getEndDate()}
-                        </time>
+                        <Basic
+                            text={`${item.getStartDate()} ${item.getStartDate() && item.getEndDate() ? "-" : ""} ${item.getEndDate()}`}
+                            fontFamily="font-mono"
+                            fontSize="sm"
+                            loading={loading}
+                            linePulseWidth="w-32"
+                        />
                     </div>
                     <div className="grid w-full sm:grid-cols-1 lg:grid-cols-2">
                         <div>
-                            <div className="relative">
-                                <h3 className="font-Nunito mt-3 text-teal-400 text-lg font-semibold leading-6">
-                                    {item.getTitle()}
-                                </h3>
+                            <div className="relative mt-3">
+                                <Basic text={item.getTitle()!}
+                                    fontFamily="font-Nunito"
+                                    fontSize="text-lg"
+                                    textColor="text-teal-400"
+                                    fontWeight="font-semibold"
+                                    other="leading-6"
+                                    loading={loading}
+                                    linePulseWidth="w-72"
+                                />
                             </div>
                             <div className="relative mt-2 ms-2 flex items-center gap-x-4">
-                                <div className="text-sm leading-6">
-                                    <p className="font-SourceCodePro text-slate-500 font-semibold">{item.getSite()}</p>
-                                </div>
+                                <Basic text={item.getSite()!}
+                                    fontFamily="font-SourceCodePro"
+                                    fontSize="text-sm"
+                                    textColor="text-slate-500"
+                                    fontWeight="font-semibold"
+                                    other="leading-6"
+                                    loading={loading}
+                                />
                             </div>
                             <div className="flex justify-start content-center w-full gap-2 mt-2">
-                                {item.getLinks() && item.getLinks()!.map((lk, i) =>
-                                    <a
-                                        key={`${id}-links-${i}`}
-                                        target="_blank"
-                                        href={`${Object.entries(lk).at(0)?.[1]}`}
-                                        className="flex relative justify-center items-center max-w-lg z-10 rounded-full px-3 py-1.5 font-medium hover:bg-[#141d32]"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 me-2 text-blue-400">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d={staticData.icons.link} />
-                                        </svg>
-                                        {Object.entries(lk).at(0)?.[0]}
-                                    </a>
-                                )}
+                                {loading ?
+                                    <LinePulse width="w-40" />
+                                    :
+                                    item.getLinks() && item.getLinks()!.map((lk, i) =>
+                                        <a
+                                            key={`${id}-links-${i}`}
+                                            target="_blank"
+                                            href={`${Object.entries(lk).at(0)?.[1]}`}
+                                            className="flex relative justify-center items-center max-w-lg z-10 rounded-full px-3 py-1.5 font-medium hover:bg-[#141d32]"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 me-2 text-blue-400">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d={staticData.icons.link} />
+                                            </svg>
+                                            {Object.entries(lk).at(0)?.[0]}
+                                        </a>
+                                    )}
                             </div>
                         </div>
                         <div className="mt-4 space-y-2">
-                            {item.getDescription() && item.getDescription()!.map((dcp, i) =>
-                                <p key={`${id}-description-${i}`} className="line-clamp-3 text-sm leading-6 text-white">{dcp}</p>
-                            )}
+                            {loading ?
+                                <MultiLinePulse width="w-62" />
+                                :
+                                item.getDescription() && item.getDescription()!.map((dcp, i) =>
+                                    <p key={`${id}-description-${i}`} className="line-clamp-3 text-sm leading-6 text-white">{dcp}</p>
+                                )
+                            }
                         </div>
                     </div>
-                    {item.getTags() &&
-                        <Tags id={id} tags={item.getTags()!} margin="mt-8" gap="gap-2" />
+                    {(loading || item.getTags()) &&
+                        <Tags id={id} loading={loading} tags={item.getTags()!} margin="mt-8" gap="gap-2" />
                     }
                 </div>
             </div>
