@@ -6,27 +6,16 @@ export default function Footer({ id }: { id: string }) {
         <footer id={id} key={id} className="bg-gradient-to-r from-[#16181c] via-[#1e2127] to-[#16181c]">
             <div className="max-w-screen-xl px-4 py-16 mx-auto sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-8 lg:col-span-3">
-                    {/* <div className="flex justify-start ms-7 md:ms-0 md:justify-center">
-                        <div>
-                            <h4 className="mr-5 h-6 sm:h-9">{staticData.myInfo.name}</h4>
-                            <h5 className="ml-2 mt-2 font-mono text-sm h-5 sm:h-7">{staticData.myInfo.title}</h5>
-                            <p className="max-w-xs mt-4 text-sm text-gray-500">
-                                {staticData.myInfo.note}
-                            </p>
-                        </div>
-                    </div> */}
                     <div className="mt-4 md:mt-0 flex justify-center">
                         <div className="grid w-full sm:w-auto justify-center grid-cols-3 sm:grid-cols-2">
                             <div className="grid col-span-1 justify-center sm:justify-normal">
-                                <div className="w-[100px] flex justify-start font-bold">
-                                    {/* <h1 className="font-bold"> */}
+                                <div className="text-white w-[100px] flex justify-start font-bold">
                                     Info
-                                    {/* </h1> */}
                                 </div>
                             </div>
                             <div className="grid col-span-2 sm:mt-4 space-y-2">
-                                <h4 className="text-lg">{staticData.myInfo.name}</h4>
-                                <h5 className="ml-2 mt-2 font-mono text-sm">{staticData.myInfo.title}</h5>
+                                <h4 className="text-white text-lg">{staticData.myInfo.name}</h4>
+                                <h5 className="text-white ml-2 mt-2 font-mono text-sm">{staticData.myInfo.title}</h5>
                                 <p className="mt-4 text-sm text-gray-500">
                                     {staticData.myInfo.note}
                                 </p>
@@ -41,10 +30,8 @@ export default function Footer({ id }: { id: string }) {
                     <div className="mt-4 md:mt-0 flex justify-center">
                         <div className="grid w-full sm:w-auto justify-center grid-cols-3 sm:grid-cols-2">
                             <div className="grid col-span-1 justify-center sm:justify-normal">
-                                <div className="w-[100px] flex justify-start font-bold">
-                                    {/* <h1 className="font-bold"> */}
+                                <div className="text-white w-[100px] flex justify-start font-bold">
                                     Contact
-                                    {/* </h1> */}
                                 </div>
                             </div>
                             <div className="grid col-span-2 sm:mt-4 text-sm text-gray-500">

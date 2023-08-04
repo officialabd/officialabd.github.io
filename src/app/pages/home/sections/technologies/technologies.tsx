@@ -16,7 +16,8 @@ export default function Technologies() {
                     subtitle={item.name}
                     padding=""
                     ring=""
-                    round="" />
+                    round=""
+                    textColor="text-white" />
             ))}
         </div>
     </Card>

@@ -14,7 +14,8 @@ export default function Avatar(
         underline = false,
         bgColor = "bg-none",
         padding = "",
-        round = "rounded-full"
+        round = "rounded-full",
+        textColor = "",
     }:
         {
             image: string;
@@ -28,7 +29,8 @@ export default function Avatar(
             underline?: boolean;
             bgColor?: string;
             padding?: string;
-            round?: string
+            round?: string;
+            textColor?: string;
         },
 ) {
     return (<div>
@@ -42,7 +44,7 @@ export default function Avatar(
         {subtitle ?
             <>
                 <div className="flex mt-3" />
-                <BasicHeading text={subtitle} fontFamily={SourceCodePro} underline={underline} />
+                <BasicHeading textColor={textColor} text={subtitle} fontFamily={SourceCodePro} underline={underline} />
             </>
             :
             <></>
