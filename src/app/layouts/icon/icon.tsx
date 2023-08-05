@@ -28,7 +28,7 @@ export default function Icon(
             >
                 <img
                     className={`text-white fill-white ${bgColor}`}
-                    src={`data:image/svg+xml;utf8,${encodeURIComponent(svgCode)}`}
+                    src={`data:image/svg+xml;,${encodeURIComponent(svgCode)}`}
                     alt={name} />
 
             </a>
