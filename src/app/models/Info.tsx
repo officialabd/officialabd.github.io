@@ -1,5 +1,12 @@
+interface Link {
+    name: string;
+    link: string;
+    svgCode: string;
+    bgColor: string;
+}
 export class Info {
     // private id: any;
+
     private name?: string | undefined;
     private title?: string | undefined;
     private jobTitle?: string | undefined;
@@ -9,6 +16,7 @@ export class Info {
     private phone?: string | undefined;
     private copyright?: string | undefined;
     private links?: {} | undefined;
+    private links0?: Link[] | undefined;
 
     constructor(
         // id: any,
@@ -21,6 +29,7 @@ export class Info {
         phone?: string,
         copyright?: string,
         links?: {},
+        links0?: Link[] | undefined,
     ) {
         // this.id = id;
         this.name = name;
@@ -32,6 +41,7 @@ export class Info {
         this.phone = phone;
         this.copyright = copyright;
         this.links = links;
+        this.links0 = links0;
     }
 
     // getId() {
@@ -62,6 +72,10 @@ export class Info {
         return this.links!;
     }
 
+    getLinks0(): Link[] {
+        return this.links0!;
+    }
+
     getEmail() {
         return this.email;
     }
@@ -85,6 +99,7 @@ export class Info {
             links: this.links,
             email: this.email,
             phone: this.phone,
+            links0: this.links0,
         };
 
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
@@ -102,6 +117,7 @@ export class Info {
             object["phone"],
             object["copyright"],
             object["links"],
+            object["links0"],
         );
     }
 

@@ -1,5 +1,5 @@
 import { Info } from "@/app/models/Info";
-import staticData from "@/app/staticData";
+import Icon from "../icon/icon";
 import Basic from "../texts/basic";
 import BasicHRef from "../texts/basicHRef";
 
@@ -8,7 +8,7 @@ export default function Footer(
     {
         id,
         loading = false,
-        myInfo,
+        myInfo = undefined,
     }: {
         id: string,
         loading?: boolean,
@@ -54,9 +54,27 @@ export default function Footer(
                         </div>
                     </div>
                     <div className="flex justify-center mt-8 space-x-6 text-gray-600">
-                        <FooterIcon url={staticData.myInfo.links.linkedin} icon={staticData.icons.linkedIn} color="bg-linkedin_bg_color" />
-                        <FooterIcon url={staticData.myInfo.links.github} icon={staticData.icons.github} color="bg-github_bg_color" />
-                        <FooterIcon url={staticData.myInfo.links.leetcode} icon={staticData.icons.leetcode} color="bg-leetcode_bg_color" />
+                        <Icon
+                            loading={loading}
+                            name={myInfo?.getLinks0()?.find((value) => value["name"] === "linkedin")?.name!}
+                            bgColor={myInfo?.getLinks0()?.find((value) => value["name"] === "linkedin")?.bgColor!}
+                            svgCode={myInfo?.getLinks0()?.find((value) => value["name"] === "linkedin")?.svgCode!}
+                            url={myInfo?.getLinks0()?.find((value) => value["name"] === "linkedin")?.link!}
+                        />
+                        <Icon
+                            loading={loading}
+                            name={myInfo?.getLinks0()?.find((value) => value["name"] === "github")?.name!}
+                            bgColor={myInfo?.getLinks0()?.find((value) => value["name"] === "github")?.bgColor!}
+                            svgCode={myInfo?.getLinks0()?.find((value) => value["name"] === "github")?.svgCode!}
+                            url={myInfo?.getLinks0()?.find((value) => value["name"] === "github")?.link!}
+                        />
+                        <Icon
+                            loading={loading}
+                            name={myInfo?.getLinks0()?.find((value) => value["name"] === "leetcode")?.name!}
+                            bgColor={myInfo?.getLinks0()?.find((value) => value["name"] === "leetcode")?.bgColor!}
+                            svgCode={myInfo?.getLinks0()?.find((value) => value["name"] === "leetcode")?.svgCode!}
+                            url={myInfo?.getLinks0()?.find((value) => value["name"] === "leetcode")?.link!}
+                        />
                     </div>
                     <div className="mt-4 md:mt-0 flex justify-center">
                         <div className="grid w-full sm:w-auto justify-center grid-cols-3 sm:grid-cols-2">

@@ -108,7 +108,7 @@ export default function MyHome() {
         <div className="mt-10" />
         <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
         <div className="mt-10" />
-        <Technologies />
+        <Technologies title="Technologies" />
         <div className="mt-10" />
         <Footer id="footer"
             loading={loading.myInfo}

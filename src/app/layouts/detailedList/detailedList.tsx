@@ -1,7 +1,6 @@
 import staticData from "@/app/staticData";
 import { DetailedListItem } from "../../models/Item";
 import Card from "../card/card";
-import HeadingOne from "../headings/headingOne";
 import LinePulse from "../pulse/line";
 import MultiLinePulse from "../pulse/multiLine";
 import { Tags } from "../tags/tags";
@@ -9,8 +8,20 @@ import Basic from "../texts/basic";
 
 export default function DetailedList(
     { title, items, loading = false }: { title: string, items: Array<DetailedListItem>, loading?: boolean }) {
-
-    return <Card heading={<HeadingOne text={title} textColor="text-[#BFACDF]" />}>
+    // <div className="">
+    return <Card heading={
+        <Basic
+            text={title}
+            textColor="text-[#BFACDF]"
+            fontFamily="font-RobotoMono"
+            fontSize="text-3xl sm:text-4xl"
+            letterSpacing="tracking-tight"
+            fontWeight="font-bold"
+            margin="mx-auto lg:mx-0"
+            underline={true}
+            other=""
+        />
+    }>
         {loading ?
             <ListItemNode key={`temp-loading-${title}`} id={`temp-loading-${title}`} item={new DetailedListItem({})} loading={loading} />
             :

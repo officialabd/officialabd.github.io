@@ -1,4 +1,5 @@
 import { db } from "@/../firebase";
+import staticData from "@/app/staticData";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 
 const fetchMyInfoData = async ({ colName, docName, successCallback, errorCallback }:
@@ -58,6 +59,16 @@ const writeCollection = async (
 
     await setDoc(doc(citiesRef, docName), object);
 }
+
+const writeThem = () => {
+    staticData.techs.forEach(tch => {
+        writeCollection({
+            collectionName: staticData.firebaseConst.collections.technologies,
+            docName: `${String(tch.id).padStart(5, '0')}-${tch.name}`, object: tch
+        });
+    });
+}
+
 
 export {
     fetchMyInfoData, fetchSectionsData, fetchSkillsData

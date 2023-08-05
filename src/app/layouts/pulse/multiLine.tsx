@@ -14,7 +14,7 @@ export default function MultiLinePulse(
     return <div className={`${padding} ${width} my-auto`}>
         <div className="animate-pulse flex space-x-4">
             <div className="flex-1 space-y-6 py-1">
-                <div className="space-y-3 content-center">
+                <div className="space-y-6 content-center">
                     <div className={`${lineHeight} ${color} rounded`}></div>
                     <div className="grid grid-cols-3 gap-4">
                         <div className={`${lineHeight} ${color} rounded col-span-1`}></div>
