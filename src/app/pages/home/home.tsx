@@ -29,7 +29,7 @@ export default function MyHome() {
     const [internshipsAndCourses, setInternshipsAndCourses] = useState<Object>([]);
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
-
+    // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
     if (loading.myInfo) {
         fetchMyInfoData({
             colName: staticData.firebaseConst.collections.myInfo.name,

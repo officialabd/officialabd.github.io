@@ -71,6 +71,6 @@ const writeThem = () => {
 
 
 export {
-    fetchMyInfoData, fetchSectionsData, fetchSkillsData
+    fetchMyInfoData, fetchSectionsData, fetchSkillsData, writeCollection
 };
 
