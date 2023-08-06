@@ -23,6 +23,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Nunito&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Tektur&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Borel&display=swap" rel="stylesheet" />
       </head>
       <body className={inter.className}>{children}</body>
     </html>

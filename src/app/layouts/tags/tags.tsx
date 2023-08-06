@@ -27,8 +27,8 @@ const Tags = (
             loading?: boolean
         }) => {
 
-    return <div className="w-full flex content-center">
-        {!wrap ? <div className="w-5 bg-gradient-to-r z-10 from-[#101728] via-[#101728] to-[#10172844]" /> : <></>}
+    return <div className="w-full flex content-center justify-center">
+        {!wrap ? <div className="w-5 bg-gradient-to-r z-10 from-[var(--background-my-color)] via-[var(--background-my-color)] to-[var(--background-my-color-faded)]" /> : <></>}
         <div className={`w-full flex ${wrap ? "flex-wrap" : "overflow-x-auto no-scrollbar -translate-x-4 pl-4 pr-4"} content-center ${alignH} ${alignV} ${gap} ${margin}`}>
             {loading ?
                 <LinePulse />
@@ -38,7 +38,7 @@ const Tags = (
                 ))
             }
         </div>
-        {!wrap ? <div className="w-5 bg-gradient-to-l -translate-x-8 z-10 from-[#101728] via-[#101728] to-[#10172844]" /> : <></>}
+        {!wrap ? <div className="w-5 bg-gradient-to-l -translate-x-8 z-10 from-[var(--background-my-color)] via-[var(--background-my-color)] to-[var(--background-my-color-faded)]" /> : <></>}
     </div>
 }
 

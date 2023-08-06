@@ -15,7 +15,7 @@ export default function Icon(
         loading?: boolean
     }) {
     return <>
-        {loading || !bgColor ?
+        {loading ?
             <CirclePulse />
             :
             <a

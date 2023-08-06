@@ -25,7 +25,8 @@ module.exports = {
         "Nunito": ['Nunito', "sans-serif"],
         "SourceCodePro": ['Source Code Pro', "monospace"],
         "Tektur": ['Tektur', "cursive"],
-        "RobotoMono": ['Roboto Mono', "monospace"]
+        "RobotoMono": ['Roboto Mono', "monospace"],
+        "Borel": ["Borel", "cursive"],
       },
     },
   },

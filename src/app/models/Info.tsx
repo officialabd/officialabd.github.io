@@ -17,6 +17,7 @@ export class Info {
     private copyright?: string | undefined;
     private links?: {} | undefined;
     private links0?: Link[] | undefined;
+    private description?: string | undefined;
 
     constructor(
         // id: any,
@@ -30,6 +31,7 @@ export class Info {
         copyright?: string,
         links?: {},
         links0?: Link[] | undefined,
+        description?: string | undefined,
     ) {
         // this.id = id;
         this.name = name;
@@ -42,6 +44,7 @@ export class Info {
         this.copyright = copyright;
         this.links = links;
         this.links0 = links0;
+        this.description = description;
     }
 
     // getId() {
@@ -88,6 +91,10 @@ export class Info {
         return this.copyright;
     }
 
+    getDescription() {
+        return this.description;
+    }
+
     toObject() {
         const obj = {
             // id: this.id,
@@ -100,6 +107,7 @@ export class Info {
             email: this.email,
             phone: this.phone,
             links0: this.links0,
+            description: this.description,
         };
 
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
@@ -118,6 +126,7 @@ export class Info {
             object["copyright"],
             object["links"],
             object["links0"],
+            object["description"],
         );
     }
 

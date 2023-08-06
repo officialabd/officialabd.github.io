@@ -7,6 +7,7 @@ import { DetailedListItem } from "@/app/models/Item";
 import staticData from "@/app/staticData";
 import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
+import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
 
 export default function MyHome() {
@@ -110,13 +111,12 @@ export default function MyHome() {
             techs={techsSkills}
             interpersonalSkills={personalSkills}
         />
-        <div className="mt-10" />
-        <div className="flex justify-center">
-            <div className="bg-red-200 w-fit text-center text-xl font-bold text-black">
-                Demo - Under development
-            </div>
-        </div>
-        <div className="mt-10" />
+        <div className="mt-14 sm:mt-24" />
+        <Intro
+            myInfo={myInfo}
+            loading={loading.myInfo}
+        />
+        <div className="mt-14 sm:mt-24" />
         <DetailedList title="Internships and Courses" loading={loading.internshipsAndCourses} items={internshipsAndCourses as DetailedListItem[]} />
         <div className="mt-10" />
         <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
