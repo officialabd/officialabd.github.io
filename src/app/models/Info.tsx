@@ -18,6 +18,7 @@ export class Info {
     private links?: {} | undefined;
     private links0?: Link[] | undefined;
     private description?: string | undefined;
+    private whatIMake?: string | undefined;
 
     constructor(
         // id: any,
@@ -32,6 +33,7 @@ export class Info {
         links?: {},
         links0?: Link[] | undefined,
         description?: string | undefined,
+        whatIMake?: string | undefined,
     ) {
         // this.id = id;
         this.name = name;
@@ -45,6 +47,7 @@ export class Info {
         this.links = links;
         this.links0 = links0;
         this.description = description;
+        this.whatIMake = whatIMake;
     }
 
     // getId() {
@@ -95,6 +98,10 @@ export class Info {
         return this.description;
     }
 
+    getWhatIMake() {
+        return this.whatIMake;
+    }
+
     toObject() {
         const obj = {
             // id: this.id,
@@ -108,6 +115,7 @@ export class Info {
             phone: this.phone,
             links0: this.links0,
             description: this.description,
+            whatIMake: this.whatIMake,
         };
 
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
@@ -127,6 +135,7 @@ export class Info {
             object["links"],
             object["links0"],
             object["description"],
+            object["whatIMake"],
         );
     }
 

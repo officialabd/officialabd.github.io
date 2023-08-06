@@ -24,7 +24,7 @@ export default function Intro(
                     textColor="text-purple-200"
                 />
                 <Basic
-                    text={"I write test scripts and frontend"}
+                    text={myInfo?.getWhatIMake()!}
                     fontSize="text-5xl sm:text-6xl"
                     fontFamily="font-Nunito"
                     fontWeight=""
