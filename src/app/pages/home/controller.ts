@@ -1,6 +1,6 @@
 import { db } from "@/../firebase";
-import staticData from "@/app/staticData";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { getDownloadURL, getStorage, ref } from "firebase/storage";
 
 const fetchMyInfoData = async ({ colName, docName, successCallback, errorCallback }:
     { colName: string; docName: string; successCallback: Function; errorCallback: Function }) => {
@@ -44,6 +44,21 @@ const fetchSectionsData = async ({ colName, successCallback, errorCallback }:
     }
 }
 
+const fetchImage = async (
+    {
+        imageRef, successCallback, errorCallback
+    }: {
+        imageRef: string, successCallback: Function, errorCallback: Function
+    }) => {
+    //"gs://my-portfolio-ed76f.appspot.com/assets/images/projects/001-NoorBot/0_home.png"
+    const imgRef = ref(getStorage(), imageRef);
+    await getDownloadURL(imgRef).then((value) => {
+        successCallback(value);
+    }).catch((error) => {
+        errorCallback(error);
+    });
+}
+
 const writeCollection = async (
     {
         collectionName,
@@ -55,22 +70,14 @@ const writeCollection = async (
         object: {};
     }) => {
 
-    const citiesRef = collection(db, collectionName);
+    const ref = collection(db, collectionName);
 
-    await setDoc(doc(citiesRef, docName), object);
+    await setDoc(doc(ref, docName), object);
 }
 
-const writeThem = () => {
-    staticData.techs.forEach(tch => {
-        writeCollection({
-            collectionName: staticData.firebaseConst.collections.technologies,
-            docName: `${String(tch.id).padStart(5, '0')}-${tch.name}`, object: tch
-        });
-    });
-}
+// writeCollection({ collectionName: "projects", docName: "001-NoorBot", object: staticData.projects[0].toObject() })
 
 
-export {
-    fetchMyInfoData, fetchSectionsData, fetchSkillsData, writeCollection
-};
+
+export { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData, writeCollection };
 

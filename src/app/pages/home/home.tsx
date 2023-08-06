@@ -6,7 +6,7 @@ import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
 import staticData from "@/app/staticData";
 import { useState } from 'react';
-import { fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
+import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Technologies from "./sections/technologies/technologies";
 
 export default function MyHome() {
@@ -81,8 +81,23 @@ export default function MyHome() {
         fetchSectionsData({
             colName: staticData.firebaseConst.collections.projects,
             successCallback: (data: []) => {
-                setLoading((other) => ({ ...other, projects: false }));
-                setProjects(DetailedListItem.objectsToItemsList(data));
+                var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data);
+                tempProjects.forEach(pt => {
+                    const imgsNum = pt.getImages()?.length;
+                    pt.getImages()?.forEach((imgItem, i) => {
+                        fetchImage({
+                            imageRef: imgItem.path!,
+                            successCallback: (url: string) => {
+                                imgItem.url = url;
+                                if ((i + 1) == imgsNum)
+                                    setLoading((other) => ({ ...other, projects: false }));
+
+                            },
+                            errorCallback: (error: any) => console.log(error)
+                        });
+                    });
+                });
+                setProjects(tempProjects);
             },
             errorCallback: (error: any) => console.log(error)
         });

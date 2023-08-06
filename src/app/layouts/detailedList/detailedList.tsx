@@ -1,6 +1,7 @@
 import staticData from "@/app/staticData";
 import { DetailedListItem } from "../../models/Item";
 import Card from "../card/card";
+import ImagerViewer from "../imagesViewer/ImagersViewer";
 import LinePulse from "../pulse/line";
 import MultiLinePulse from "../pulse/multiLine";
 import { Tags } from "../tags/tags";
@@ -108,6 +109,12 @@ const ListItemNode = (
                                 )
                             }
                         </div>
+                    </div>
+                    <div className="grid w-full sm:grid-cols-1 lg:grid-cols-2">
+                        <ImagerViewer
+                            loading={loading}
+                            images={item.getImages()}
+                        />
                     </div>
                     {(loading || item.getTags()) &&
                         <Tags id={id} loading={loading} tags={item.getTags()!} margin="mt-8" gap="gap-2" />

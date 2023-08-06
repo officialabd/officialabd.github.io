@@ -1,4 +1,10 @@
-export class DetailedListItem {
+interface MyImageItem {
+    name: string;
+    alt: string;
+    path?: string;
+    url?: string;
+}
+class DetailedListItem {
     private id: any;
     private title?: string | undefined;
     private site?: string | undefined;
@@ -8,6 +14,7 @@ export class DetailedListItem {
     private hours?: number | 0 | undefined;
     private links?: Array<{}> | undefined;
     private tags?: Array<string> | undefined;
+    private images?: Array<MyImageItem> | undefined;
 
     constructor(
         id: any,
@@ -18,7 +25,8 @@ export class DetailedListItem {
         endDate?: string,
         hours?: number,
         links?: Array<{}>,
-        tags?: Array<string>
+        tags?: Array<string>,
+        images?: Array<MyImageItem>,
     ) {
         this.id = id;
         this.title = title;
@@ -29,6 +37,7 @@ export class DetailedListItem {
         this.hours = hours;
         this.links = links;
         this.tags = tags;
+        this.images = images;
     }
 
     getId() {
@@ -67,6 +76,10 @@ export class DetailedListItem {
         return this.tags;
     }
 
+    getImages() {
+        return this.images;
+    }
+
     toObject() {
         const obj = {
             id: this.id,
@@ -78,6 +91,7 @@ export class DetailedListItem {
             hours: this.hours,
             links: this.links,
             tags: this.tags,
+            images: this.images,
         };
 
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
@@ -97,6 +111,7 @@ export class DetailedListItem {
                 ob["hours"],
                 ob["links"],
                 ob["tags"],
+                ob["images"],
             ));
         });
 
@@ -105,3 +120,7 @@ export class DetailedListItem {
 
 
 }
+
+export { DetailedListItem };
+export type { MyImageItem };
+
