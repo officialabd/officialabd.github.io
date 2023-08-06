@@ -16,6 +16,14 @@ export default function ImagerViewer(
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [pulseEffect, setPulseEffect] = useState(true);
 
+    const updatePulseEffect = (value: boolean) => {
+        setPulseEffect(value);
+    }
+
+    const updateImageIndex = (value: number) => {
+        setCurrentImageIndex(value);
+    }
+
     const prevImage = () => {
         setPulseEffect(true);
         setCurrentImageIndex((prevIndex) => (prevIndex - 1 + images?.length!) % images?.length!);
@@ -38,7 +46,7 @@ export default function ImagerViewer(
                         <img src={staticData.icons.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
                     <img
-                        onLoad={() => { setPulseEffect(false) }}
+                        onLoad={() => updatePulseEffect(false)}
                         src={images[currentImageIndex]?.url || ''}
                         alt={images[currentImageIndex]?.alt || ''}
                         className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
@@ -54,7 +62,7 @@ export default function ImagerViewer(
                         <div
                             key={index}
                             className={`w-3 h-3 mx-1 rounded-full cursor-pointer ${index === currentImageIndex ? 'bg-white' : 'bg-gray-400 hover:bg-gray-500'}`}
-                            onClick={() => setCurrentImageIndex(index)}
+                            onClick={() => updateImageIndex(index)}
                         />
                     ))}
                 </div>
