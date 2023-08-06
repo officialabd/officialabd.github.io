@@ -117,24 +117,3 @@ export default function Footer(
         </footer>
     </>
 }
-
-const FooterIcon = ({ url, color, icon }: { url: string, color: string, icon: string }) => {
-    return <>
-        <a
-            href={url}
-            target="_blank"
-            type="button"
-            data-te-ripple-init
-            data-te-ripple-color="light"
-            className={`${color} w-11 h-11 mb-2 inline-block rounded-full p-3 text-xs font-medium uppercase leading-normal text-white shadow-md transition duration-150 ease-in-out hover:shadow-slate-400 focus:shadow-lg focus:outline-none focus:ring-0 active:shadow-lg`}
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="currentColor"
-                viewBox="0 0 24 24">
-                <path d={icon} />
-            </svg>
-        </a>
-    </>;
-}
