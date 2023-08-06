@@ -10,18 +10,10 @@ export default function ImagerViewer(
         images: MyImageItem[] | undefined,
         loading?: boolean
     }) {
-    if (!images || images.length === 0) {
-        return null; // Return early if images is not provided or empty
-    }
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [pulseEffect, setPulseEffect] = useState(true);
-
-    const updatePulseEffect = (value: boolean) => {
-        setPulseEffect(value);
-    }
-
-    const updateImageIndex = (value: number) => {
-        setCurrentImageIndex(value);
+    if (!images || images.length === 0) {
+        return null;
     }
 
     const prevImage = () => {
@@ -45,7 +37,7 @@ export default function ImagerViewer(
                         <img src={staticData.icons.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
                     <img
-                        onLoad={() => updatePulseEffect(false)}
+                        onLoad={() => setPulseEffect(false)}
                         src={images[currentImageIndex]?.url || ''}
                         alt={images[currentImageIndex]?.alt || ''}
                         className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
@@ -60,7 +52,7 @@ export default function ImagerViewer(
                         <div
                             key={index}
                             className={`w-3 h-3 mx-1 rounded-full cursor-pointer ${index === currentImageIndex ? 'bg-white' : 'bg-gray-400 hover:bg-gray-500'}`}
-                            onClick={() => updateImageIndex(index)}
+                            onClick={() => setCurrentImageIndex(index)}
                         />
                     ))}
                 </div>
