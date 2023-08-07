@@ -111,7 +111,7 @@ const ListItemNode = (
                                         <MultiLinePulse width="w-62" />
                                         :
                                         item.getDescription() && item.getDescription()!.map((dcp, i) =>
-                                            <p key={`${id}-description-${i}`} className="line-clamp-3 text-sm leading-6 text-white">{dcp}</p>
+                                            <p key={`${id}-description-${i}`} className="text-sm leading-6 text-white">{dcp}</p>
                                         )
                                     }
                                 </div>
