@@ -57,12 +57,6 @@ export default function Header(
                     loading={loading} wrap={false} />
             </div>
             <div className="mt-5 flex justify-center lg:ml-4 lg:mt-0 space-x-3 z-10">
-                {/* <HeaderItem name="Projects" myRef={staticData.routes.projects} /> */}
-                <div className="flex justify-center">
-                    <div className="bg-red-200 w-fit text-center text-xl font-bold text-black">
-                        Demo
-                    </div>
-                </div>
                 <HeaderItem name="Contact" myRef={"#footer"} />
             </div>
         </div>
