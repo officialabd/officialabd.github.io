@@ -9,7 +9,6 @@ import Basic from "../texts/basic";
 
 export default function DetailedList(
     { title, items, loading = false }: { title: string, items: Array<DetailedListItem>, loading?: boolean }) {
-    // <div className="">
     return <Card heading={
         <Basic
             text={title}
@@ -55,7 +54,10 @@ const ListItemNode = (
                                 <div>
                                     <div className="items-center gap-x-1 text-xs">
                                         <Basic
-                                            text={`${item.getStartDate() ? item.getStartDate() : ""} ${item.getStartDate() && item.getEndDate() ? "-" : ""} ${item.getEndDate() ? item.getEndDate() : ""}`}
+                                            text={`${item.getStartDate() ? item.getStartDate() : ""}
+                                                ${item.getStartDate() && item.getEndDate() ? "-" : ""} 
+                                                ${item.getEndDate() ? item.getEndDate() : ""}
+                                                ${item.getHours() ? ("(" + item.getHours() + ")") : ""}`}
                                             fontFamily="font-mono"
                                             fontSize="sm"
                                             loading={loading}
