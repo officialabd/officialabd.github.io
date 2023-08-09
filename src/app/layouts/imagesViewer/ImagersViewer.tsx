@@ -12,9 +12,22 @@ export default function ImagerViewer(
     }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [pulseEffect, setPulseEffect] = useState(true);
+    // const [loadingImage, setLoadingImage] = useState(true);
+
     if (!images || images.length === 0) {
         return null;
     }
+
+    // if (loadingImage) {
+    //     fetchImage({
+    //         imageRef: images[currentImageIndex].path!,
+    //         successCallback: (url: string) => {
+    //             images[currentImageIndex].url = url;
+    //             setLoadingImage(false);
+    //         },
+    //         errorCallback: (error: any) => console.log(error)
+    //     });
+    // }
 
     const prevImage = () => {
         setPulseEffect(true);
@@ -37,11 +50,21 @@ export default function ImagerViewer(
                         <img src={staticData.icons.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
                     <img
+                        loading="eager"
                         onLoad={() => setPulseEffect(false)}
                         src={images[currentImageIndex]?.url || ''}
                         alt={images[currentImageIndex]?.alt || ''}
                         className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
                     />
+                    {/* <Image
+                        loading="lazy"
+                        width={undefined}
+                        height={100}
+                        onLoad={() => setPulseEffect(false)}
+                        src={images[currentImageIndex]?.url || ''}
+                        alt={images[currentImageIndex]?.alt || ''}
+                        className={`h-full max-w-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
+                    /> */}
                     <div className="rounded-md ms-2 w-8 h-12 bg-[#99999988] hover:bg-[#99999955] text-white flex items-center justify-center cursor-pointer transition-opacity"
                         onClick={() => nextImage()}>
                         <img src={staticData.icons.arrowForward} alt="Arrow Forward" />

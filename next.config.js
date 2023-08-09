@@ -22,4 +22,12 @@ module.exports = {
     //     path: 'https://officialabdib-imgs.imgix.net/public/',
     // },
     output: 'export',
+    // images: {
+    //     domains: [
+    //         'firebasestorage.googleapis.com',
+    //         'gs://my-portfolio-ed76f.appspot.com'
+    //     ],
+    //     // loader: 'imgix',
+    //     // path: '',
+    // },
 }

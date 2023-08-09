@@ -8,8 +8,11 @@ import { Tags } from "../tags/tags";
 import Basic from "../texts/basic";
 
 export default function DetailedList(
-    { title, items, loading = false }: { title: string, items: Array<DetailedListItem>, loading?: boolean }) {
-    // <div className="">
+    {
+        title, items, loading = false
+    }: {
+        title: string, items: Array<DetailedListItem>, loading?: boolean
+    }) {
     return <Card heading={
         <Basic
             text={title}
