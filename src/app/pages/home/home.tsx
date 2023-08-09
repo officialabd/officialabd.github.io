@@ -17,12 +17,14 @@ export default function MyHome() {
         internshipsAndCourses: boolean,
         educations: boolean,
         projects: boolean,
+        jobs: boolean,
     }>({
         myInfo: true,
         skills: true,
         internshipsAndCourses: true,
         educations: true,
         projects: true,
+        jobs: true,
     });
     const [myInfo, setMyInfo] = useState<Info>();
     const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
@@ -30,6 +32,7 @@ export default function MyHome() {
     const [internshipsAndCourses, setInternshipsAndCourses] = useState<Object>([]);
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
+    const [jobs, setJobs] = useState<Object>([]);
     // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
     if (loading.myInfo) {
         fetchMyInfoData({
@@ -78,6 +81,18 @@ export default function MyHome() {
             errorCallback: (error: any) => console.log(error)
         });
     }
+
+    if (loading.jobs) {
+        fetchSectionsData({
+            colName: staticData.firebaseConst.collections.jobs,
+            successCallback: (data: []) => {
+                setLoading((other) => ({ ...other, jobs: false }));
+                setJobs(DetailedListItem.objectsToItemsList(data));
+            },
+            errorCallback: (error: any) => console.log(error)
+        });
+    }
+
     if (loading.projects) {
         fetchSectionsData({
             colName: staticData.firebaseConst.collections.projects,
@@ -117,6 +132,8 @@ export default function MyHome() {
             loading={loading.myInfo}
         />
         <div className="mt-14 sm:mt-24" />
+        <DetailedList title="Work & Job" loading={loading.jobs} items={jobs as DetailedListItem[]} />
+        <div className="mt-10" />
         <DetailedList title="Internships and Courses" loading={loading.internshipsAndCourses} items={internshipsAndCourses as DetailedListItem[]} />
         <div className="mt-10" />
         <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />

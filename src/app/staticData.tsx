@@ -16,7 +16,8 @@ const firebaseConst = {
                 technical: "technical"
             }
         },
-        technologies: "technologies"
+        technologies: "technologies",
+        jobs: "jobs"
     }
 }
 
