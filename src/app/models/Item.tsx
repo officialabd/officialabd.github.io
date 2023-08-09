@@ -11,7 +11,7 @@ class DetailedListItem {
     private description?: Array<string> | undefined;
     private startDate?: string | undefined;
     private endDate?: string | "Present" | undefined;
-    private hours?: number | 0 | undefined;
+    private hours?: string | undefined;
     private links?: Array<{}> | undefined;
     private tags?: Array<string> | undefined;
     private images?: Array<MyImageItem> | undefined;
@@ -23,7 +23,7 @@ class DetailedListItem {
         description?: Array<string>,
         startDate?: string,
         endDate?: string,
-        hours?: number,
+        hours?: string,
         links?: Array<{}>,
         tags?: Array<string>,
         images?: Array<MyImageItem>,
