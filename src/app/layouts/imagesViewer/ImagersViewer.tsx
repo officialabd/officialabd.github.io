@@ -37,6 +37,7 @@ export default function ImagerViewer(
                         <img src={staticData.icons.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
                     <img
+                        loading="lazy"
                         onLoad={() => setPulseEffect(false)}
                         src={images[currentImageIndex]?.url || ''}
                         alt={images[currentImageIndex]?.alt || ''}
