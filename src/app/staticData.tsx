@@ -1,7 +1,7 @@
 const firebaseConst = {
     collections: {
         educations: "educations",
-        internshipsAndCourses: "internshipsAndCourses",
+        courses: "courses",
         myInfo: {
             name: "myInfo",
             sub: {
@@ -17,7 +17,7 @@ const firebaseConst = {
             }
         },
         technologies: "technologies",
-        jobs: "jobs"
+        experiences: "experiences"
     }
 }
 

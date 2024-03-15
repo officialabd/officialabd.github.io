@@ -14,25 +14,25 @@ export default function MyHome() {
     const [loading, setLoading] = useState<{
         myInfo: boolean
         skills: boolean,
-        internshipsAndCourses: boolean,
+        courses: boolean,
         educations: boolean,
         projects: boolean,
-        jobs: boolean,
+        experiences: boolean,
     }>({
         myInfo: true,
         skills: true,
-        internshipsAndCourses: true,
+        courses: true,
         educations: true,
         projects: true,
-        jobs: true,
+        experiences: true,
     });
     const [myInfo, setMyInfo] = useState<Info>();
     const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
     const [personalSkills, setPersonalSkills] = useState<Array<string>>([]);
-    const [internshipsAndCourses, setInternshipsAndCourses] = useState<Object>([]);
+    const [courses, setCourses] = useState<Object>([]);
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
-    const [jobs, setJobs] = useState<Object>([]);
+    const [experiences, setExperiences] = useState<Object>([]);
     // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
     if (loading.myInfo) {
         fetchMyInfoData({
@@ -66,28 +66,28 @@ export default function MyHome() {
             colName: staticData.firebaseConst.collections.educations,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, educations: false }));
-                setEducation(DetailedListItem.objectsToItemsList(data))
+                setEducation(DetailedListItem.objectsToItemsList(data).reverse())
             },
             errorCallback: (error: any) => console.log(error)
         });
     }
-    if (loading.internshipsAndCourses) {
+    if (loading.courses) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.internshipsAndCourses,
+            colName: staticData.firebaseConst.collections.courses,
             successCallback: (data: []) => {
-                setLoading((other) => ({ ...other, internshipsAndCourses: false }));
-                setInternshipsAndCourses(DetailedListItem.objectsToItemsList(data));
+                setLoading((other) => ({ ...other, courses: false }));
+                setCourses(DetailedListItem.objectsToItemsList(data).reverse());
             },
             errorCallback: (error: any) => console.log(error)
         });
     }
 
-    if (loading.jobs) {
+    if (loading.experiences) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.jobs,
+            colName: staticData.firebaseConst.collections.experiences,
             successCallback: (data: []) => {
-                setLoading((other) => ({ ...other, jobs: false }));
-                setJobs(DetailedListItem.objectsToItemsList(data));
+                setLoading((other) => ({ ...other, experiences: false }));
+                setExperiences(DetailedListItem.objectsToItemsList(data).reverse());
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -132,9 +132,9 @@ export default function MyHome() {
             loading={loading.myInfo}
         />
         <div className="mt-14 sm:mt-24" />
-        <DetailedList title="Work & Job" loading={loading.jobs} items={jobs as DetailedListItem[]} />
+        <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
         <div className="mt-10" />
-        <DetailedList title="Internships and Courses" loading={loading.internshipsAndCourses} items={internshipsAndCourses as DetailedListItem[]} />
+        <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
         <div className="mt-10" />
         <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
         <div className="mt-10" />
