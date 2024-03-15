@@ -50,9 +50,9 @@ const ListItemNode = (
                 <div className="flex w-full flex-col items-start justify-between">
                     <div className={`w-full items-start justify-between grid grid-cols-1 ${(!item.getImages() || item.getImages()?.length == 0) ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
                         <div className={`grid grid-cols-1`}>
-                            <div className={`grid grid-cols-1 items-center justify-between ${(!item.getImages() || item.getImages()?.length == 0) ? "sm:grid-cols-2" : ""}`}>
-                                <div>
-                                    <div className="items-center gap-x-1 text-xs">
+                            <div className={`grid grid-cols-1 items-start justify-between ${(!item.getImages() || item.getImages()?.length == 0) ? "sm:grid-cols-2" : ""}`}>
+                                <div className="items-start">
+                                    <div className="items-start gap-x-1 text-xs">
                                         <Basic
                                             text={`${item.getStartDate() ? item.getStartDate() : ""}
                                                 ${item.getStartDate() && item.getEndDate() ? "-" : ""} 
@@ -119,14 +119,16 @@ const ListItemNode = (
                                 </div>
                             </div>
                         </div>
-                        {(item.getImages() && item.getImages()?.length! > 0) &&
-                            <div className="grid w-full grid-cols-1 mt-10 sm:mt-0">
-                                <ImagerViewer
-                                    loading={loading}
-                                    images={item.getImages()}
-                                />
-                            </div>
-                        }
+                        <div className="items-center grid h-full w-full grid-cols-1 mt-10 sm:mt-0 max-lg:mt-0">
+                            {(item.getImages() && item.getImages()?.length! > 0) &&
+                                <div className="items-center grid  w-full grid-cols-1 mt-10 sm:mt-0">
+                                    <ImagerViewer
+                                        loading={loading}
+                                        images={item.getImages()}
+                                    />
+                                </div>
+                            }
+                        </div>
                     </div>
                     {(loading || item.getTags()) &&
                         <Tags id={id} loading={loading} tags={item.getTags()!} margin="mt-8" gap="gap-2" />
