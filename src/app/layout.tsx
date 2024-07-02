@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
+import GoogleAnalytics from '@/app/GoogleAnalytics';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,6 +26,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Tektur&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Borel&display=swap" rel="stylesheet" />
       </head>
+      <GoogleAnalytics />
       <body className={inter.className}>{children}</body>
     </html>
   )
