@@ -35,18 +35,24 @@ export default function Header(
                     linePulseWidth="w-72"
                 />
                 <div className="mt-2 flex content-center flex-col sm:mt-3 sm:flex-row sm:flex-wrap sm:space-x-6">
-                    <Headline
-                        text={myInfo?.getJobTitle()!}
-                        icon={staticData.icons.jobIcon}
-                        loading={loading}
-                        linePulseWidth="w-32"
-                    />
-                    <Headline
-                        text={myInfo?.getJobLocation()!}
-                        icon={staticData.icons.locationIcon}
-                        loading={loading}
-                        linePulseWidth="w-32"
-                    />
+                    {
+                        myInfo?.getJobTitle() &&
+                        <Headline
+                            text={myInfo?.getJobTitle()!}
+                            icon={staticData.icons.jobIcon}
+                            loading={loading}
+                            linePulseWidth="w-32"
+                        />
+                    }
+                    {
+                        myInfo?.getJobLocation() &&
+                        <Headline
+                            text={myInfo?.getJobLocation()!}
+                            icon={staticData.icons.locationIcon}
+                            loading={loading}
+                            linePulseWidth="w-32"
+                        />
+                    }
                 </div>
                 <div className="mt-4" />
                 <Tags id={"techs"}
