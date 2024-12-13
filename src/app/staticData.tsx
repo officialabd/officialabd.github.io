@@ -24,7 +24,6 @@ const firebaseConst = {
 const images = {
     backgrounds: {
         mainBG: "/assets/images/backgrounds/carena.png",
-        mainBGLinkedIn: "/assets/images/backgrounds/linkedin_cover_03.png"
     },
     myImages: {
         face: "/assets/images/my_images/face.jpg"
