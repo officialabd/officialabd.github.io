@@ -31,8 +31,7 @@ const images = {
 }
 
 const routes = {
-    home: "/pages/home",
-    projects: "/pages/projects"
+    home: "/pages/home"
 }
 
 const icons = {
