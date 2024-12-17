@@ -1,14 +1,13 @@
-// components/Canvas.tsx
+// components/Road.tsx
 'use client';
 
 import Road from "./road";
 
 const Roadmap = () => {
     return (
-        <svg width="100%" height="1000px" style={{ backgroundColor: "#fff" }}>
+        <svg width="100%" height="1000px" style={{ backgroundColor: "#fffffff" }}>
             <Road color="orange" xNum={0} yNum={0} />
-            <Road color="black" xNum={100} yNum={100} />
-
+            <Road color="white" xNum={100} yNum={100} />
         </svg>
     );
 };

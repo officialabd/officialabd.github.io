@@ -55,4 +55,3 @@ class Road {
 }
 
 export { Road };
-

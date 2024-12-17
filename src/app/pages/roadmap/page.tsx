@@ -1,9 +1,9 @@
-import Canvas from "@/app/layouts/roadmap/roadmap";
+import Roadmap from "@/app/layouts/roadmap/roadmap";
 
 export default function Projects() {
     return (
         <>
-            <Canvas />
+            <Roadmap />
         </>
     )
 }
