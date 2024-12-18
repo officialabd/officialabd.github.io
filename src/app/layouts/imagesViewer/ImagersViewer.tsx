@@ -1,7 +1,7 @@
 import { MyImageItem } from "@/app/models/Item";
 import staticData from "@/app/staticData";
 import { useState } from 'react';
-import LinePulse from "../pulse/line";
+import LinePulse from "../../_components/pulse/line";
 
 export default function ImagerViewer(
     {
@@ -39,8 +39,8 @@ export default function ImagerViewer(
                     <img
                         loading="lazy"
                         onLoad={() => setPulseEffect(false)}
-                        src={images[currentImageIndex]?.url || ''}
-                        alt={images[currentImageIndex]?.alt || ''}
+                        src={images[currentImageIndex]?.url}
+                        alt={images[currentImageIndex]?.alt}
                         className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
                     />
                     <div className="rounded-md ms-2 w-8 h-12 bg-[#99999988] hover:bg-[#99999955] text-white flex items-center justify-center cursor-pointer transition-opacity"

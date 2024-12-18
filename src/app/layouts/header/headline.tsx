@@ -1,4 +1,4 @@
-import LinePulse from "../pulse/line";
+import LinePulse from "../../_components/pulse/line";
 
 export default function Headline(
     { text, icon, loading = false,

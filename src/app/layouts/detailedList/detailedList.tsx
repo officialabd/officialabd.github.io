@@ -1,11 +1,11 @@
+import { Tags } from "@/app/_components/tags/tags";
+import Basic from "@/app/_components/texts/basic";
 import staticData from "@/app/staticData";
+import LinePulse from "../../_components/pulse/line";
+import MultiLinePulse from "../../_components/pulse/multiLine";
 import { DetailedListItem } from "../../models/Item";
 import Card from "../card/card";
 import ImagerViewer from "../imagesViewer/ImagersViewer";
-import LinePulse from "../pulse/line";
-import MultiLinePulse from "../pulse/multiLine";
-import { Tags } from "../tags/tags";
-import Basic from "../texts/basic";
 
 export default function DetailedList(
     { title, items, loading = false }: { title: string, items: Array<DetailedListItem>, loading?: boolean }) {

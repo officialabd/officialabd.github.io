@@ -1,6 +1,6 @@
-import Avatar from "@/app/layouts/avatar/avatar";
+import Avatar from "@/app/_components/avatar/avatar";
+import Basic from "@/app/_components/texts/basic";
 import Card from "@/app/layouts/card/card";
-import Basic from "@/app/layouts/texts/basic";
 import { Technology } from "@/app/models/Technology";
 import staticData from "@/app/staticData";
 import { useState } from 'react';

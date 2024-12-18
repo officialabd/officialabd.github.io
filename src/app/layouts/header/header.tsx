@@ -1,8 +1,8 @@
+import { Tags } from "@/app/_components/tags/tags";
+import Basic from "@/app/_components/texts/basic";
 import { Info } from "@/app/models/Info";
 import staticData from "@/app/staticData";
-import Avatar from "../avatar/avatar";
-import { Tags } from "../tags/tags";
-import Basic from "../texts/basic";
+import Avatar from "../../_components/avatar/avatar";
 import HeaderItem from "./headerItem";
 import Headline from "./headline";
 

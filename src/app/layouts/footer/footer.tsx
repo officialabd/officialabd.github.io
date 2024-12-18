@@ -1,8 +1,7 @@
+import Icon from "@/app/_components/icon/icon";
+import Basic from "@/app/_components/texts/basic";
+import BasicHRef from "@/app/_components/texts/basicHRef";
 import { Info } from "@/app/models/Info";
-import Icon from "../icon/icon";
-import Basic from "../texts/basic";
-import BasicHRef from "../texts/basicHRef";
-
 
 export default function Footer(
     {

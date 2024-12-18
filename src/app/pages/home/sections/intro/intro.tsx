@@ -1,5 +1,5 @@
-import LinePulse from "@/app/layouts/pulse/line";
-import Basic from "@/app/layouts/texts/basic";
+import LinePulse from "@/app/_components/pulse/line";
+import Basic from "@/app/_components/texts/basic";
 import { Info } from "@/app/models/Info";
 
 export default function Intro(

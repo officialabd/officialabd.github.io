@@ -2,6 +2,7 @@
 import DetailedList from "@/app/layouts/detailedList/detailedList";
 import Footer from "@/app/layouts/footer/footer";
 import Header from "@/app/layouts/header/header";
+import Roadmap from "@/app/layouts/roadmap/roadmap";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
 import staticData from "@/app/staticData";
@@ -9,6 +10,8 @@ import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
+
+export const dynamic = "force-static";
 
 export default function MyHome() {
     const [loading, setLoading] = useState<{
@@ -131,6 +134,18 @@ export default function MyHome() {
             myInfo={myInfo}
             loading={loading.myInfo}
         />
+        <div className="mt-14 sm:mt-24" />
+
+        <Roadmap
+            title="Projects" loading={loading.projects || loading.educations || loading.experiences || loading.courses}
+            items={
+                (projects as DetailedListItem[])
+                    .concat(educations as DetailedListItem[])
+                    .concat(experiences as DetailedListItem[])
+                    .concat(courses as DetailedListItem[])
+            }
+        />
+
         <div className="mt-14 sm:mt-24" />
         <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
         <div className="mt-10" />

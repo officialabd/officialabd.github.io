@@ -18,7 +18,7 @@ export default function Icon(
         {loading ?
             <CirclePulse />
             :
-            <a
+            (<a
                 href={url}
                 target="_blank"
                 type="button"
@@ -29,7 +29,7 @@ export default function Icon(
                     src={`data:image/svg+xml;utf8,${encodeURIComponent(svgCode)}`}
                     alt={name} />
 
-            </a>
+            </a>)
         }
     </>;
 }
