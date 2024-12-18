@@ -5,7 +5,7 @@ import Header from "@/app/layouts/header/header";
 import Roadmap from "@/app/layouts/roadmap/roadmap";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
-import staticData from "@/app/staticData";
+import Constants from "@/app/staticData";
 import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
@@ -36,11 +36,11 @@ export default function MyHome() {
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
     const [experiences, setExperiences] = useState<Object>([]);
-    // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
+
     if (loading.myInfo) {
         fetchMyInfoData({
-            colName: staticData.firebaseConst.collections.myInfo.name,
-            docName: staticData.firebaseConst.collections.myInfo.sub.basic,
+            colName: Constants.FIREBASE_CONST.collections.myInfo.name,
+            docName: Constants.FIREBASE_CONST.collections.myInfo.sub.basic,
             successCallback: (data: any) => {
                 setLoading((other) => ({ ...other, myInfo: false }));
                 setMyInfo(Info.toInfo(data));
@@ -51,22 +51,22 @@ export default function MyHome() {
 
     if (loading.skills) {
         fetchSkillsData({
-            colName: staticData.firebaseConst.collections.skills.name,
-            docName: staticData.firebaseConst.collections.skills.sub.technical,
+            colName: Constants.FIREBASE_CONST.collections.skills.name,
+            docName: Constants.FIREBASE_CONST.collections.skills.sub.technical,
             successCallback: (data: []) => { setLoading((other) => ({ ...other, skills: false })); setTechsSkills(data); },
             errorCallback: (error: any) => console.log(error)
         });
 
         fetchSkillsData({
-            colName: staticData.firebaseConst.collections.skills.name,
-            docName: staticData.firebaseConst.collections.skills.sub.interpersonal,
+            colName: Constants.FIREBASE_CONST.collections.skills.name,
+            docName: Constants.FIREBASE_CONST.collections.skills.sub.interpersonal,
             successCallback: (data: []) => { setLoading((other) => ({ ...other, skills: false })); setPersonalSkills(data) },
             errorCallback: (error: any) => console.log(error)
         });
     }
     if (loading.educations) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.educations,
+            colName: Constants.FIREBASE_CONST.collections.educations,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, educations: false }));
                 setEducation(DetailedListItem.objectsToItemsList(data).reverse())
@@ -76,7 +76,7 @@ export default function MyHome() {
     }
     if (loading.courses) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.courses,
+            colName: Constants.FIREBASE_CONST.collections.courses,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, courses: false }));
                 setCourses(DetailedListItem.objectsToItemsList(data).reverse());
@@ -87,7 +87,7 @@ export default function MyHome() {
 
     if (loading.experiences) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.experiences,
+            colName: Constants.FIREBASE_CONST.collections.experiences,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, experiences: false }));
                 setExperiences(DetailedListItem.objectsToItemsList(data).reverse());
@@ -98,7 +98,7 @@ export default function MyHome() {
 
     if (loading.projects) {
         fetchSectionsData({
-            colName: staticData.firebaseConst.collections.projects,
+            colName: Constants.FIREBASE_CONST.collections.projects,
             successCallback: (data: []) => {
                 var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data);
                 tempProjects.forEach(pt => {

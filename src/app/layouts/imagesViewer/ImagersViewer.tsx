@@ -1,5 +1,5 @@
 import { MyImageItem } from "@/app/models/Item";
-import staticData from "@/app/staticData";
+import Constants from "@/app/staticData";
 import { useState } from 'react';
 import LinePulse from "../../_components/pulse/line";
 
@@ -34,7 +34,7 @@ export default function ImagerViewer(
                 <div className={`w-full h-96 relative flex justify-center content-center items-center`}>
                     <div className="rounded-md me-2 w-8 h-12 bg-[#99999988] hover:bg-[#99999955] text-white flex items-center justify-center cursor-pointer hover:bg-opacity-50 transition-opacity"
                         onClick={() => prevImage()}>
-                        <img src={staticData.icons.arrowBack} className="fill-white" alt="Arrow Back" />
+                        <img src={Constants.ICONS.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
                     <img
                         loading="lazy"
@@ -45,7 +45,7 @@ export default function ImagerViewer(
                     />
                     <div className="rounded-md ms-2 w-8 h-12 bg-[#99999988] hover:bg-[#99999955] text-white flex items-center justify-center cursor-pointer transition-opacity"
                         onClick={() => nextImage()}>
-                        <img src={staticData.icons.arrowForward} alt="Arrow Forward" />
+                        <img src={Constants.ICONS.arrowForward} alt="Arrow Forward" />
                     </div>
                 </div>
                 <div className="flex justify-center mt-2">

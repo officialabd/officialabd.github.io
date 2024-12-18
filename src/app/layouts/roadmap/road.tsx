@@ -1,33 +1,16 @@
 // components/Canvas.tsx
 'use client';
 
-import { LineData } from "@/app/models/roadmap/data/LineData";
 import { RoadModel } from "@/app/models/roadmap/Road";
 
 const Road = (
     {
-        xNum,
-        yNum,
         color,
         road
     }: {
-        xNum: number,
-        yNum: number,
         color: string,
         road?: RoadModel
     }) => {
-    const ld = new LineData('12', 50 + xNum, 50 + yNum);
-
-    ld.addHorizontalLine(1300)
-        .addArc(50, 50, 0, 0, 1, 1350 + xNum, 100 + yNum)
-        .addVerticalLine(200 + yNum)
-        .addArc(50, 50, 0, 0, 1, 1300 + xNum, 250 + yNum)
-        .addHorizontalLine(100 + xNum)
-        .addArc(50, 50, 0, 0, 0, 50 + xNum, 300 + yNum)
-        .addVerticalLine(400 + yNum)
-        .addArc(50, 50, 0, 0, 0, 100 + xNum, 450 + yNum)
-        .addHorizontalLine(1300 + xNum);
-
 
     return (
         <>

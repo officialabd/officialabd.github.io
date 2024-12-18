@@ -1,7 +1,7 @@
 import { Tags } from "@/app/_components/tags/tags";
 import Basic from "@/app/_components/texts/basic";
 import { Info } from "@/app/models/Info";
-import staticData from "@/app/staticData";
+import Constants from "@/app/staticData";
 import Avatar from "../../_components/avatar/avatar";
 import HeaderItem from "./headerItem";
 import Headline from "./headline";
@@ -18,7 +18,7 @@ export default function Header(
         <div className="blur-[2px] hover:blur-none duration-200">
             <img
                 className="rounded-b-2xl brightness-75"
-                src={staticData.images.backgrounds.mainBG}
+                src={Constants.IMAGES.backgrounds.mainBG}
                 alt="Image not found"
                 style={{
                     width: '100%',
@@ -26,7 +26,7 @@ export default function Header(
             />
         </div>
         <div className="absolute -translate-y-[50%] flex justify-center w-full">
-            <Avatar image={staticData.images.myImages.face} altText="My face image" ringColor="ring-white" />
+            <Avatar image={Constants.IMAGES.myImages.face} altText="My face image" ringColor="ring-white" />
         </div>
         <div className="mt-[50px] ms:mt-[10%] lg:flex lg:items-center lg:justify-center ms-10 me-10">
             <div className="min-w-0 flex-1 z-10">
@@ -39,7 +39,7 @@ export default function Header(
                         myInfo?.getJobTitle() &&
                         <Headline
                             text={myInfo?.getJobTitle()!}
-                            icon={staticData.icons.jobIcon}
+                            icon={Constants.ICONS.jobIcon}
                             loading={loading}
                             linePulseWidth="w-32"
                         />
@@ -48,7 +48,7 @@ export default function Header(
                         myInfo?.getJobLocation() &&
                         <Headline
                             text={myInfo?.getJobLocation()!}
-                            icon={staticData.icons.locationIcon}
+                            icon={Constants.ICONS.locationIcon}
                             loading={loading}
                             linePulseWidth="w-32"
                         />

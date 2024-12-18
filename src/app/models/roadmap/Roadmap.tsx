@@ -1,8 +1,9 @@
+import Constants from "@/app/staticData";
 import { DetailedListItem } from "../Item";
 import { RoadModel } from "./Road";
 
 class RoadmapModel {
-    readonly STARTING_POINT: number = 50
+    readonly STARTING_POINT: number = Constants.ROADMAP_CONFIGS.Y_STARTING_POINT
     private id: any;
     private roads: Array<RoadModel>;
     private currentTotalLength: number = this.STARTING_POINT;
@@ -40,6 +41,10 @@ class RoadmapModel {
 
     getRoads() {
         return this.roads;
+    }
+
+    getId() {
+        return this.id;
     }
 
 }

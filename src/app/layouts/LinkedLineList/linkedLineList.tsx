@@ -17,7 +17,6 @@ export default function LinkedLineList(
         circlesWidth?: string;
         circlesHeight?: string;
     }) {
-    // const items = staticData.techniqualSkills;
 
     return <div className=" px-4 py-8 sm:rounded-3xl sm:p-10 bg-clip-padding bg-opacity-60 rounded-xl bg-slate-800/50 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] drop-shadow-lg">
         {items.map((item, i) => (

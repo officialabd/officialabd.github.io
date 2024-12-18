@@ -75,9 +75,5 @@ const writeCollection = async (
     await setDoc(doc(ref, docName), object);
 }
 
-// writeCollection({ collectionName: "projects", docName: "001-NoorBot", object: staticData.projects[0].toObject() })
-
-
-
 export { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData, writeCollection };
 

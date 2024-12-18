@@ -1,4 +1,4 @@
-import staticData from '@/app/staticData';
+import Constants from '@/app/staticData';
 import { DetailedListItem } from '../Item';
 import { CirclesData } from './data/CirclesData';
 import { LineData } from './data/LineData';
@@ -42,7 +42,7 @@ class RoadModel {
             let height = this.calculateDifferenceAsLength(tempDate, firstStartDate);
             this.circlesData.addCircle(
                 this.id, 700, 50 + height,
-                staticData.roadmap_utilities.CIRCLE_RADIUS * 3,
+                Constants.ROADMAP_CONFIGS.CIRCLE_RADIUS * 3,
                 this.fill
             )
 
@@ -73,7 +73,7 @@ class RoadModel {
         this.circlesData = new CirclesData();
         this.circlesData.addCircle(
             this.id, 700 + margin, 50 + startPoint,
-            staticData.roadmap_utilities.CIRCLE_RADIUS,
+            Constants.ROADMAP_CONFIGS.CIRCLE_RADIUS,
             this.fill
         )
     }
@@ -82,7 +82,7 @@ class RoadModel {
         const diffInMs: number = Math.abs(endDate.getTime() - startDate.getTime());
         const diffInDays: number = diffInMs / (1000 * 60 * 60 * 24);
 
-        const length: number = Math.ceil(diffInDays * staticData.roadmap_utilities.DAY_ROAD_LENGTH);
+        const length: number = Math.ceil(diffInDays * Constants.ROADMAP_CONFIGS.DAY_ROAD_LENGTH);
 
         return length;
     }

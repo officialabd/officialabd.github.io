@@ -1,6 +1,6 @@
 import { Tags } from "@/app/_components/tags/tags";
 import Basic from "@/app/_components/texts/basic";
-import staticData from "@/app/staticData";
+import Constants from "@/app/staticData";
 import LinePulse from "../../_components/pulse/line";
 import MultiLinePulse from "../../_components/pulse/multiLine";
 import { DetailedListItem } from "../../models/Item";
@@ -99,7 +99,7 @@ const ListItemNode = (
                                                             className="flex text-white relative justify-center items-center max-w-lg z-10 rounded-full px-3 py-1.5 font-medium hover:bg-[#141d32]"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 me-2 text-blue-400">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d={staticData.icons.link} />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d={Constants.ICONS.link} />
                                                             </svg>
                                                             {Object.entries(lk).at(0)?.[0]}
                                                         </a>
