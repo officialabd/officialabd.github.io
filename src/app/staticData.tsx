@@ -49,10 +49,22 @@ const icons = {
     arrowForward: "/assets/svgs/icons/arrow-forward.svg",
 }
 
+const roadmap_utilities = {
+    YEAR_ROAD_LENGTH: 144,
+    MONTH_ROAD_LENGTH: 12,
+    THREE_QUARTER_MONTH_ROAD_LENGTH: 9,
+    HALF_MONTH_ROAD_LENGTH: 6,
+    QUARTER_MONTH_ROAD_LENGTH: 3,
+    DAY_ROAD_LENGTH: 1,
+    CIRCLE_RADIUS: 8
+}
 
-export default {
+const exports = {
     firebaseConst,
     images,
     routes,
     icons,
+    roadmap_utilities
 }
+
+export default exports;

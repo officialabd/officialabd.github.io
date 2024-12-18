@@ -1,10 +1,16 @@
 class LineData {
     private id: any;
     private lineData: string = "";
+    private startPointX: number;
+    private startPointY: number;
+    private endPointX!: number;
+    private endPointY!: number;
 
     constructor(id: any, startPointX: number, startPointY: number) {
         this.id = id;
         this.moveTo(startPointX, startPointY);
+        this.startPointX = startPointX;
+        this.startPointY = startPointY;
     }
 
     getId() {
@@ -70,6 +76,8 @@ class LineData {
      */
     addVerticalLine(endPointY: number) {
         this.appendStringToLineData(`V ${endPointY}`);
+        this.endPointX = this.startPointX;
+        this.endPointY = endPointY;
         return this;
     }
 
@@ -160,6 +168,22 @@ class LineData {
      */
     getPathData(): string {
         return this.lineData.trim();
+    }
+
+    getStartPointX(): number {
+        return this.startPointX;
+    }
+
+    getStartPointY(): number {
+        return this.startPointY;
+    }
+
+    getEndPointX(): number {
+        return this.endPointX;
+    }
+
+    getEndPointY(): number {
+        return this.endPointY;
     }
 }
 

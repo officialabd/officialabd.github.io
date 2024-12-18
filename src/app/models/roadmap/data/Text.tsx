@@ -7,7 +7,7 @@ class Text {
     private fill: string; // Fill color of the text
 
     constructor(id: any, x: number, y: number, textContent: string, fontSize: number, fill: string) {
-        this.id = id;
+        this.id = id + "-Text";
         this.x = x;
         this.y = y;
         this.textContent = textContent;
@@ -30,6 +30,27 @@ class Text {
         this.fontSize = fontSize;
         this.fill = fill;
     }
+
+    getX(): number {
+        return this.x;
+    }
+
+    getY(): number {
+        return this.y;
+    }
+
+    getTextContent(): string {
+        return this.textContent;
+    }
+
+    getFontSize(): number {
+        return this.fontSize;
+    }
+
+    getFill(): string {
+        return this.fill;
+    }
+
 }
 
 export { Text };

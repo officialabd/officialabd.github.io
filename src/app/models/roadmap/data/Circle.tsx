@@ -27,6 +27,23 @@ class Circle {
         this.r = r;
         this.fill = fill;
     }
+
+    getCx(): number {
+        return this.cx;
+    }
+
+    getCy(): number {
+        return this.cy;
+    }
+
+    getR(): number {
+        return this.r;
+    }
+
+    getFill(): string {
+        return this.fill;
+    }
+
 }
 
 export { Circle };
