@@ -1,6 +1,6 @@
 import { Tags } from "@/app/_components/tags/tags";
 import Basic from "@/app/_components/texts/basic";
-import Constants from "@/app/staticData";
+import Constants from "@/app/utilities/Constants";
 import LinePulse from "../../_components/pulse/line";
 import MultiLinePulse from "../../_components/pulse/multiLine";
 import { DetailedListItem } from "../../models/Item";

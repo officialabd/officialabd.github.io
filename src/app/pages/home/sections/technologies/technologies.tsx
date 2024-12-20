@@ -2,7 +2,7 @@ import Avatar from "@/app/_components/avatar/avatar";
 import Basic from "@/app/_components/texts/basic";
 import Card from "@/app/layouts/card/card";
 import { Technology } from "@/app/models/Technology";
-import Constants from "@/app/staticData";
+import Constants from "@/app/utilities/Constants";
 import { useState } from 'react';
 import { fetchTechnologiesData } from "./controller";
 

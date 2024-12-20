@@ -1,5 +1,5 @@
 import { MyImageItem } from "@/app/models/Item";
-import Constants from "@/app/staticData";
+import Constants from "@/app/utilities/Constants";
 import { useState } from 'react';
 import LinePulse from "../../_components/pulse/line";
 
