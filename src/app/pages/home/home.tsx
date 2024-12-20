@@ -5,7 +5,7 @@ import Header from "@/app/layouts/header/header";
 import Roadmap from "@/app/layouts/roadmap/roadmap";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
-import Constants from "@/app/staticData";
+import Constants from "@/app/utilities/Constants";
 import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
@@ -137,7 +137,8 @@ export default function MyHome() {
         <div className="mt-14 sm:mt-24" />
 
         <Roadmap
-            title="Projects" loading={loading.projects || loading.educations || loading.experiences || loading.courses}
+            id="home"
+            title="Timeline" loading={loading.projects || loading.educations || loading.experiences || loading.courses}
             items={
                 (projects as DetailedListItem[])
                     .concat(educations as DetailedListItem[])

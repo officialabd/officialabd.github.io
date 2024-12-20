@@ -1,23 +1,68 @@
-// components/Canvas.tsx
+// components/Road.tsx
 'use client';
 
 import { RoadModel } from "@/app/models/roadmap/Road";
+import Constants from "@/app/utilities/Constants";
+import { useEffect, useState } from "react";
+import RoadmapCard from "./roadmap_card";
+
+function useScreenWidth(): number | null {
+    const [screenWidth, setScreenWidth] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateWidth = () => setScreenWidth(window.innerWidth);
+
+        updateWidth();
+
+        window.addEventListener("resize", updateWidth);
+
+        return () => window.removeEventListener("resize", updateWidth);
+    }, []);
+
+    return screenWidth;
+}
+
+function useScreenHeight(): number | null {
+    const [screenHeight, setScreenHeight] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateHeight = () => setScreenHeight(window.innerHeight);
+
+        updateHeight();
+
+        window.addEventListener("resize", updateHeight);
+
+        return () => window.removeEventListener("resize", updateHeight);
+    }, []);
+
+    return screenHeight;
+}
 
 const Road = (
     {
-        color,
-        road
+        road,
+        loading
     }: {
-        color: string,
-        road?: RoadModel
+        road?: RoadModel,
+        loading: boolean
     }) => {
+
+    let item = undefined;
+    if (!loading) {
+        item = road?.getItem();
+    }
+
+    const screenWidth = useScreenWidth()
+    const screenHeight = useScreenHeight()
+
+    road!.update(20, screenWidth! / 2, 20, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT + Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
 
     return (
         <>
             <path
-                d={road?.getLineData()}
+                d={road?.getLineData().getPathData()}
                 fill="none"
-                stroke={color}
+                stroke={road?.getColor()}
                 strokeWidth="10"
                 key={road?.getId()}
                 id={road?.getId()}
@@ -33,10 +78,10 @@ const Road = (
                 road?.getCirclesData().getCircles().map((circle, i) => (
                     <circle
                         key={circle.getId() + i}
-                        cx={circle.getCx()}
-                        cy={circle.getCy()}
-                        r={circle.getR()}
-                        fill={color}
+                        cx={circle.getCx_c()}
+                        cy={circle.getCy_c()}
+                        r={circle.getR_c()}
+                        fill={road?.getColor()}
                         filter="url(#circleShadow)"
                     />
                 ))
@@ -45,8 +90,8 @@ const Road = (
                 road?.getTextData().getTexts().map((text, i) => (
                     <text
                         key={text.getId() + i}
-                        x={text.getX()}
-                        y={text.getY()}
+                        x={text.getX_c()}
+                        y={text.getY_c()}
                         fill="black"
                         fontSize="14"
                         fontWeight="bold"
@@ -56,6 +101,9 @@ const Road = (
                         {text.getTextContent()}
                     </text>
                 ))
+            }
+            {road?.getItem() && !road.isMainRoad() &&
+                <RoadmapCard loading={loading} item={item!} cardData={road.getCardData()} title="Testing" color={road?.getColor()!} />
             }
         </>
     );

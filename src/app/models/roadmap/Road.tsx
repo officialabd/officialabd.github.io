@@ -1,5 +1,7 @@
-import Constants from '@/app/staticData';
+import Utilities from '@/app/utilities/BasicUtil';
+import Constants from '@/app/utilities/Constants';
 import { DetailedListItem } from '../Item';
+import { CardData } from './data/CardData';
 import { CirclesData } from './data/CirclesData';
 import { LineData } from './data/LineData';
 import { TextsData } from './data/TextsData';
@@ -9,123 +11,184 @@ class RoadModel {
     private lineData!: LineData;
     private circlesData!: CirclesData;
     private textsData!: TextsData;
-    private fill: string;
+    private cardData!: CardData;
+    private index: number;
+    private startY: number = 0;
+    private roadLength?: number;
+    private color: string;
+    private mainStartDate: Date;
+    private startDate?: Date;
+    private endDate?: Date;
+    private item?: DetailedListItem;
+    private isMain: boolean;
 
-    constructor(id: any, fill: string) {
+    constructor(
+        id: any,
+        mainStartDate: Date,
+        index: number,
+        color: string,
+        isMain: boolean = false,
+        item?: DetailedListItem,
+    ) {
         this.id = id + "-road";
-        this.fill = fill;
+        this.index = index;
+        this.color = color;
+        this.isMain = isMain;
+        this.item = item
+        this.mainStartDate = mainStartDate
+
+        this.initialize();
     }
 
-    setMainItem(firstStartDate: Date) {
-        const current = new Date();
+    initialize() {
+        if (this.isMain) this.setAsMainRoad();
+        else this.setRoad();
+    }
 
-        const roadLength: number = this.calculateDifferenceAsLength(current, firstStartDate);
+    private setAsMainRoad() {
+        this.startDate = this.mainStartDate
+        this.endDate = new Date();
 
-        this.lineData = new LineData(this.id, 700, 50);
-        this.lineData.addVerticalLine(50 + roadLength);
+        this.roadLength = Utilities.calculateDifferenceAsLength(this.endDate, this.startDate);
+
+        this.lineData = new LineData(
+            this.id,
+            this.index,
+            0,
+            this.index,
+            this.roadLength
+        );
 
         this.circlesData = new CirclesData();
         this.textsData = new TextsData();
 
-        this.addMainYears(firstStartDate, current, roadLength);
+        this.addMainYears(this.startDate, this.endDate);
     }
 
-    private addMainYears(firstStartDate: Date, currentDate: Date, roadLength: number) {
-        const yearNums = currentDate.getFullYear() - firstStartDate.getFullYear() + 1
+    private addMainYears(startDate: Date, currentDate: Date) {
+        const yearNums = currentDate.getFullYear() - startDate.getFullYear() + 1
 
         for (let yearNo = 0; yearNo < yearNums; yearNo++) {
-            const year = firstStartDate.getFullYear() + yearNo
-            let tempDate = firstStartDate
+            const year = startDate.getFullYear() + yearNo
+            let tempDate = startDate
             if (yearNo > 0) {
                 tempDate = new Date(year, 0, 1);
             }
-            let height = this.calculateDifferenceAsLength(tempDate, firstStartDate);
+            let differenceBetweenYears = Utilities.calculateDifferenceAsLength(tempDate, startDate);
             this.circlesData.addCircle(
-                this.id, 700, 50 + height,
-                Constants.ROADMAP_CONFIGS.CIRCLE_RADIUS * 3,
-                this.fill
+                this.id,
+                this.index,
+                differenceBetweenYears,
+                Constants.ROADMAP_CONFIGS.YEAR_CIRCLE_RADIUS,
+                this.color
             )
 
-            this.textsData.addText(this.id, 700, 50 + height, year + "", 16, this.fill);
+            this.textsData.addText(
+                this.id,
+                this.index,
+                differenceBetweenYears,
+                year + "",
+                16,
+                this.color
+            );
         }
 
     }
 
-    setItem(item: DetailedListItem, firstStartDate: Date, margin: number, currentRoadTotalLength: number, numberOfCurrentRoads: number) {
-        const sd = new Date(item.getStartDate()!);
-        let ed = new Date(item.getEndDate()!);
+    private setRoad() {
+        this.startDate = Utilities.toDate(this.item!.getStartDate()!);
+        this.endDate = Utilities.toDate(this.item!.getEndDate()!, this.item!.getStartDate()!);
 
-        if (item.getEndDate() == "Present") {
-            ed = new Date();
-        }
+        this.startY = Utilities.calculateDifferenceAsLength(this.startDate, this.mainStartDate);
 
-        if (item.getEndDate() == "" || item.getEndDate() == undefined) {
-            ed = new Date(sd.getFullYear(), sd.getMonth(), 31);
-        }
+        this.roadLength = Utilities.calculateDifferenceAsLength(this.endDate, this.startDate);
 
-        const startPoint: number = this.calculateDifferenceAsLength(sd, firstStartDate);
-
-        const roadLength: number = this.calculateDifferenceAsLength(ed, sd);
-
-        this.lineData = new LineData(this.id, 700 + margin, 50 + startPoint);
-        this.lineData.addVerticalLine(50 + startPoint + roadLength);
+        this.lineData = new LineData(
+            this.id,
+            this.index,
+            this.startY,
+            this.index,
+            this.startY + this.roadLength
+        );
 
         this.circlesData = new CirclesData();
         this.circlesData.addCircle(
-            this.id, 700 + margin, 50 + startPoint,
+            this.id,
+            this.index,
+            this.startY,
             Constants.ROADMAP_CONFIGS.CIRCLE_RADIUS,
-            this.fill
+            this.color
+        );
+
+        this.cardData = new CardData(
+            this.id,
+            0,
+            this.startY,
+            this.color
         )
     }
 
-    calculateDifferenceAsLength(startDate: Date, endDate: Date) {
-        const diffInMs: number = Math.abs(endDate.getTime() - startDate.getTime());
-        const diffInDays: number = diffInMs / (1000 * 60 * 60 * 24);
-
-        const length: number = Math.ceil(diffInDays * Constants.ROADMAP_CONFIGS.DAY_ROAD_LENGTH);
-
-        return length;
+    update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
+        if (this.lineData)
+            this.lineData.update(startX_X_value, transitionX, cap, transitionY)
+        if (this.circlesData)
+            this.circlesData.updateCircles(startX_X_value, transitionX, cap, transitionY, 10)
+        if (this.textsData)
+            this.textsData.updateTexts(startX_X_value, transitionX, cap, transitionY)
+        if (this.cardData)
+            this.cardData.update(startX_X_value, transitionX, cap, transitionY)
     }
 
     getId() {
         return this.id;
     }
 
-    // Add a circle to the road
-    addCircle(id: any, cx: number, cy: number, r: number, fill: string) {
-        this.circlesData.addCircle(id, cx, cy, r, fill);
+    getIndex() {
+        return this.index;
     }
 
-    // Add text to the road
-    // addText(text: Text) {
-    //     this.textsData.addText(text);
-    // }
+    addCircle(id: any, cx: number, cy: number, r: number, color: string) {
+        this.circlesData.addCircle(id, cx, cy, r, color);
+    }
 
-    // Get the line data from the road
     getLineData() {
-        return this.lineData.getPathData();
+        return this.lineData;
     }
 
-    // Get all circles data added to the road
     getCirclesData() {
         return this.circlesData;
     }
 
-    // Get all text data added to the road
     getTextData() {
         return this.textsData;
     }
 
-    // Get full SVG data for the road (line + circles + text)
-    getFullRoadData() {
-        const circlesData = this.getCirclesData();
-        const textsData = this.getTextData();
-        return `${this.getLineData()} ${circlesData} ${textsData}`;
+    getColor() {
+        return this.color;
     }
 
-    // Get the color of the road
-    getColor() {
-        return this.fill;
+    getStartDate() {
+        return this.startDate;
+    }
+
+    getEndDate() {
+        return this.endDate;
+    }
+
+    getItem() {
+        return this.item;
+    }
+
+    isMainRoad() {
+        return this.isMain;
+    }
+
+    getCardData() {
+        return this.cardData;
+    }
+
+    getStartY() {
+        return this.startY;
     }
 
 }
