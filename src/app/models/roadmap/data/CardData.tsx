@@ -1,21 +1,17 @@
 
-class Text {
+class CardData {
     private id: any;
     private x: number;
     private y: number;
     private x_c?: number;
     private y_c?: number;
-    private textContent: string;
-    private fontSize: number;
-    private fill: string;
+    private color: string;
 
-    constructor(id: any, x: number, y: number, textContent: string, fontSize: number, fill: string) {
-        this.id = id + "-Text";
+    constructor(id: any, x: number, y: number, color: string) {
+        this.id = id + "-Card";
         this.x = x;
         this.y = y;
-        this.textContent = textContent;
-        this.fontSize = fontSize;
-        this.fill = fill;
+        this.color = color;
 
         this.update(20, 500, 20, 0)
     }
@@ -24,6 +20,11 @@ class Text {
         if (this.x == 0) cap = 0;
         this.x_c = this.x * startX_X_value + transitionX + cap
         this.y_c = this.y + transitionY;
+    }
+
+    setY(addToY: number) {
+        this.y += addToY;
+        this.update(20, 500, 20, 0)
     }
 
     getId() {
@@ -46,19 +47,11 @@ class Text {
         return this.y_c;
     }
 
-    getTextContent(): string {
-        return this.textContent;
-    }
-
-    getFontSize(): number {
-        return this.fontSize;
-    }
-
-    getFill(): string {
-        return this.fill;
+    getColor(): string {
+        return this.color;
     }
 
 }
 
-export { Text };
+export { CardData };
 

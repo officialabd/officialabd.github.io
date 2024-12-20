@@ -2,17 +2,19 @@ import { Circle } from "./Circle";
 
 class CirclesData {
     private circles: Circle[] = [];
+    private counter = 0;
 
-    // Add a circle to the CircleData
     addCircle(id: any, cx: number, cy: number, r: number, fill: string) {
         this.circles.push(
-            new Circle(id, cx, cy, r, fill)
+            new Circle(id + "-" + this.counter, cx, cy, r, fill)
         );
+        this.counter++;
     }
 
-    // Get all circle data as a string for SVG output
-    getCirclesData() {
-        return this.circles.map(circle => circle.getCircleData()).join(' ');
+    updateCircles(startX_X_value: number, transitionX: number, cap: number, transitionY: number, newR: number) {
+        this.circles.forEach(circle => {
+            circle.update(startX_X_value, transitionX, cap, transitionY, newR)
+        })
     }
 
     getCircles() {

@@ -2,11 +2,7 @@ import { Text } from "./Text";
 
 class TextsData {
     private texts: Text[] = [];
-
-    // Add text to the TextsData
-    addTextObj(text: Text) {
-        this.texts.push(text);
-    }
+    private counter = 0;
 
     addText(
         id: any,
@@ -16,13 +12,14 @@ class TextsData {
         fontSize: number,
         fill: string,
     ) {
-        this.texts.push(new Text(id, x, y, textContent, fontSize, fill));
+        this.texts.push(new Text(id + "-" + this.counter, x, y, textContent, fontSize, fill));
+        this.counter++;
     }
 
-
-    // Get all text data as a string for SVG output
-    getTextData() {
-        return this.texts.map(text => text.getTextData()).join(' ');
+    updateTexts(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
+        this.texts.forEach(text => {
+            text.update(startX_X_value, transitionX, cap, transitionY)
+        })
     }
 
     getTexts() {
