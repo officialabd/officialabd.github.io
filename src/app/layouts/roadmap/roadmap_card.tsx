@@ -62,7 +62,7 @@ const ListItemNode = (
                     borderWidth: 0
                 }} />
 
-                <div className=" w-full flex h-10 p-2 items-start justify-between shadow-md content-center bg-[#FEF9F2]">
+                <div className=" w-full flex min-h-10 p-2 items-start justify-between shadow-md content-center bg-[#FEF9F2]">
                     <div className="h-full">
                         <Basic text={item.getTitle()!}
                             fontFamily="font-Nunito"
@@ -75,7 +75,7 @@ const ListItemNode = (
                         />
                     </div>
                     <div className="">
-                        <ItemTag type="Project" />
+                        <ItemTag type={item.getType()!} />
                     </div>
                 </div>
                 <div className="p-4 py-3">

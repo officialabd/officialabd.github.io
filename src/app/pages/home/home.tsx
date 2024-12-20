@@ -69,7 +69,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.educations,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, educations: false }));
-                setEducation(DetailedListItem.objectsToItemsList(data).reverse())
+                setEducation(DetailedListItem.objectsToItemsList(data, "Education").reverse())
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -79,7 +79,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.courses,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, courses: false }));
-                setCourses(DetailedListItem.objectsToItemsList(data).reverse());
+                setCourses(DetailedListItem.objectsToItemsList(data, "Course").reverse());
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -90,7 +90,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.experiences,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, experiences: false }));
-                setExperiences(DetailedListItem.objectsToItemsList(data).reverse());
+                setExperiences(DetailedListItem.objectsToItemsList(data, "Experience").reverse());
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -100,7 +100,7 @@ export default function MyHome() {
         fetchSectionsData({
             colName: Constants.FIREBASE_CONST.collections.projects,
             successCallback: (data: []) => {
-                var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data);
+                var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data, "Project");
                 tempProjects.forEach(pt => {
                     const imgsNum = pt.getImages()?.length;
                     pt.getImages()?.forEach((imgItem, i) => {

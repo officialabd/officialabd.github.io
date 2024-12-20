@@ -89,8 +89,6 @@ class RoadmapModel {
                 if (isOverlapping && assignedIndex == (road.getIndex() - 1)) assignedIndex++;
 
                 const [willCardsOverlap, diff] = this.willCardsOverlap(
-                    road.getStartDate()!,
-                    Utilities.toDate(item.getStartDate()!),
                     itemStartY,
                     road.getCardData().getY()!,
                     200
@@ -116,13 +114,10 @@ class RoadmapModel {
             Utilities.isBounded(b_endDate, a_startDate, a_endDate)
     }
 
-    private willCardsOverlap(a_startDate: Date, b_startDate: Date, bStartY: number, aStartY: number, cardHeight: number): [boolean, number] {
-        // const diff = Utilities.calculateDifferenceAsLength(b_startDate, a_startDate);
-        // const willOverlap = (bStartY >= aStartY && bStartY <= (aStartY + cardHeight + 20)) || bStartY <= aStartY
+    private willCardsOverlap(bStartY: number, aStartY: number, cardHeight: number): [boolean, number] {
         const willOverlap = bStartY <= (aStartY + cardHeight + 20)
         const diff = bStartY - aStartY
 
-        //diff <= (cardHeight + 20)
         return [willOverlap, diff]
     }
 
