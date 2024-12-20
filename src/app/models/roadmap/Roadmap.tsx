@@ -75,19 +75,9 @@ class RoadmapModel {
             let addToStartY = 0;
             let original = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
             let itemStartY = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
-            if (i == 4) {
-                console.log("Started - - -- - -");
 
-                console.log(addToStartY);
-                console.log(itemStartY);
-            }
             for (const road of this.roads) {
                 if (road.isMainRoad()) continue;
-                if (i == 4) {
-                    console.log(this.colors[i] + ' ---------------- checking with ' + road.getColor());
-                    console.log(road.getColor() + " startY: " + road.getCardData().getY()!);
-
-                }
 
                 const isOverlapping = this.areOverlapping(
                     Utilities.toDate(item.getStartDate()!),
@@ -98,7 +88,6 @@ class RoadmapModel {
 
                 if (isOverlapping && assignedIndex == (road.getIndex() - 1)) assignedIndex++;
 
-                // if (isOverlapping) {
                 const [willCardsOverlap, diff] = this.willCardsOverlap(
                     road.getStartDate()!,
                     Utilities.toDate(item.getStartDate()!),
@@ -114,19 +103,10 @@ class RoadmapModel {
                         addToStartY = (200 + Math.abs(diff) + 20)
                     itemStartY += addToStartY;
                 }
-                // }
-
-                if (i == 4) {
-                    console.log('----');
-
-                    console.log("addToStartY: " + addToStartY);
-                    console.log("itemStartY: " + itemStartY);
-                }
             }
 
             this.addRoad(assignedIndex + 1, false, this.colors[i], itemStartY - original, item);
         });
-        console.log(this.roads);
     }
 
     private areOverlapping(a_startDate: Date, a_endDate: Date, b_startDate: Date, b_endDate: Date) {
