@@ -54,7 +54,60 @@ class RoadmapModel {
     }
 
     private addRoads() {
-        const sortedItems = [...this.items].sort((a, b) => {
+        const left = this.items.filter(item => item.getTimeline()?.direction === 'left');
+        const right = this.items.filter(item => item.getTimeline()?.direction === 'right');
+
+        const sortedLeftItems = this.sortItems(left);
+        const sortedRightItems = this.sortItems(right);
+
+
+        this.mapRoads(sortedLeftItems, "left");
+        this.mapRoads(sortedRightItems, "right");
+    }
+
+    mapRoads(items: Array<DetailedListItem>, direction: string) {
+        items.map((item, i) => {
+            let assignedIndex = 0;
+            let addToStartY = 0;
+            let original = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
+            let itemStartY = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
+
+            for (const road of this.roads) {
+                if (road.isMainRoad() || road.getItem()?.getTimeline()?.direction != direction) continue;
+
+                const isOverlapping = this.areOverlapping(
+                    Utilities.toDate(item.getStartDate()!),
+                    Utilities.toDate(item.getEndDate()!),
+                    road.getStartDate()!,
+                    road.getEndDate()!
+                )
+
+                if (isOverlapping && assignedIndex == (road.getIndex() + (direction == "left" ? 1 : -1))) {
+                    if (direction === "left") assignedIndex--;
+                    else assignedIndex++;
+                }
+                const [willCardsOverlap, diff] = this.willCardsOverlap(
+                    itemStartY,
+                    road.getCardData().getY()!,
+                    150
+                )
+
+                if (willCardsOverlap) {
+                    if (diff >= 0)
+                        addToStartY = (150 - diff + 20)
+                    else
+                        addToStartY = (150 + Math.abs(diff) + 20)
+                    itemStartY += addToStartY;
+                }
+            }
+            if (direction === "left") assignedIndex--;
+            else assignedIndex++;
+            this.addRoad(assignedIndex, false, item.getTimeline()?.color, itemStartY - original, item);
+        });
+    }
+
+    private sortItems(items: Array<DetailedListItem>) {
+        const sortedItems = items.sort((a, b) => {
             const startA = Utilities.toDate(a.getStartDate()!).getTime();
             const startB = Utilities.toDate(b.getStartDate()!).getTime();
 
@@ -69,42 +122,7 @@ class RoadmapModel {
 
             return durationB - durationA;
         });
-
-        sortedItems.map((item, i) => {
-            let assignedIndex = 0;
-            let addToStartY = 0;
-            let original = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
-            let itemStartY = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
-
-            for (const road of this.roads) {
-                if (road.isMainRoad()) continue;
-
-                const isOverlapping = this.areOverlapping(
-                    Utilities.toDate(item.getStartDate()!),
-                    Utilities.toDate(item.getEndDate()!),
-                    road.getStartDate()!,
-                    road.getEndDate()!
-                )
-
-                if (isOverlapping && assignedIndex == (road.getIndex() - 1)) assignedIndex++;
-
-                const [willCardsOverlap, diff] = this.willCardsOverlap(
-                    itemStartY,
-                    road.getCardData().getY()!,
-                    200
-                )
-
-                if (willCardsOverlap) {
-                    if (diff >= 0)
-                        addToStartY = (200 - diff + 20)
-                    else
-                        addToStartY = (200 + Math.abs(diff) + 20)
-                    itemStartY += addToStartY;
-                }
-            }
-
-            this.addRoad(assignedIndex + 1, false, this.colors[i], itemStartY - original, item);
-        });
+        return sortedItems;
     }
 
     private areOverlapping(a_startDate: Date, a_endDate: Date, b_startDate: Date, b_endDate: Date) {

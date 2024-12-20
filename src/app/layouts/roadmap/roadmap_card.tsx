@@ -5,6 +5,23 @@ import MultiLinePulse from "@/app/_components/pulse/multiLine";
 import Basic from "@/app/_components/texts/basic";
 import { DetailedListItem } from "@/app/models/Item";
 import { CardData } from "@/app/models/roadmap/data/CardData";
+import { useEffect, useRef, useState } from "react";
+
+function useScreenWidth(): number | null {
+    const [screenWidth, setScreenWidth] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateWidth = () => setScreenWidth(window.innerWidth);
+
+        updateWidth();
+
+        window.addEventListener("resize", updateWidth);
+
+        return () => window.removeEventListener("resize", updateWidth);
+    }, []);
+
+    return screenWidth;
+}
 
 const RoadmapCard = (
     {
@@ -21,13 +38,42 @@ const RoadmapCard = (
         color: string
     }) => {
 
+    const screenWidth = useScreenWidth();
+    const foreignObjectRef = useRef<SVGForeignObjectElement>(null);
+    const [foreignObjectWidth, setForeignObjectWidth] = useState<number | null>(null);
+
+    let cardWidth = foreignObjectRef.current?.getBoundingClientRect().width;
+
+    const x = item.getTimeline()?.direction === "left"
+        ? screenWidth! / 4 - (cardWidth! / 2) + ""
+        : (screenWidth! * 3 / 4) - (cardWidth! / 2) + "";
+
     return (
         <>
-            <foreignObject className="w-1/4" x="50" y={cardData.getY_c()} height="200">
+            <foreignObject
+                ref={foreignObjectRef}
+                style={{ overflow: "visible", cursor: "pointer" }}
+                onClick={() => console.log("Clicked")}
+                width="33%"
+                x={x}
+                y={cardData.getY_c()}
+                height="150"
+            >
                 {loading ?
-                    <ListItemNode key={`temp-loading-${title}`} id={`temp-loading-${title}`} item={new DetailedListItem({})} loading={loading} />
+                    <ListItemNode
+                        key={`temp-loading-${title}`}
+                        id={`temp-loading-${title}`}
+                        item={new DetailedListItem({})}
+                        loading={loading}
+                    />
                     :
-                    <ListItemNode key={"item.getId()"} id={"item.getId()"} item={item} color={color} loading={loading} />
+                    <ListItemNode
+                        key={"item.getId()"}
+                        id={"item.getId()"}
+                        item={item}
+                        color={color}
+                        loading={loading}
+                    />
                 }
             </foreignObject>
         </>
@@ -40,7 +86,7 @@ const ListItemNode = (
 ) => {
     return <>
         <div key={id}
-            className="bg-clip-padding bg-opacity-60 rounded-xl  shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] drop-shadow-lg"
+            className="bg-clip-padding bg-opacity-60 rounded-xl shadow-[0px_0px_7px_5px_rgba(0,0,0,0.1)] drop-shadow-lg hover:shadow-[0px_0px_8px_6px_rgba(195,254,244,0.4)] transition-shadow duration-200"
             style={{
                 width: '100%',
                 height: '100%',
@@ -51,6 +97,7 @@ const ListItemNode = (
             }}>
             <div style={{
                 width: '100%',
+                overflow: "clip"
             }}>
                 <div style={{
                     width: '100%',
@@ -80,12 +127,17 @@ const ListItemNode = (
                 </div>
                 <div className="p-4 py-3">
                     <div className="flex">
-                        <div className="items-start gap-x-1 text-xs">
+                        <div className="items-start gap-x-1 text-xs  ">
                             <Basic
-                                text={`${item.getStartDate() ? item.getStartDate() : ""}
-                                                                    ${item.getStartDate() && item.getEndDate() ? "-" : ""} 
-                                                                    ${item.getEndDate() ? item.getEndDate() : ""}
-                                                                    ${item.getHours() ? ("(" + item.getHours() + ")") : ""}`}
+                                text=
+                                {
+                                    `
+                                    ${item.getStartDate() ? item.getStartDate() : ""}
+                                    ${item.getStartDate() && item.getEndDate() ? "-" : ""} 
+                                    ${item.getEndDate() ? item.getEndDate() : ""}
+                                    `
+                                    // ${item.getHours() ? ("(" + item.getHours() + ")") : ""}
+                                }
                                 fontFamily="font-mono"
                                 textColor="text-black"
                                 fontSize="sm"
@@ -112,7 +164,7 @@ const ListItemNode = (
 const ItemTag = ({ type }: { type: string }) => {
     return <div>
         <div className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap text-black bg-[#E5D9F2]`}>
-            #{type}
+            {type}
         </div>
     </div>
 }

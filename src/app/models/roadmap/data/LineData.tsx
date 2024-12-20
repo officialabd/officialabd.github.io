@@ -37,6 +37,7 @@ class LineData {
     update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
         this.lineData = "";
         if (this.startPointX == 0) cap = 0;
+        if (this.startPointX < 0) cap = cap * -1;
         this.moveTo(this.startPointX * startX_X_value + transitionX + cap, this.startPointY + transitionY);
         this.addVerticalLine(this.endPointY + transitionY);
 

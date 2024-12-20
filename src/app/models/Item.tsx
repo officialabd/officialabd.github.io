@@ -16,6 +16,7 @@ class DetailedListItem {
     private tags?: Array<string> | undefined;
     private images?: Array<MyImageItem> | undefined;
     private type?: string | undefined;
+    private timeline?: { direction: string, color: string } | undefined;
 
     constructor(
         id: any,
@@ -29,6 +30,7 @@ class DetailedListItem {
         tags?: Array<string>,
         images?: Array<MyImageItem>,
         type?: string,
+        timeline?: { direction: string, color: string }
     ) {
         this.id = id;
         this.title = title;
@@ -41,6 +43,7 @@ class DetailedListItem {
         this.tags = tags;
         this.images = images;
         this.type = type;
+        this.timeline = timeline;
     }
 
     getId() {
@@ -87,6 +90,10 @@ class DetailedListItem {
         return this.type;
     }
 
+    getTimeline() {
+        return this.timeline;
+    }
+
     toObject() {
         const obj = {
             id: this.id,
@@ -99,6 +106,8 @@ class DetailedListItem {
             links: this.links,
             tags: this.tags,
             images: this.images,
+            type: this.type,
+            timeline: this.timeline
         };
 
         return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
@@ -119,7 +128,8 @@ class DetailedListItem {
                 ob["links"],
                 ob["tags"],
                 ob["images"],
-                type
+                type,
+                ob["timeline"],
             ));
         });
 

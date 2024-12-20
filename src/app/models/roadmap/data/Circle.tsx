@@ -21,6 +21,7 @@ class Circle {
 
     update(startX_X_value: number, transitionX: number, cap: number, transitionY: number, newR: number) {
         if (this.cx == 0) cap = 0;
+        if (this.cx < 0) cap = cap * -1;
         this.cx_c = this.cx * startX_X_value + transitionX + cap
         this.cy_c = this.cy + transitionY;
         // this.r_c = newR

@@ -55,7 +55,7 @@ const Road = (
     const screenWidth = useScreenWidth()
     const screenHeight = useScreenHeight()
 
-    road!.update(20, screenWidth! / 2, 20, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT + Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
+    road!.update(20, screenWidth! / 2, 20, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
 
     return (
         <>

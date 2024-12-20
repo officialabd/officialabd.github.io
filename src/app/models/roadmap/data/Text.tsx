@@ -22,6 +22,7 @@ class Text {
 
     update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
         if (this.x == 0) cap = 0;
+        if (this.x < 0) cap = cap * -1;
         this.x_c = this.x * startX_X_value + transitionX + cap
         this.y_c = this.y + transitionY;
     }

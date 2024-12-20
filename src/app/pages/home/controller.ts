@@ -50,7 +50,7 @@ const fetchImage = async (
     }: {
         imageRef: string, successCallback: Function, errorCallback: Function
     }) => {
-    //"gs://my-portfolio-ed76f.appspot.com/assets/images/projects/001-NoorBot/0_home.png"
+
     const imgRef = ref(getStorage(), imageRef);
     await getDownloadURL(imgRef).then((value) => {
         successCallback(value);
