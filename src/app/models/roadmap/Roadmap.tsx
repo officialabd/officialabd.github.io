@@ -1,6 +1,8 @@
 import Utilities from "@/app/utilities/BasicUtil";
 import { DetailedListItem } from "../Item";
 import { RoadModel } from "./Road";
+import { CardData } from "./data/CardData";
+import { CardDataGroups } from "./data/CardDataGroups";
 
 class RoadmapModel {
     private id: any;
@@ -11,6 +13,7 @@ class RoadmapModel {
     private mainRoadColor?: string = "white";
     private items: Array<DetailedListItem>;
     private roadmapLength?: number;
+    private groups: CardDataGroups;
 
     constructor(id: any, items: Array<DetailedListItem>, withMainRoad?: boolean, mainRoadColor?: string) {
         this.id = id + "-Roadmap"
@@ -18,6 +21,7 @@ class RoadmapModel {
         this.withMainRoad = withMainRoad;
         this.mainRoadColor = mainRoadColor;
         this.roads = new Array<RoadModel>();
+        this.groups = new CardDataGroups();
 
         this.initialize();
     }
@@ -49,7 +53,6 @@ class RoadmapModel {
         let startDate = Utilities.toDate(start)
 
         return endDate.getTime() - startDate.getTime();
-
     }
 
     private addRoads() {
@@ -59,32 +62,57 @@ class RoadmapModel {
         const sortedLeftItems = this.sortItems(left);
         const sortedRightItems = this.sortItems(right);
 
-
         this.mapRoads(sortedLeftItems, "left");
         this.mapRoads(sortedRightItems, "right");
     }
 
     mapRoads(items: Array<DetailedListItem>, direction: string) {
-        items.map((item, i) => {
-            let assignedIndex = 0;
-            let addToStartY = 0;
+        items.map((item) => {
             let original = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
-            let itemStartY = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
+            let initialItemStartY = Utilities.calculateDifferenceAsLength(Utilities.toDate(item.getStartDate()!), this.startDate!);
 
-            for (const road of this.roads) {
-                if (road.isMainRoad() || road.getItem()?.getTimeline()?.direction != direction) continue;
+            let [assignedIndex, itemStartY] = this.setRoadIndex(item, initialItemStartY, direction);
 
-                const isOverlapping = this.areOverlapping(
-                    Utilities.toDate(item.getStartDate()!),
-                    Utilities.toDate(item.getEndDate()!),
-                    road.getStartDate()!,
-                    road.getEndDate()!
-                )
+            if (direction === "left") assignedIndex--;
+            else assignedIndex++;
 
-                if (isOverlapping && assignedIndex == (road.getIndex() + (direction == "left" ? 1 : -1))) {
-                    if (direction === "left") assignedIndex--;
-                    else assignedIndex++;
-                }
+            if (item.getTimeline()?.group != undefined) {
+                const cardData = new CardData(
+                    this.id,
+                    assignedIndex,
+                    initialItemStartY,
+                    item.getTimeline()?.color!,
+                    item.getTimeline()?.direction!,
+                    item,
+                    item.getTimeline()?.group!,
+                    item.getTimeline()?.isMain!
+                );
+                this.groups.addCardDataToGroup(cardData)
+            }
+
+            this.addRoad(assignedIndex, false, item.getTimeline()?.color, itemStartY - original, item);
+        });
+    }
+
+    private setRoadIndex(item: DetailedListItem, itemStartY: number, direction: string) {
+        let addToStartY = 0;
+        let assignedIndex = 0;
+        for (const road of this.roads) {
+            if (road.isMainRoad() || road.getItem()?.getTimeline()?.direction != direction) continue;// ToDo: update to accomodate for the single column timeline
+
+            const isOverlapping = this.areOverlapping(
+                Utilities.toDate(item.getStartDate()!),
+                Utilities.toDate(item.getEndDate()!),
+                road.getStartDate()!,
+                road.getEndDate()!
+            )
+
+            if (isOverlapping && assignedIndex == (road.getIndex() + (direction == "left" ? 1 : -1))) {
+                if (direction === "left") assignedIndex--;
+                else assignedIndex++;
+            }
+            if (road.getCardData() != undefined) {
+
                 const [willCardsOverlap, diff] = this.willCardsOverlap(
                     itemStartY,
                     road.getCardData().getY()!,
@@ -99,10 +127,8 @@ class RoadmapModel {
                     itemStartY += addToStartY;
                 }
             }
-            if (direction === "left") assignedIndex--;
-            else assignedIndex++;
-            this.addRoad(assignedIndex, false, item.getTimeline()?.color, itemStartY - original, item);
-        });
+        }
+        return [assignedIndex, itemStartY]
     }
 
     private sortItems(items: Array<DetailedListItem>) {
@@ -140,7 +166,7 @@ class RoadmapModel {
 
     private addRoad(index: number, isMain: boolean = false, color: string = "white", updatedStartY?: number | undefined, item?: DetailedListItem) {
         let road = new RoadModel(this.id + "-" + this.counter, this.startDate!, index, color, isMain, item);
-        if (updatedStartY) road.getCardData().setY(updatedStartY);
+        if (updatedStartY && road.getCardData()) road.getCardData().setY(updatedStartY);
 
         this.roads.push(road);
         const newLength = this.roads[this.roads.length - 1].getRoadLength();
@@ -151,8 +177,18 @@ class RoadmapModel {
         this.counter++;
     }
 
+    update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
+        if (this.groups)
+            this.groups.update(startX_X_value, transitionX, cap, transitionY)
+        this.roads.forEach(road => road.update(startX_X_value, transitionX, cap, transitionY));
+    }
+
     getRoads() {
         return this.roads;
+    }
+
+    getGroups() {
+        return this.groups;
     }
 
     getId() {

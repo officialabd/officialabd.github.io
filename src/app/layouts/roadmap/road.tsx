@@ -2,25 +2,8 @@
 'use client';
 
 import { RoadModel } from "@/app/models/roadmap/Road";
-import Constants from "@/app/utilities/Constants";
-import { useEffect, useState } from "react";
+import CustomWrapper from "./customWrapper";
 import RoadmapCard from "./roadmap_card";
-
-function useScreenWidth(): number | null {
-    const [screenWidth, setScreenWidth] = useState<number | null>(null);
-
-    useEffect(() => {
-        const updateWidth = () => setScreenWidth(window.innerWidth);
-
-        updateWidth();
-
-        window.addEventListener("resize", updateWidth);
-
-        return () => window.removeEventListener("resize", updateWidth);
-    }, []);
-
-    return screenWidth;
-}
 
 const Road = (
     {
@@ -36,9 +19,9 @@ const Road = (
         item = road?.getItem();
     }
 
-    const screenWidth = useScreenWidth();
+    // const screenWidth = Utilities.useScreenWidth();
 
-    road!.update(10, screenWidth! / 2, 0, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
+    // road!.update(10, screenWidth! / 2, 0, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
 
     return (
         <>
@@ -101,13 +84,18 @@ const Road = (
                     </text>
                 ))
             }
-            {road?.getItem() && !road.isMainRoad() &&
-                <RoadmapCard
-                    loading={loading}
-                    item={item!}
+            {road?.getItem() && !road.isMainRoad() && road.getCardData() &&
+                <CustomWrapper
+                    key={road.getId() + "-road-card-wrapper"}
                     cardData={road.getCardData()}
-                    title="Testing"
-                />
+                >
+                    <RoadmapCard
+                        loading={loading}
+                        item={item!}
+                        cardData={road.getCardData()}
+                        title="Testing"
+                    />
+                </CustomWrapper>
             }
         </>
     );

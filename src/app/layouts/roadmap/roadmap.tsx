@@ -3,7 +3,9 @@
 
 import { DetailedListItem } from "@/app/models/Item";
 import { RoadmapModel } from "@/app/models/roadmap/Roadmap";
+import Utilities from "@/app/utilities/BasicUtil";
 import Constants from "@/app/utilities/Constants";
+import CustomWrapper from "./customWrapper";
 import GroupCard from "./group_card";
 import Road from "./road";
 
@@ -18,7 +20,13 @@ const Roadmap = (
 
     if (!loading) {
         roadmap = new RoadmapModel(id, items, true, "white");
+
+        const screenWidth = Utilities.useScreenWidth();
+
+        roadmap!.update(10, screenWidth! / 2, 0, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
+
     }
+
 
     return (
         <>
@@ -26,6 +34,7 @@ const Roadmap = (
                 <>Loading</> // ToDo
                 :
                 <svg
+                    xmlns="http://www.w3.org/2000/svg"
                     key={roadmap!.getId()}
                     width="100%"
                     height={roadmap!.getRoadmapLength()! + Constants.ROADMAP_CONFIGS.Y_STARTING_POINT}
@@ -40,13 +49,22 @@ const Roadmap = (
                             />
                         ))
                     }
-                    <GroupCard
-                        cardsData={roadmap!.getRoads().map(road => road.getCardData())}
-                        items={items}
-                        title="Test"
-                        key="234r"
-                        loading={loading}
-                    />
+                    {
+                        roadmap!.getGroups().getCardsData().map((group, i) => (
+                            <CustomWrapper
+                                key={group.getGroupId() + "-CustomWrapper-" + i}
+                                cardData={group.findMainCardData()!}
+                            >
+                                <GroupCard
+                                    cardsData={group}
+                                    key={group.getGroupId() + "-GroupCard-" + i}
+                                    loading={loading}
+                                />
+
+                            </CustomWrapper>
+                        ))
+
+                    }
                 </svg>
             }
         </>);

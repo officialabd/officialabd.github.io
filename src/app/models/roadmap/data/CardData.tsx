@@ -1,3 +1,4 @@
+import { DetailedListItem } from "../../Item";
 
 class CardData {
     private id: any;
@@ -6,12 +7,20 @@ class CardData {
     private x_c?: number;
     private y_c?: number;
     private color: string;
+    private groupId?: number;
+    private isMainGroupItem?: boolean;
+    private direction: string;
+    private item: DetailedListItem;
 
-    constructor(id: any, x: number, y: number, color: string) {
+    constructor(id: any, x: number, y: number, color: string, direction: string, item: DetailedListItem, groupId?: number, isMainGroupItem: boolean = false) {
         this.id = id + "-Card";
         this.x = x;
         this.y = y;
         this.color = color;
+        this.direction = direction;
+        this.groupId = groupId;
+        this.isMainGroupItem = isMainGroupItem;
+        this.item = item;
 
         this.update(20, 500, 20, 0)
     }
@@ -49,6 +58,22 @@ class CardData {
 
     getColor(): string {
         return this.color;
+    }
+
+    getDirection(): string {
+        return this.direction;
+    }
+
+    getGroupId(): number | undefined {
+        return this.groupId;
+    }
+
+    getIsMainGroupItem(): boolean | undefined {
+        return this.isMainGroupItem;
+    }
+
+    getItem(): DetailedListItem {
+        return this.item;
     }
 
 }

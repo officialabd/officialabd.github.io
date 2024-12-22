@@ -1,62 +1,39 @@
 import LinePulse from "@/app/_components/pulse/line";
-import { DetailedListItem } from "@/app/models/Item";
 import { CardData } from "@/app/models/roadmap/data/CardData";
+import { CardDataGroup } from "@/app/models/roadmap/data/CardDataGroup";
 import Constants from "@/app/utilities/Constants";
 import { useEffect, useRef, useState } from 'react';
 import RoadmapCard from "./roadmap_card";
 
-function useScreenWidth(): number | null {
-    const [screenWidth, setScreenWidth] = useState<number | null>(null);
-
-    useEffect(() => {
-        const updateWidth = () => setScreenWidth(window.innerWidth);
-
-        updateWidth();
-
-        window.addEventListener("resize", updateWidth);
-
-        return () => window.removeEventListener("resize", updateWidth);
-    }, []);
-
-    return screenWidth;
-}
-
 const GroupCard = (
     {
-        title,
-        items,
         cardsData,
         loading = false,
     }: {
-        title: string,
-        items: Array<DetailedListItem>,
-        cardsData: Array<CardData>,
+        cardsData: CardDataGroup,
         loading?: boolean
     }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [pulseEffect, setPulseEffect] = useState(true);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const [isHovered, setIsHovered] = useState(false);
 
-    if (!items || items.length === 0) {
+    if (!cardsData || cardsData.getCardsData().length === 0) {
         return null;
     }
 
     const prevCard = () => {
-        setPulseEffect(true);
-        setCurrentIndex((prevIndex) => (prevIndex - 1 + items.length) % items.length);
+        setCurrentIndex((prevIndex) => (prevIndex - 1 + cardsData.getCardsData().length) % cardsData.getCardsData().length);
     };
 
     const nextCard = () => {
-        setPulseEffect(true);
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length);
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % cardsData.getCardsData().length);
     };
 
     useEffect(() => {
         if (!isHovered) {
             intervalRef.current = setInterval(() => {
                 nextCard();
-            }, 2000);
+            }, 4000);
         }
 
         return () => {
@@ -64,30 +41,51 @@ const GroupCard = (
                 clearInterval(intervalRef.current);
             }
         };
-    }, [isHovered, items.length]);
+    }, [isHovered, cardsData.getCardsData().length]);
 
-    const screenWidth = useScreenWidth();
-    const foreignObjectRef = useRef<SVGForeignObjectElement>(null);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+    const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
-    let cardWidth = foreignObjectRef.current?.getBoundingClientRect().width;
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStartX(e.targetTouches[0].clientX); // Get initial touch position
+    };
 
-    const x = items[0].getTimeline()?.direction === "left"
-        ? screenWidth! / 4 - (cardWidth! / 2) + ""
-        : (screenWidth! * 3 / 4) - (cardWidth! / 2) + "";
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEndX(e.targetTouches[0].clientX); // Update touch position as the user moves
+    };
 
-    console.log(cardsData);
+    const handleTouchEnd = () => {
+        if (!touchStartX || !touchEndX) return;
+
+        const swipeDistance = touchStartX - touchEndX;
+        const swipeThreshold = 50; // Minimum swipe distance to trigger an action
+
+        if (swipeDistance > swipeThreshold) {
+            // Swipe left: show the next card
+            nextCard();
+        } else if (swipeDistance < -swipeThreshold) {
+            // Swipe right: show the previous card
+            prevCard();
+        }
+
+        // Reset touch positions
+        setTouchStartX(null);
+        setTouchEndX(null);
+    };
 
     return (<>
-        <foreignObject
-            ref={foreignObjectRef}
+
+        <div
+            className="w-full h-full"
             style={{ overflow: "visible", cursor: "pointer" }}
             onClick={() => console.log("Clicked")}
-            width="33%"
-            x={x}
-            y={cardsData[0].getY_c()}
-            height="150"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onTouchStart={(e) => handleTouchStart(e)}
+            onTouchMove={(e) => handleTouchMove(e)}
+            onTouchEnd={() => handleTouchEnd()}
         >
-            {loading || !cardsData || cardsData.length == 0 ? (
+            {loading || !cardsData || cardsData.getCardsData().length == 0 ? (
                 <LinePulse />
             ) : (
                 <div
@@ -96,8 +94,6 @@ const GroupCard = (
                 >
                     <div
                         className="relative overflow-hidden"
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
                         style={{ width: '100%', height: '100%' }}
                     >
                         <div
@@ -107,47 +103,80 @@ const GroupCard = (
                                 width: '100%', height: '100%'
                             }}
                         >
-                            {cardsData.map((card, index) => (
+                            {cardsData.getCardsData().map((card, index) => (
                                 card != undefined &&
                                 <div
                                     key={index}
-                                    className="flex-shrink-0 w-full min-h-full"
+                                    className={`${isHovered ? "p-1.5" : ""} bg-[#C9E9D2] rounded-xl transition-all duration-200 flex-shrink-0 w-full min-h-full`}
                                     style={{ width: '100%', height: '100%' }}
                                 >
                                     <RoadmapCard
                                         cardData={card}
-                                        item={items[index]}
+                                        item={card.getItem()}
                                         title="Demo"
                                         loading={loading}
                                         isGroupItem={true}
+                                        isHovered={isHovered}
                                     />
                                 </div>
                             ))}
                         </div>
 
-                        {
-                            indicatorsAndArrows(cardsData, prevCard, nextCard, setCurrentIndex, currentIndex)
+                        {isHovered &&
+                            <IndicatorsAndArrows
+                                cardsData={cardsData.getCardsData()}
+                                prevCard={prevCard}
+                                nextCard={nextCard}
+                                setCurrentIndex={setCurrentIndex}
+                                currentIndex={currentIndex}
+                                onHover={setIsHovered}
+                            />
+
                         }
 
                     </div>
                 </div>
             )}
-        </foreignObject>
+        </div>
     </>);
 }
 
-const indicatorsAndArrows = (cardsData: Array<CardData>, prevCard: Function, nextCard: Function, setCurrentIndex: Function, currentIndex: number) => {
+const IndicatorsAndArrows = (
+    {
+        cardsData,
+        prevCard,
+        nextCard,
+        setCurrentIndex,
+        currentIndex,
+        onHover
+    }: {
+        cardsData: Array<CardData>,
+        prevCard: Function,
+        nextCard: Function,
+        setCurrentIndex: Function,
+        currentIndex: number,
+        onHover: Function
+    }) => {
     return (
         <>
-            <div className="absolute inset-y-1/2 m-auto mx-1 rounded-md w-5 h-12 bg-gray-400/90 hover:bg-gray-950/50 flex items-center justify-center cursor-pointer transition-opacity"
-                onClick={() => prevCard()}>
+            <div
+                className="absolute inset-y-1/2 m-auto mx-1 rounded-md w-4 h-12 bg-gray-400/90 hover:bg-gray-950/50 flex items-center justify-center cursor-pointer transition-opacity"
+                onClick={() => prevCard()}
+                onMouseEnter={() => onHover(true)}
+            >
                 <img src={Constants.ICONS.arrowBack} className="fill-white" alt="Arrow Back" />
             </div>
-            <div className="absolute inset-y-1/2 inset-x-full my-auto -mx-6 rounded-md w-5 h-12 bg-gray-400/90 hover:bg-gray-950/50 flex items-center justify-center cursor-pointer transition-opacity"
-                onClick={() => nextCard()}>
+            <div
+                className="absolute inset-y-1/2 inset-x-full my-auto -mx-5 rounded-md w-4 h-12 bg-gray-400/90 hover:bg-gray-950/50 flex items-center justify-center cursor-pointer transition-opacity"
+                onClick={() => nextCard()}
+                onMouseEnter={() => onHover(true)}
+            >
                 <img src={Constants.ICONS.arrowForward} alt="Arrow Forward" />
             </div>
-            <div className="absolute -inset-x-1/2 m-auto -my-4 flex justify-center">
+            <div
+                className="absolute -inset-x-1/2 m-auto -my-4 flex justify-center"
+                onMouseEnter={() => onHover(true)}
+            >
                 {cardsData?.map((card, index) => (
                     card != undefined &&
                     <div

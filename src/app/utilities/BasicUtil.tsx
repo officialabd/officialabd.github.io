@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Constants from "./Constants";
 
 function isBounded(date: Date, startDate: Date, endDate: Date) {
@@ -25,10 +26,27 @@ function calculateDifferenceAsLength(startDate: Date, endDate: Date) {
     return length;
 }
 
+function useScreenWidth(): number | null {
+    const [screenWidth, setScreenWidth] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateWidth = () => setScreenWidth(window.innerWidth);
+
+        updateWidth();
+
+        window.addEventListener("resize", updateWidth);
+
+        return () => window.removeEventListener("resize", updateWidth);
+    }, []);
+
+    return screenWidth;
+}
+
 const Utilities = {
     isBounded,
     toDate,
-    calculateDifferenceAsLength
+    calculateDifferenceAsLength,
+    useScreenWidth
 }
 
 export default Utilities;

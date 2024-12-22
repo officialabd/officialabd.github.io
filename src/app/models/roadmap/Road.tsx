@@ -120,16 +120,17 @@ class RoadModel {
             this.color
         );
 
-        this.cardData = new CardData(
-            this.id,
-            0,
-            this.startY,
-            this.color
-        )
-    }
-
-    setHeight(dividor: number) {
-        this.roadLength = this.roadLength! / dividor;
+        if (this.item?.getTimeline()?.group == undefined)
+            this.cardData = new CardData(
+                this.id,
+                0,
+                this.startY,
+                this.color,
+                this.item?.getTimeline()?.direction!,
+                this.item!,
+                this.item?.getTimeline()?.group,
+                this.item?.getTimeline()?.isMain
+            )
     }
 
     update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
@@ -153,7 +154,6 @@ class RoadModel {
             this.getItem()
         )
     }
-
 
     getId() {
         return this.id;

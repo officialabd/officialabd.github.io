@@ -5,23 +5,6 @@ import MultiLinePulse from "@/app/_components/pulse/multiLine";
 import Basic from "@/app/_components/texts/basic";
 import { DetailedListItem } from "@/app/models/Item";
 import { CardData } from "@/app/models/roadmap/data/CardData";
-import { useEffect, useRef, useState } from "react";
-
-function useScreenWidth(): number | null {
-    const [screenWidth, setScreenWidth] = useState<number | null>(null);
-
-    useEffect(() => {
-        const updateWidth = () => setScreenWidth(window.innerWidth);
-
-        updateWidth();
-
-        window.addEventListener("resize", updateWidth);
-
-        return () => window.removeEventListener("resize", updateWidth);
-    }, []);
-
-    return screenWidth;
-}
 
 const RoadmapCard = (
     {
@@ -30,34 +13,22 @@ const RoadmapCard = (
         cardData,
         loading = false,
         isGroupItem = false,
+        isHovered = false
     }: {
         title: string,
         item: DetailedListItem,
         cardData: CardData,
         loading?: boolean
         isGroupItem?: boolean
+        isHovered?: boolean
     }) => {
-
-    const screenWidth = useScreenWidth();
-    const foreignObjectRef = useRef<SVGForeignObjectElement>(null);
-    // const [foreignObjectWidth, setForeignObjectWidth] = useState<number | null>(null);
-
-    let cardWidth = foreignObjectRef.current?.getBoundingClientRect().width;
-
-    const x = item.getTimeline()?.direction === "left"
-        ? screenWidth! / 4 - (cardWidth! / 2) + ""
-        : (screenWidth! * 3 / 4) - (cardWidth! / 2) + "";
 
     return (
         <>
-            <foreignObject
-                ref={foreignObjectRef}
+            <div
+                className="w-full h-full"
                 style={{ overflow: "visible", cursor: "pointer" }}
                 onClick={() => console.log("Clicked")}
-                width="33%"
-                x={x}
-                y={cardData.getY_c()}
-                height="150"
             >
                 {loading ?
                     <ListItemNode
@@ -74,19 +45,32 @@ const RoadmapCard = (
                         color={cardData.getColor()}
                         loading={loading}
                         isGroupItem={isGroupItem}
+                        isHovered={isHovered}
                     />
                 }
-            </foreignObject>
+            </div>
         </>
     );
 };
 
 const ListItemNode = (
-    { id, item, color, loading = false, isGroupItem = false }: { id: any, item: DetailedListItem, color?: string, loading?: boolean, isGroupItem?: boolean }
-) => {
+    { id,
+        item,
+        color,
+        loading = false,
+        isGroupItem = false,
+        isHovered = false
+    }: {
+        id: any,
+        item: DetailedListItem,
+        color?: string,
+        loading?: boolean,
+        isGroupItem?: boolean,
+        isHovered?: boolean
+    }) => {
     return <>
         <div key={id}
-            className={`bg-clip-padding bg-opacity-60 rounded-xl ${isGroupItem ? "" : "shadow-[0px_0px_7px_5px_rgba(0,0,0,0.1)] drop-shadow-lg hover:shadow-[0px_0px_8px_6px_rgba(195,254,244,0.4)] transition-shadow duration-200}"}`}
+            className={`bg-clip-padding bg-opacity-60 rounded-xl ${isGroupItem && isHovered ? "shadow-lg shadow-black/30" : "shadow-[0px_0px_7px_5px_rgba(0,0,0,0.1)] drop-shadow-lg hover:shadow-[0px_0px_8px_6px_rgba(195,254,244,0.4)] transition-shadow duration-200}"}`}
             style={{
                 width: '100%',
                 height: '100%',
@@ -125,30 +109,27 @@ const ListItemNode = (
                         <ItemTag type={item.getType()!} />
                     </div>
                 </div>
-                <div className="p-4 py-3">
-                    <div className="flex">
-                        <div className="items-start gap-x-1 text-xs  ">
-                            <Basic
-                                text=
-                                {
-                                    `
+                <div className="p-3">
+                    <div className="flex ms-5 items-start gap-x-1 text-xs">
+                        <Basic
+                            text=
+                            {
+                                `
                                     ${item.getStartDate() ? item.getStartDate() : ""}
                                     ${item.getStartDate() && item.getEndDate() ? "-" : ""} 
                                     ${item.getEndDate() ? item.getEndDate() : ""}
                                     `
-                                    // ${item.getHours() ? ("(" + item.getHours() + ")") : ""}
-                                }
-                                fontFamily="font-mono"
-                                textColor="text-black"
-                                fontSize="sm"
-                                other="font-bold"
-                                loading={loading}
-                                linePulseWidth="w-32"
-                            />
-                        </div>
-
+                                // ${item.getHours() ? ("(" + item.getHours() + ")") : ""}
+                            }
+                            fontFamily="font-mono"
+                            textColor="text-black"
+                            fontSize="sm"
+                            other="font-bold"
+                            loading={loading}
+                            linePulseWidth="w-32"
+                        />
                     </div>
-                    <div className="mt-2 space-y-2 grid-cols-1">
+                    <div className="ms-3 mt-1 space-y-2 grid-cols-1">
                         {loading ?
                             <MultiLinePulse width="w-62" />
                             :
