@@ -1,9 +1,7 @@
-import { Tags } from "@/app/_components/tags/tags";
 import Basic from "@/app/_components/texts/basic";
 import { Info } from "@/app/models/Info";
 import Constants from "@/app/utilities/Constants";
 import Avatar from "../../_components/avatar/avatar";
-import HeaderItem from "./headerItem";
 import Headline from "./headline";
 
 export default function Header(
@@ -54,17 +52,17 @@ export default function Header(
                         />
                     }
                 </div>
-                <div className="mt-4" />
-                <Tags id={"techs"}
+                {/* <div className="mt-4" /> */}
+                {/* <Tags id={"techs"}
                     tags={techs} alignH="" bgColor=""
                     loading={loading} wrap={false} />
                 <Tags id={"interpersonalSkills"}
                     tags={interpersonalSkills} alignH="" bgColor=""
-                    loading={loading} wrap={false} />
+                    loading={loading} wrap={false} /> */}
             </div>
-            <div className="mt-5 flex justify-center lg:ml-4 lg:mt-0 space-x-3 z-10">
+            {/* <div className="mt-5 flex justify-center lg:ml-4 lg:mt-0 space-x-3 z-10">
                 <HeaderItem name="Contact" myRef={"#footer"} />
-            </div>
+            </div> */}
         </div>
     </header>
 }

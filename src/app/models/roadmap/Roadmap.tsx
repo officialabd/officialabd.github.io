@@ -10,8 +10,7 @@ class RoadmapModel {
     private withMainRoad?: boolean = false;
     private mainRoadColor?: string = "white";
     private items: Array<DetailedListItem>;
-
-    colors = ["pink", "lightblue", "red", "orange", "green", "cyan", "blue", "yellow", "purple", "brown"]
+    private roadmapLength?: number;
 
     constructor(id: any, items: Array<DetailedListItem>, withMainRoad?: boolean, mainRoadColor?: string) {
         this.id = id + "-Roadmap"
@@ -26,9 +25,9 @@ class RoadmapModel {
     initialize() {
         this.findStartDate();
 
-        this.addMainRoad();
-
         this.addRoads();
+
+        this.addMainRoad();
     }
 
     private findStartDate() {
@@ -144,6 +143,10 @@ class RoadmapModel {
         if (updatedStartY) road.getCardData().setY(updatedStartY);
 
         this.roads.push(road);
+        const newLength = this.roads[this.roads.length - 1].getRoadLength();
+
+        if (this.roadmapLength == undefined || this.roadmapLength < newLength!)
+            this.roadmapLength = newLength;
 
         this.counter++;
     }
@@ -154,6 +157,10 @@ class RoadmapModel {
 
     getId() {
         return this.id;
+    }
+
+    getRoadmapLength() {
+        return this.roadmapLength;
     }
 
 }

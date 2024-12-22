@@ -16,7 +16,7 @@ class DetailedListItem {
     private tags?: Array<string> | undefined;
     private images?: Array<MyImageItem> | undefined;
     private type?: string | undefined;
-    private timeline?: { direction: string, color: string } | undefined;
+    private timeline?: { direction: string, color: string, group?: number, isMain?: boolean } | undefined;
 
     constructor(
         id: any,
@@ -30,7 +30,7 @@ class DetailedListItem {
         tags?: Array<string>,
         images?: Array<MyImageItem>,
         type?: string,
-        timeline?: { direction: string, color: string }
+        timeline?: { direction: string, color: string, group?: number, isMain?: boolean }
     ) {
         this.id = id;
         this.title = title;

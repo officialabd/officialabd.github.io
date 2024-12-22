@@ -22,22 +22,6 @@ function useScreenWidth(): number | null {
     return screenWidth;
 }
 
-function useScreenHeight(): number | null {
-    const [screenHeight, setScreenHeight] = useState<number | null>(null);
-
-    useEffect(() => {
-        const updateHeight = () => setScreenHeight(window.innerHeight);
-
-        updateHeight();
-
-        window.addEventListener("resize", updateHeight);
-
-        return () => window.removeEventListener("resize", updateHeight);
-    }, []);
-
-    return screenHeight;
-}
-
 const Road = (
     {
         road,
@@ -52,10 +36,9 @@ const Road = (
         item = road?.getItem();
     }
 
-    const screenWidth = useScreenWidth()
-    const screenHeight = useScreenHeight()
+    const screenWidth = useScreenWidth();
 
-    road!.update(20, screenWidth! / 2, 20, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
+    road!.update(10, screenWidth! / 2, 0, Constants.ROADMAP_CONFIGS.Y_STARTING_POINT);
 
     return (
         <>
@@ -63,7 +46,7 @@ const Road = (
                 d={road?.getLineData().getPathData()}
                 fill="none"
                 stroke={road?.getColor()}
-                strokeWidth="10"
+                strokeWidth={road?.isMainRoad() ? "7" : "5"}
                 key={road?.getId()}
                 id={road?.getId()}
                 strokeLinecap="round"
@@ -76,14 +59,30 @@ const Road = (
             </defs>
             {road?.getCirclesData() &&
                 road?.getCirclesData().getCircles().map((circle, i) => (
-                    <circle
-                        key={circle.getId() + i}
-                        cx={circle.getCx_c()}
-                        cy={circle.getCy_c()}
-                        r={circle.getR_c()}
-                        fill={road?.getColor()}
-                        filter="url(#circleShadow)"
-                    />
+                    !road.isMainRoad() ?
+                        <circle
+                            className=""
+                            key={circle.getId() + i}
+                            cx={circle.getCx_c()}
+                            cy={circle.getCy_c()}
+                            r={circle.getR_c()}
+                            fill={road?.getColor()}
+                            filter="url(#circleShadow)"
+                        />
+                        :
+                        <rect
+                            className="rounded-lg"
+                            key={circle.getId() + i}
+                            x={circle.getCx_c()! - (circle.getR_c()! * 1.6 / 2)}
+                            y={circle.getCy_c()! - (circle.getR_c()! * 0.9 / 2)}
+                            width={circle.getR_c()! * 1.6}
+                            height={circle.getR_c()! * 0.9}
+                            fill={road?.getColor()}
+                            fillOpacity={0.9}
+                            filter="url(#circleShadow)"
+                            rx={10}
+                            ry={10}
+                        />
                 ))
             }
             {road?.getTextData() &&
@@ -93,7 +92,7 @@ const Road = (
                         x={text.getX_c()}
                         y={text.getY_c()}
                         fill="black"
-                        fontSize="14"
+                        fontSize="18"
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
@@ -103,7 +102,12 @@ const Road = (
                 ))
             }
             {road?.getItem() && !road.isMainRoad() &&
-                <RoadmapCard loading={loading} item={item!} cardData={road.getCardData()} title="Testing" color={road?.getColor()!} />
+                <RoadmapCard
+                    loading={loading}
+                    item={item!}
+                    cardData={road.getCardData()}
+                    title="Testing"
+                />
             }
         </>
     );

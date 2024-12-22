@@ -128,6 +128,10 @@ class RoadModel {
         )
     }
 
+    setHeight(dividor: number) {
+        this.roadLength = this.roadLength! / dividor;
+    }
+
     update(startX_X_value: number, transitionX: number, cap: number, transitionY: number) {
         if (this.lineData)
             this.lineData.update(startX_X_value, transitionX, cap, transitionY)
@@ -138,6 +142,18 @@ class RoadModel {
         if (this.cardData)
             this.cardData.update(startX_X_value, transitionX, cap, transitionY)
     }
+
+    clone() {
+        return new RoadModel(
+            this.getId(),
+            this.getMainStartDate(),
+            this.getIndex(),
+            this.getColor(),
+            this.isMainRoad(),
+            this.getItem()
+        )
+    }
+
 
     getId() {
         return this.id;
@@ -167,6 +183,10 @@ class RoadModel {
         return this.color;
     }
 
+    getMainStartDate() {
+        return this.mainStartDate;
+    }
+
     getStartDate() {
         return this.startDate;
     }
@@ -189,6 +209,10 @@ class RoadModel {
 
     getStartY() {
         return this.startY;
+    }
+
+    getRoadLength() {
+        return this.roadLength;
     }
 
 }

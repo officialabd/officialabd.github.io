@@ -29,18 +29,18 @@ const RoadmapCard = (
         item,
         cardData,
         loading = false,
-        color
+        isGroupItem = false,
     }: {
         title: string,
         item: DetailedListItem,
         cardData: CardData,
         loading?: boolean
-        color: string
+        isGroupItem?: boolean
     }) => {
 
     const screenWidth = useScreenWidth();
     const foreignObjectRef = useRef<SVGForeignObjectElement>(null);
-    const [foreignObjectWidth, setForeignObjectWidth] = useState<number | null>(null);
+    // const [foreignObjectWidth, setForeignObjectWidth] = useState<number | null>(null);
 
     let cardWidth = foreignObjectRef.current?.getBoundingClientRect().width;
 
@@ -71,8 +71,9 @@ const RoadmapCard = (
                         key={"item.getId()"}
                         id={"item.getId()"}
                         item={item}
-                        color={color}
+                        color={cardData.getColor()}
                         loading={loading}
+                        isGroupItem={isGroupItem}
                     />
                 }
             </foreignObject>
@@ -80,13 +81,12 @@ const RoadmapCard = (
     );
 };
 
-
 const ListItemNode = (
-    { id, item, color, loading = false }: { id: any, item: DetailedListItem, color?: string, loading?: boolean }
+    { id, item, color, loading = false, isGroupItem = false }: { id: any, item: DetailedListItem, color?: string, loading?: boolean, isGroupItem?: boolean }
 ) => {
     return <>
         <div key={id}
-            className="bg-clip-padding bg-opacity-60 rounded-xl shadow-[0px_0px_7px_5px_rgba(0,0,0,0.1)] drop-shadow-lg hover:shadow-[0px_0px_8px_6px_rgba(195,254,244,0.4)] transition-shadow duration-200"
+            className={`bg-clip-padding bg-opacity-60 rounded-xl ${isGroupItem ? "" : "shadow-[0px_0px_7px_5px_rgba(0,0,0,0.1)] drop-shadow-lg hover:shadow-[0px_0px_8px_6px_rgba(195,254,244,0.4)] transition-shadow duration-200}"}`}
             style={{
                 width: '100%',
                 height: '100%',

@@ -1,5 +1,4 @@
 "use client"
-import DetailedList from "@/app/layouts/detailedList/detailedList";
 import Footer from "@/app/layouts/footer/footer";
 import Header from "@/app/layouts/header/header";
 import Roadmap from "@/app/layouts/roadmap/roadmap";
@@ -148,15 +147,15 @@ export default function MyHome() {
         />
 
         <div className="mt-14 sm:mt-24" />
-        <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
-        <div className="mt-10" />
-        <Technologies title="Technologies" />
+        {/* <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} /> */}
+        {/* <div className="mt-10" /> */}
+        {/* <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} /> */}
+        {/* <div className="mt-10" /> */}
+        {/* <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} /> */}
+        {/* <div className="mt-10" /> */}
+        {/* <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} /> */}
+        {/* <div className="mt-10" /> */}
+        <Technologies title="Technologies I have Used in my Professional Life" />
         <div className="mt-10" />
         <Footer id="footer"
             loading={loading.myInfo}
