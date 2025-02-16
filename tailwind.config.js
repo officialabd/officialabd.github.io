@@ -27,6 +27,7 @@ module.exports = {
         "Tektur": ['Tektur', "cursive"],
         "RobotoMono": ['Roboto Mono', "monospace"],
         "Borel": ["Borel", "cursive"],
+        "Dancing": ["Dancing Script", "serif"]
       },
     },
   },

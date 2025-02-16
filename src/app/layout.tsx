@@ -25,6 +25,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Tektur&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Borel&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet" />
       </head>
       <GoogleAnalytics />
       <body className={inter.className}>{children}</body>
