@@ -9,6 +9,32 @@ import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from 
 import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
 
+function sortItems(items: DetailedListItem[]): DetailedListItem[] {
+    return items.sort((a, b) => {
+        const endDateA = a.getEndDate();
+        const endDateB = b.getEndDate();
+
+        if (endDateA === "Present") return -1;
+        if (endDateB === "Present") return 1;
+
+        if (endDateA === undefined && endDateB === undefined) {
+            const startDateA = a.getStartDate();
+            const startDateB = b.getStartDate();
+
+            if (startDateA === undefined && startDateB === undefined) return 0;
+            if (startDateA === undefined) return 1;
+            if (startDateB === undefined) return -1;
+
+            return new Date(startDateB).getTime() - new Date(startDateA).getTime();
+        }
+
+        if (endDateA === undefined) return 1;
+        if (endDateB === undefined) return -1;
+
+        return new Date(endDateB).getTime() - new Date(endDateA).getTime();
+    });
+}
+
 export default function MyHome() {
     const [loading, setLoading] = useState<{
         myInfo: boolean
@@ -49,14 +75,20 @@ export default function MyHome() {
         fetchSkillsData({
             colName: staticData.firebaseConst.collections.skills.name,
             docName: staticData.firebaseConst.collections.skills.sub.technical,
-            successCallback: (data: []) => { setLoading((other) => ({ ...other, skills: false })); setTechsSkills(data); },
+            successCallback: (data: []) => {
+                setLoading((other) => ({ ...other, skills: false }));
+                setTechsSkills(data);
+            },
             errorCallback: (error: any) => console.log(error)
         });
 
         fetchSkillsData({
             colName: staticData.firebaseConst.collections.skills.name,
             docName: staticData.firebaseConst.collections.skills.sub.interpersonal,
-            successCallback: (data: []) => { setLoading((other) => ({ ...other, skills: false })); setPersonalSkills(data) },
+            successCallback: (data: []) => {
+                setLoading((other) => ({ ...other, skills: false }));
+                setPersonalSkills(data)
+            },
             errorCallback: (error: any) => console.log(error)
         });
     }
@@ -65,7 +97,7 @@ export default function MyHome() {
             colName: staticData.firebaseConst.collections.educations,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, educations: false }));
-                setEducation(DetailedListItem.objectsToItemsList(data).reverse())
+                setEducation(sortItems(DetailedListItem.objectsToItemsList(data)))
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -75,7 +107,7 @@ export default function MyHome() {
             colName: staticData.firebaseConst.collections.courses,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, courses: false }));
-                setCourses(DetailedListItem.objectsToItemsList(data).reverse());
+                setCourses(sortItems(DetailedListItem.objectsToItemsList(data)));
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -86,7 +118,7 @@ export default function MyHome() {
             colName: staticData.firebaseConst.collections.experiences,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, experiences: false }));
-                setExperiences(DetailedListItem.objectsToItemsList(data).reverse());
+                setExperiences(sortItems(DetailedListItem.objectsToItemsList(data)));
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -96,7 +128,7 @@ export default function MyHome() {
         fetchSectionsData({
             colName: staticData.firebaseConst.collections.projects,
             successCallback: (data: []) => {
-                var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data);
+                var tempProjects: DetailedListItem[] = sortItems(DetailedListItem.objectsToItemsList(data));
                 tempProjects.forEach(pt => {
                     const imgsNum = pt.getImages()?.length;
                     pt.getImages()?.forEach((imgItem, i) => {
