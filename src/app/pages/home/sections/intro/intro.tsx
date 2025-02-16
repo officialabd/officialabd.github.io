@@ -11,15 +11,15 @@ export default function Intro(
         loading?: boolean,
     }) {
 
-    return <div className="flex justify-center content-center items-center">
+    return <div className="flex h-screen justify-center content-center items-center">
         {loading ?
             <LinePulse />
             :
             <div className="mx-auto max-w-4xl px-6 lg:px-8">
                 <Basic
-                    text={"Hello"}
-                    fontSize="text-2xl sm:text-3xl"
-                    fontFamily="font-Borel"
+                    text={"Hey, I'm Abd"}
+                    fontSize="text-4xl sm:text-5xl"
+                    fontFamily="font-Dancing"
                     fontWeight=""
                     textColor="text-purple-200"
                 />
