@@ -1,6 +1,5 @@
 "use client"
 import Footer from "@/app/layouts/footer/footer";
-import Header from "@/app/layouts/header/header";
 import Roadmap from "@/app/layouts/roadmap/roadmap";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
@@ -123,12 +122,12 @@ export default function MyHome() {
 
 
     return <>
-        <Header loading={loading.skills}
+        {/* <Header loading={loading.skills}
             myInfo={myInfo!}
             techs={techsSkills}
             interpersonalSkills={personalSkills}
-        />
-        <div className="mt-14 sm:mt-24" />
+        /> */}
+        {/* <div className="mt-14 sm:mt-24" /> */}
         <Intro
             myInfo={myInfo}
             loading={loading.myInfo}
