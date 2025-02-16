@@ -1,5 +1,5 @@
 import { db } from "@/../firebase";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref } from "firebase/storage";
 
 const fetchMyInfoData = async ({ colName, docName, successCallback, errorCallback }:
@@ -31,16 +31,14 @@ const fetchSkillsData = async ({ colName, docName, successCallback, errorCallbac
 const fetchSectionsData = async ({ colName, successCallback, errorCallback }:
     { colName: string; successCallback: Function; errorCallback: Function }) => {
 
-    const colSnap = await getDocs(collection(db, colName));
+    try {
+        const q = query(collection(db, colName), where("show", "in", [true, null]));
+        const colSnap = await getDocs(q);
 
-    if (colSnap) {
-        var docs = Array<any>();
-        colSnap.forEach(doc => {
-            docs.push(doc.data());
-        });
+        const docs = colSnap.docs.map(doc => doc.data());
         successCallback(docs);
-    } else {
-        errorCallback(colSnap);
+    } catch (error) {
+        errorCallback(error);
     }
 }
 
