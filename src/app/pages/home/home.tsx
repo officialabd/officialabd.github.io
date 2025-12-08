@@ -1,6 +1,6 @@
 "use client"
-import DetailedList from "@/app/layouts/detailedList/detailedList";
-import Footer from "@/app/layouts/footer/footer";
+import DetailedList from "@/app/_layouts/detailedList/detailedList";
+import Footer from "@/app/_layouts/footer/footer";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
 import staticData from "@/app/staticData";
