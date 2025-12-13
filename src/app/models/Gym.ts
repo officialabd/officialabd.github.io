@@ -21,6 +21,16 @@ export type GymPlanDay = {
     exercises: GymExercise[];
 };
 
+export type GymPlan = {
+    id: string;
+    title: string;
+    note?: string;
+    userId?: string | null;
+    createdAt?: number | null;
+    updatedAt?: number | null;
+    days: GymPlanDay[];
+};
+
 export type GymLogExercise = {
     name: string;
     muscleGroup?: string;
@@ -31,9 +41,12 @@ export type GymLogExercise = {
 
 export type GymLogEntry = {
     id: string;
+    planId: string;
+    planTitle: string;
     dayId: string;
     dayTitle: string;
     date: string;
+    userId?: string | null;
     exercises: GymLogExercise[];
     note?: string | null;
     createdAt: number;
@@ -107,25 +120,46 @@ const sanitizeLogExerciseForWrite = (ex: any) => cleanObject({
         : [],
 });
 
-export const planDayToFirestore = (plan: GymPlanDay) => cleanObject({
+export const planToFirestore = (plan: GymPlan) => cleanObject({
     title: plan.title,
-    order: plan.order ?? null,
     note: plan.note ?? null,
-    exercises: (plan.exercises ?? []).filter(Boolean).map((ex) => sanitizeExerciseForWrite(ex)),
+    userId: plan.userId ?? null,
+    createdAt: plan.createdAt ?? null,
+    updatedAt: plan.updatedAt ?? null,
+    days: (plan.days ?? []).filter(Boolean).map((day) => cleanObject({
+        id: day?.id ?? "",
+        title: day?.title ?? "",
+        order: day?.order ?? null,
+        note: day?.note ?? null,
+        exercises: (day?.exercises ?? []).filter(Boolean).map((ex) => sanitizeExerciseForWrite(ex)),
+    })),
 });
 
-export const planDayFromFirestore = (id: string, data: any): GymPlanDay => ({
+export const planFromFirestore = (id: string, data: any): GymPlan => ({
     id,
     title: data?.title ?? "",
-    order: data?.order ?? undefined,
     note: data?.note ?? undefined,
-    exercises: Array.isArray(data?.exercises) ? data.exercises.map((ex: any) => sanitizeExercise(ex)) : [],
+    userId: data?.userId ?? undefined,
+    createdAt: data?.createdAt ?? null,
+    updatedAt: data?.updatedAt ?? null,
+    days: Array.isArray(data?.days)
+        ? data.days.map((day: any) => ({
+            id: day?.id ?? "",
+            title: day?.title ?? "",
+            order: day?.order ?? undefined,
+            note: day?.note ?? undefined,
+            exercises: Array.isArray(day?.exercises) ? day.exercises.map((ex: any) => sanitizeExercise(ex)) : [],
+        }))
+        : [],
 });
 
 export const logEntryToFirestore = (log: Omit<GymLogEntry, "id">) => cleanObject({
+    planId: log.planId,
+    planTitle: log.planTitle,
     dayId: log.dayId,
     dayTitle: log.dayTitle,
     date: log.date,
+    userId: log.userId ?? null,
     exercises: (log.exercises ?? []).filter(Boolean).map((ex) => sanitizeLogExerciseForWrite(ex)),
     note: log.note ?? null,
     createdAt: log.createdAt,
@@ -136,9 +170,12 @@ export const logEntryToFirestore = (log: Omit<GymLogEntry, "id">) => cleanObject
 
 export const logEntryFromFirestore = (id: string, data: any): GymLogEntry => ({
     id,
+    planId: data?.planId ?? "",
+    planTitle: data?.planTitle ?? "",
     dayId: data?.dayId ?? "",
     dayTitle: data?.dayTitle ?? "",
     date: data?.date ?? "",
+    userId: data?.userId ?? undefined,
     exercises: Array.isArray(data?.exercises) ? data.exercises.map((ex: any) => sanitizeLogExercise(ex)) : [],
     note: data?.note ?? undefined,
     createdAt: data?.createdAt ?? 0,

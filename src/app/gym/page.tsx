@@ -11,12 +11,13 @@ import LinePulse from "../_layouts/pulse/line";
 import {
     GymExercise,
     GymLogEntry,
+    GymPlan,
     GymPlanDay,
     GymSet,
     logEntryFromFirestore,
     logEntryToFirestore,
-    planDayFromFirestore,
-    planDayToFirestore,
+    planFromFirestore,
+    planToFirestore,
 } from "../models/Gym";
 
 const generateId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10));
@@ -56,9 +57,12 @@ const getExerciseStatus = (sets: GymSet[]) => {
 
 const sanitizeLogForWrite = (draft: Omit<GymLogEntry, "id" | "createdAt">) => ({
     ...draft,
+    planId: draft.planId ?? "",
+    planTitle: draft.planTitle ?? "",
     dayId: draft.dayId ?? "",
     dayTitle: draft.dayTitle ?? "",
     date: draft.date ?? todayISO(),
+    userId: draft.userId ?? null,
     note: draft.note ?? null,
     startedAt: draft.startedAt ?? null,
     completedAt: draft.completedAt ?? null,
@@ -88,7 +92,7 @@ const sanitizeLogForWrite = (draft: Omit<GymLogEntry, "id" | "createdAt">) => ({
 });
 
 const gymCollections = staticData.firebaseConst.collections.gym;
-type ViewTab = "plan" | "session" | "logs";
+type ViewTab = "plans" | "edit" | "session" | "logs";
 
 export default function GymPage() {
     const [user, setUser] = useState<User | null>(null);
@@ -97,14 +101,21 @@ export default function GymPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const [activeView, setActiveView] = useState<ViewTab>("plan");
+    const [activeView, setActiveView] = useState<ViewTab>("plans");
 
-    const [plans, setPlans] = useState<GymPlanDay[]>([]);
-    const [planDrafts, setPlanDrafts] = useState<Record<string, GymPlanDay>>({});
+    const [plans, setPlans] = useState<GymPlan[]>([]);
+    const [planDrafts, setPlanDrafts] = useState<Record<string, GymPlan>>({});
     const [plansLoading, setPlansLoading] = useState(false);
-    const [savingDayId, setSavingDayId] = useState<string | null>(null);
+    const [savingPlanId, setSavingPlanId] = useState<string | null>(null);
+    const [newPlanTitle, setNewPlanTitle] = useState("");
     const [newDayTitle, setNewDayTitle] = useState("");
 
+    const [viewPlanId, setViewPlanId] = useState<string>("");
+    const [viewDayId, setViewDayId] = useState<string>("");
+    const [editPlanId, setEditPlanId] = useState<string>("");
+    const [editDayId, setEditDayId] = useState<string>("");
+
+    const [logPlanId, setLogPlanId] = useState<string>("");
     const [logDayId, setLogDayId] = useState<string>("");
     const [logDraft, setLogDraft] = useState<Omit<GymLogEntry, "id" | "createdAt"> | null>(null);
     const [logSubmitting, setLogSubmitting] = useState(false);
@@ -113,6 +124,7 @@ export default function GymPage() {
     const [logsFeedLoading, setLogsFeedLoading] = useState(false);
     const [logFilterFrom, setLogFilterFrom] = useState(lastMonthISO());
     const [logFilterTo, setLogFilterTo] = useState(todayISO());
+    const [logFilterPlanId, setLogFilterPlanId] = useState<string>("");
     const [logFilterDayId, setLogFilterDayId] = useState<string>("");
 
     useEffect(() => {
@@ -122,6 +134,11 @@ export default function GymPage() {
             if (!u) {
                 setPlans([]);
                 setPlanDrafts({});
+                setViewPlanId("");
+                setEditPlanId("");
+                setLogPlanId("");
+                setViewDayId("");
+                setEditDayId("");
                 setLogDayId("");
                 setLogDraft(null);
                 setLogsFeed([]);
@@ -130,18 +147,59 @@ export default function GymPage() {
         return () => unsub();
     }, []);
 
-    const loadPlans = async () => {
+    const loadPlans = async (preferredPlanId?: string) => {
+        if (!user) {
+            setPlans([]);
+            setPlanDrafts({});
+            setViewPlanId("");
+            setEditPlanId("");
+            setLogPlanId("");
+            setViewDayId("");
+            setEditDayId("");
+            setLogDayId("");
+            setLogDraft(null);
+            return;
+        }
         setPlansLoading(true);
         try {
-            const snap = await getDocs(collection(db, gymCollections.plans));
-            const items = snap.docs.map((d) => planDayFromFirestore(d.id, d.data()));
-            items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.title.localeCompare(b.title));
+            const snap = await getDocs(query(collection(db, gymCollections.plans), where("userId", "==", user?.uid ?? "")));
+            const items = snap.docs.map((d) => planFromFirestore(d.id, d.data()));
+            items.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.title.localeCompare(b.title));
             setPlans(items);
-            const drafts: Record<string, GymPlanDay> = {};
-            items.forEach((p) => (drafts[p.id] = { ...p }));
+            const drafts: Record<string, GymPlan> = {};
+            items.forEach((p) => (drafts[p.id] = { ...p, days: [...(p.days ?? [])] }));
             setPlanDrafts(drafts);
-            if (items.length && !logDayId) {
-                setLogDayId(items[0].id);
+
+            const resolvePlanId = (current: string, preferred?: string) => {
+                if (current && items.some((i) => i.id === current)) return current;
+                if (preferred && items.some((i) => i.id === preferred)) return preferred;
+                return items[0]?.id ?? "";
+            };
+
+            const resolveDayId = (current: string, planId: string) => {
+                const plan = items.find((p) => p.id === planId);
+                if (!plan) return "";
+                if (current && plan.days.some((d) => d.id === current)) return current;
+                return plan.days[0]?.id ?? "";
+            };
+
+            const nextViewPlanId = resolvePlanId(viewPlanId, preferredPlanId);
+            const nextEditPlanId = resolvePlanId(editPlanId, preferredPlanId);
+            const nextLogPlanId = resolvePlanId(logPlanId, preferredPlanId);
+
+            const nextViewDayId = resolveDayId(viewDayId, nextViewPlanId);
+            const nextEditDayId = resolveDayId(editDayId, nextEditPlanId);
+            const nextLogDayId = resolveDayId(logDayId, nextLogPlanId);
+
+            setViewPlanId(nextViewPlanId);
+            setEditPlanId(nextEditPlanId);
+            setLogPlanId(nextLogPlanId);
+            setViewDayId(nextViewDayId);
+            setEditDayId(nextEditDayId);
+            setLogDayId(nextLogDayId);
+
+            if (!items.length) {
+                setLogDraft(null);
             }
         } finally {
             setPlansLoading(false);
@@ -155,13 +213,60 @@ export default function GymPage() {
     }, [user]);
 
     useEffect(() => {
-        if (logDayId && user) {
-            const plan = plans.find((p) => p.id === logDayId);
-            if (plan) {
-                setLogDraft(makeLogDraft(plan));
+        if (logPlanId && logDayId && user) {
+            const plan = plans.find((p) => p.id === logPlanId);
+            const day = plan?.days.find((d) => d.id === logDayId);
+            if (plan && day) {
+                setLogDraft(makeLogDraft(plan, day));
+                return;
             }
         }
-    }, [logDayId, plans, user]);
+        setLogDraft(null);
+    }, [logPlanId, logDayId, plans, user]);
+
+    useEffect(() => {
+        const plan = plans.find((p) => p.id === viewPlanId);
+        if (!plan) {
+            setViewDayId("");
+            return;
+        }
+        if (!plan.days.some((d) => d.id === viewDayId)) {
+            setViewDayId(plan.days[0]?.id ?? "");
+        }
+    }, [viewPlanId, plans, viewDayId]);
+
+    useEffect(() => {
+        const plan = planDrafts[editPlanId] ?? plans.find((p) => p.id === editPlanId);
+        if (!plan) {
+            setEditDayId("");
+            return;
+        }
+        if (!plan.days.some((d) => d.id === editDayId)) {
+            setEditDayId(plan.days[0]?.id ?? "");
+        }
+    }, [editPlanId, plans, planDrafts, editDayId]);
+
+    useEffect(() => {
+        const plan = plans.find((p) => p.id === logPlanId);
+        if (!plan) {
+            setLogDayId("");
+            return;
+        }
+        if (!plan.days.some((d) => d.id === logDayId)) {
+            setLogDayId(plan.days[0]?.id ?? "");
+        }
+    }, [logPlanId, plans, logDayId]);
+
+    useEffect(() => {
+        const plan = plans.find((p) => p.id === logFilterPlanId);
+        if (!plan) {
+            setLogFilterDayId("");
+            return;
+        }
+        if (!plan.days.some((d) => d.id === logFilterDayId)) {
+            setLogFilterDayId("");
+        }
+    }, [logFilterPlanId, plans, logFilterDayId]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -177,62 +282,122 @@ export default function GymPage() {
         await signOut(auth);
     };
 
-    const handleAddDay = async () => {
-        if (!newDayTitle.trim()) return;
-        const payload: GymPlanDay = {
+    const updatePlanDraft = (planId: string, updater: (draft: GymPlan) => GymPlan) => {
+        setPlanDrafts((prev) => {
+            const base = prev[planId] ?? plans.find((p) => p.id === planId);
+            if (!base) return prev;
+            const cloned: GymPlan = { ...base, days: [...(base.days ?? [])] };
+            return { ...prev, [planId]: updater(cloned) };
+        });
+    };
+
+    const updateDayDraft = (planId: string, dayId: string, updater: (day: GymPlanDay) => GymPlanDay) => {
+        updatePlanDraft(planId, (draft) => {
+            const next = { ...draft, days: [...(draft.days ?? [])] };
+            const idx = next.days.findIndex((d) => d.id === dayId);
+            if (idx === -1) return next;
+            next.days[idx] = updater({ ...next.days[idx], exercises: [...(next.days[idx].exercises ?? [])] });
+            return next;
+        });
+    };
+
+    const handleAddPlan = async () => {
+        if (!user || !newPlanTitle.trim()) return;
+        const now = Date.now();
+        const payload: GymPlan = {
             id: "temp",
+            title: newPlanTitle.trim(),
+            note: "",
+            userId: user?.uid ?? null,
+            createdAt: now,
+            updatedAt: now,
+            days: [],
+        };
+        const docRef = await addDoc(collection(db, gymCollections.plans), planToFirestore(payload));
+        setNewPlanTitle("");
+        loadPlans(docRef.id);
+    };
+
+    const handleSavePlan = async (planId: string) => {
+        const draft = planDrafts[planId];
+        if (!draft) return;
+        setSavingPlanId(planId);
+        try {
+            const now = Date.now();
+            const cleaned: GymPlan = {
+                ...draft,
+                userId: user?.uid ?? null,
+                createdAt: draft.createdAt ?? now,
+                updatedAt: now,
+                days: (draft.days ?? []).map((day) => ({
+                    ...day,
+                    exercises: (day.exercises ?? []).filter(Boolean).map((ex) => ({
+                        ...ex,
+                        sets: Array.isArray(ex.sets)
+                            ? ex.sets.map((s) => ({
+                                weight: s?.weight ?? null,
+                                reps: s?.reps ?? null,
+                                note: s?.note ?? null,
+                                completed: s?.completed ?? null,
+                            }))
+                            : [],
+                    })),
+                })),
+            };
+            await setDoc(doc(db, gymCollections.plans, planId), planToFirestore(cleaned), { merge: true });
+            await loadPlans(planId);
+        } finally {
+            setSavingPlanId(null);
+        }
+    };
+
+    const handleDeletePlan = async (planId: string) => {
+        await deleteDoc(doc(db, gymCollections.plans, planId));
+        if (logPlanId === planId) {
+            setLogPlanId("");
+            setLogDayId("");
+            setLogDraft(null);
+        }
+        if (viewPlanId === planId) {
+            setViewPlanId("");
+            setViewDayId("");
+        }
+        if (editPlanId === planId) {
+            setEditPlanId("");
+            setEditDayId("");
+        }
+        loadPlans();
+    };
+
+    const handleAddDayToPlan = (planId: string) => {
+        if (!planId || !newDayTitle.trim()) return;
+        const day: GymPlanDay = {
+            id: generateId(),
             title: newDayTitle.trim(),
             note: "",
             order: Date.now(),
             exercises: [],
         };
-        await addDoc(collection(db, gymCollections.plans), planDayToFirestore(payload));
+        updatePlanDraft(planId, (draft) => ({ ...draft, days: [...(draft.days ?? []), day] }));
         setNewDayTitle("");
-        loadPlans();
+        setEditDayId(day.id);
     };
 
-    const updateDraft = (dayId: string, updater: (draft: GymPlanDay) => GymPlanDay) => {
-        setPlanDrafts((prev) => ({ ...prev, [dayId]: updater(prev[dayId] ?? plans.find((p) => p.id === dayId)!) }));
+    const handleDeleteDayFromPlan = (planId: string, dayId: string) => {
+        updatePlanDraft(planId, (draft) => ({ ...draft, days: (draft.days ?? []).filter((d) => d.id !== dayId) }));
+        if (viewDayId === dayId) setViewDayId("");
+        if (editDayId === dayId) setEditDayId("");
+        if (logDayId === dayId) setLogDayId("");
     };
 
-    const handleSaveDay = async (dayId: string) => {
-        const draft = planDrafts[dayId];
-        if (!draft) return;
-        setSavingDayId(dayId);
-        try {
-            const cleaned: GymPlanDay = {
-                ...draft,
-                exercises: (draft.exercises ?? []).filter(Boolean).map((ex) => ({
-                    ...ex,
-                    sets: Array.isArray(ex.sets) ? ex.sets.map((s) => ({
-                        weight: s?.weight ?? null,
-                        reps: s?.reps ?? null,
-                        note: s?.note ?? null,
-                        completed: s?.completed ?? null,
-                    })) : [],
-                })),
-            };
-            await setDoc(doc(db, gymCollections.plans, dayId), planDayToFirestore(cleaned), { merge: true });
-            await loadPlans();
-        } finally {
-            setSavingDayId(null);
-        }
-    };
-
-    const handleDeleteDay = async (dayId: string) => {
-        await deleteDoc(doc(db, gymCollections.plans, dayId));
-        if (logDayId === dayId) {
-            setLogDayId("");
-            setLogDraft(null);
-        }
-        loadPlans();
-    };
-
-    const makeLogDraft = (plan: GymPlanDay): Omit<GymLogEntry, "id" | "createdAt"> => ({
-        dayId: plan.id,
-        dayTitle: plan.title,
+    const makeLogDraft = (plan: GymPlan, day: GymPlanDay): Omit<GymLogEntry, "id" | "createdAt"> => ({
+        planId: plan.id,
+        planTitle: plan.title,
+        dayId: day.id,
+        dayTitle: day.title,
         date: todayISO(),
-        exercises: plan.exercises.map((ex) => ({
+        userId: user?.uid ?? null,
+        exercises: (day.exercises ?? []).map((ex) => ({
             name: ex.name,
             muscleGroup: ex.muscleGroup,
             note: "",
@@ -250,12 +415,13 @@ export default function GymPage() {
     };
 
     const handleSubmitLog = async () => {
-        if (!logDraft) return;
+        if (!user || !logDraft) return;
         setLogSubmitting(true);
         try {
             const now = Date.now();
             const payload = sanitizeLogForWrite({
                 ...logDraft,
+                userId: user?.uid ?? null,
                 createdAt: now,
                 startedAt: logDraft.startedAt ?? now,
                 completedAt: logDraft.completedAt ?? now,
@@ -275,10 +441,14 @@ export default function GymPage() {
             const fromTs = new Date(logFilterFrom).getTime();
             const toTs = new Date(logFilterTo).getTime() + 24 * 60 * 60 * 1000 - 1;
             const constraints: any[] = [
+                where("userId", "==", user.uid),
                 where("createdAt", ">=", fromTs),
                 where("createdAt", "<=", toTs),
                 orderBy("createdAt", "desc"),
             ];
+            if (logFilterPlanId) {
+                constraints.push(where("planId", "==", logFilterPlanId));
+            }
             if (logFilterDayId) {
                 constraints.push(where("dayId", "==", logFilterDayId));
             }
@@ -302,9 +472,13 @@ export default function GymPage() {
             loadLogsFeed();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [logFilterFrom, logFilterTo, logFilterDayId]);
+    }, [logFilterFrom, logFilterTo, logFilterPlanId, logFilterDayId]);
 
-    const selectedPlan = useMemo(() => plans.find((p) => p.id === logDayId), [plans, logDayId]);
+    const viewPlan = useMemo(() => plans.find((p) => p.id === viewPlanId), [plans, viewPlanId]);
+    const editPlan = useMemo(() => plans.find((p) => p.id === editPlanId), [plans, editPlanId]);
+    const editDraft = editPlan ? planDrafts[editPlan.id] ?? editPlan : null;
+    const editDay = useMemo(() => editDraft?.days.find((d) => d.id === editDayId), [editDraft, editDayId]);
+    const selectedLogPlan = useMemo(() => plans.find((p) => p.id === logPlanId), [plans, logPlanId]);
     const canEditExercises = !!logDraft?.startedAt;
 
     return (
@@ -328,7 +502,7 @@ export default function GymPage() {
                 {!user && (
                     <Card heading={<Basic text="Sign in" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-3">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm text-slate-300">Email</label>
                                     <input
@@ -364,7 +538,7 @@ export default function GymPage() {
                 {user && (
                     <div className="mt-6 space-y-8">
                         <div className="flex flex-wrap gap-3 px-4">
-                            {[{ id: "plan", label: "Plan" }, { id: "session", label: "Log Session" }, { id: "logs", label: "Logs" }].map((tab) => (
+                            {[{ id: "plans", label: "Plans" }, { id: "edit", label: "Edit Plans" }, { id: "session", label: "Log Session" }, { id: "logs", label: "Logs" }].map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveView(tab.id as ViewTab)}
@@ -375,75 +549,234 @@ export default function GymPage() {
                             ))}
                         </div>
 
-                        {activeView === "plan" && (
-                            <Card heading={<Basic text="Plan" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
+                        {activeView === "plans" && (
+                            <Card heading={<Basic text="Plans" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
                                 <div className="space-y-6">
-                                    <div className="flex flex-wrap gap-3 items-end">
-                                        <div className="flex flex-col gap-2 w-full sm:w-64">
-                                            <label className="text-sm text-slate-300">Add day</label>
-                                            <input
-                                                className="rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                placeholder="Day 1 - Push"
-                                                value={newDayTitle}
-                                                onChange={(e) => setNewDayTitle(e.target.value)}
-                                            />
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-end">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm text-slate-300">Select plan</label>
+                                            <select
+                                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                value={viewPlanId}
+                                                onChange={(e) => setViewPlanId(e.target.value)}
+                                            >
+                                                <option value="">Select plan</option>
+                                                {plans.map((p) => (
+                                                    <option key={`view-${p.id}`} value={p.id}>
+                                                        {p.title}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <button
-                                            onClick={handleAddDay}
-                                            className="inline-flex h-10 items-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
+                                            onClick={() => {
+                                                if (viewPlanId) {
+                                                    setEditPlanId(viewPlanId);
+                                                    setActiveView("edit");
+                                                }
+                                            }}
+                                            disabled={!viewPlanId}
+                                            className={`inline-flex h-10 items-center rounded-lg px-4 text-sm font-semibold ${viewPlanId ? "bg-indigo-500 text-white hover:bg-indigo-400" : "bg-slate-800 text-slate-500"}`}
                                         >
-                                            Add day
+                                            Edit this plan
                                         </button>
                                     </div>
 
                                     {plansLoading && <LinePulse />}
 
                                     {!plansLoading && plans.length === 0 && (
-                                        <p className="text-sm text-slate-400">No plan yet. Add your first day.</p>
+                                        <p className="text-sm text-slate-400">No plans yet. Create one from the Edit Plans tab.</p>
                                     )}
 
-                                    <div className="space-y-6">
-                                        {plans.map((plan) => {
-                                            const draft = planDrafts[plan.id] ?? plan;
-                                            return (
-                                                <div key={plan.id} className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
+                                    {viewPlan && (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <div>
+                                                    <div className="text-xl font-semibold text-teal-200">{viewPlan.title}</div>
+                                                    <div className="text-xs text-slate-400">Created: {formatTime(viewPlan.createdAt)} • Updated: {formatTime(viewPlan.updatedAt)}</div>
+                                                </div>
+                                                {viewPlan.note && <div className="text-sm text-slate-300">{viewPlan.note}</div>}
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {viewPlan.days.length === 0 && <div className="text-sm text-slate-400">No days in this plan yet.</div>}
+
+                                                {viewPlan.days.map((day) => (
+                                                    <div key={day.id} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="text-teal-200 font-semibold">{day.title}</div>
+                                                            <span className="text-xs text-slate-400">Exercises: {day.exercises.length}</span>
+                                                        </div>
+                                                        {day.note && <div className="text-sm text-slate-300">{day.note}</div>}
+
+                                                        {day.exercises.length === 0 && <div className="text-xs text-slate-500">No exercises yet.</div>}
+                                                        {day.exercises.map((ex) => (
+                                                            <div key={ex.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <div className="text-teal-200 font-semibold">{ex.name || "Exercise"}</div>
+                                                                        {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
+                                                                    </div>
+                                                                    <span className="text-xs text-slate-400">Sets: {ex.sets?.length ?? 0}</span>
+                                                                </div>
+                                                                {!ex.sets?.length && <div className="text-xs text-slate-500">No sets configured yet.</div>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        )}
+
+                        {activeView === "edit" && (
+                            <Card heading={<Basic text="Edit Plans" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm text-slate-300">New plan</label>
+                                            <div className="flex flex-col gap-2 sm:flex-row">
+                                                <input
+                                                    className="w-full rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                    placeholder="Full body - v1"
+                                                    value={newPlanTitle}
+                                                    onChange={(e) => setNewPlanTitle(e.target.value)}
+                                                />
+                                                <button
+                                                    onClick={handleAddPlan}
+                                                    className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
+                                                >
+                                                    Add plan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <label className="text-sm text-slate-300">Select plan to edit</label>
+                                            <select
+                                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                value={editPlanId}
+                                                onChange={(e) => setEditPlanId(e.target.value)}
+                                            >
+                                                <option value="">Choose a plan</option>
+                                                {plans.map((p) => (
+                                                    <option key={`edit-${p.id}`} value={p.id}>
+                                                        {p.title}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {plansLoading && <LinePulse />}
+
+                                    {!plansLoading && !editPlan && <p className="text-sm text-slate-400">Select a plan to start editing.</p>}
+
+                                    {!plansLoading && editPlan && editDraft && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
+                                            <div className="flex flex-wrap items-center gap-3 justify-between">
+                                                <div className="flex flex-col gap-2 w-full sm:flex-1">
+                                                    <label className="text-xs text-slate-400">Plan title</label>
+                                                    <input
+                                                        className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                        value={editDraft.title}
+                                                        onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, title: e.target.value }))}
+                                                    />
+                                                    <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)} • Updated: {formatTime(editDraft.updatedAt)}</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleSavePlan(editPlan.id)}
+                                                        className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
+                                                        disabled={savingPlanId === editPlan.id}
+                                                    >
+                                                        {savingPlanId === editPlan.id ? "Saving..." : "Save"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePlan(editPlan.id)}
+                                                        className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex flex-col gap-2">
+                                                <label className="text-xs text-slate-400">Plan notes</label>
+                                                <textarea
+                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                    rows={2}
+                                                    value={editDraft.note ?? ""}
+                                                    onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, note: e.target.value }))}
+                                                />
+                                            </div>
+
+                                            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs text-slate-400">Day name</label>
+                                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                                        <input
+                                                            className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                            placeholder="Day 1 - Push"
+                                                            value={newDayTitle}
+                                                            onChange={(e) => setNewDayTitle(e.target.value)}
+                                                        />
+                                                        <button
+                                                            onClick={() => handleAddDayToPlan(editPlan.id)}
+                                                            className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
+                                                        >
+                                                            Add day
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs text-slate-400">Current day</label>
+                                                    <select
+                                                        className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                        value={editDayId}
+                                                        onChange={(e) => setEditDayId(e.target.value)}
+                                                    >
+                                                        <option value="">Choose a day</option>
+                                                        {editDraft.days.map((d) => (
+                                                            <option key={`edit-day-switch-${d.id}`} value={d.id}>
+                                                                {d.title}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {editDay && (
+                                                <div className="mt-4 space-y-4">
                                                     <div className="flex flex-wrap items-center gap-3 justify-between">
                                                         <div className="flex flex-col gap-2 w-full sm:flex-1">
                                                             <label className="text-xs text-slate-400">Day title</label>
                                                             <input
                                                                 className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                                value={draft.title}
-                                                                onChange={(e) => updateDraft(plan.id, (d) => ({ ...d, title: e.target.value }))}
+                                                                value={editDay.title}
+                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, title: e.target.value }))}
                                                             />
                                                         </div>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleSaveDay(plan.id)}
-                                                                className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
-                                                                disabled={savingDayId === plan.id}
-                                                            >
-                                                                {savingDayId === plan.id ? "Saving..." : "Save"}
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteDay(plan.id)}
-                                                                className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            onClick={() => handleDeleteDayFromPlan(editPlan.id, editDay.id)}
+                                                            className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+                                                        >
+                                                            Delete day
+                                                        </button>
                                                     </div>
 
-                                                    <div className="mt-4 grid grid-cols-1 gap-2">
-                                                        <label className="text-xs text-slate-400">Notes</label>
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        <label className="text-xs text-slate-400">Day notes</label>
                                                         <textarea
                                                             className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                                                             rows={2}
-                                                            value={draft.note ?? ""}
-                                                            onChange={(e) => updateDraft(plan.id, (d) => ({ ...d, note: e.target.value }))}
+                                                            value={editDay.note ?? ""}
+                                                            onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, note: e.target.value }))}
                                                         />
                                                     </div>
 
-                                                    <div className="mt-4 overflow-x-auto sm:overflow-visible">
+                                                    <div className="mt-2 overflow-x-auto sm:overflow-visible">
                                                         <table className="w-full text-sm border-collapse">
                                                             <thead>
                                                                 <tr className="text-left text-slate-300">
@@ -454,16 +787,17 @@ export default function GymPage() {
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {draft.exercises.map((ex, exIdx) => (
+                                                                {editDay.exercises.map((ex, exIdx) => (
                                                                     <tr key={ex.id} className="border-t border-slate-800">
                                                                         <td className="py-2 pr-0.5 sm:pr-2 min-w-[180px]">
                                                                             <input
                                                                                 className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
                                                                                 value={ex.name}
-                                                                                onChange={(e) => updateDraft(plan.id, (d) => {
+                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
                                                                                     const next = { ...d };
-                                                                                    next.exercises = [...next.exercises];
-                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], name: e.target.value };
+                                                                                    const exercises = [...(next.exercises ?? [])];
+                                                                                    exercises[exIdx] = { ...exercises[exIdx], name: e.target.value };
+                                                                                    next.exercises = exercises;
                                                                                     return next;
                                                                                 })}
                                                                             />
@@ -472,10 +806,11 @@ export default function GymPage() {
                                                                             <input
                                                                                 className="w-full sm:w-44 rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
                                                                                 value={ex.muscleGroup ?? ""}
-                                                                                onChange={(e) => updateDraft(plan.id, (d) => {
+                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
                                                                                     const next = { ...d };
-                                                                                    next.exercises = [...next.exercises];
-                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], muscleGroup: e.target.value };
+                                                                                    const exercises = [...(next.exercises ?? [])];
+                                                                                    exercises[exIdx] = { ...exercises[exIdx], muscleGroup: e.target.value };
+                                                                                    next.exercises = exercises;
                                                                                     return next;
                                                                                 })}
                                                                             />
@@ -486,22 +821,22 @@ export default function GymPage() {
                                                                                 min={0}
                                                                                 className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
                                                                                 value={ex.sets?.length ?? 0}
-                                                                                onChange={(e) => updateDraft(plan.id, (d) => {
+                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
                                                                                     const count = Number(e.target.value) || 0;
                                                                                     const next = { ...d };
-                                                                                    next.exercises = [...next.exercises];
-                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], sets: ensureSetCount(count, next.exercises[exIdx].sets || []) };
+                                                                                    const exercises = [...(next.exercises ?? [])];
+                                                                                    exercises[exIdx] = { ...exercises[exIdx], sets: ensureSetCount(count, exercises[exIdx].sets || []) };
+                                                                                    next.exercises = exercises;
                                                                                     return next;
                                                                                 })}
                                                                             />
                                                                         </td>
                                                                         <td className="py-2 text-center">
                                                                             <button
-                                                                                onClick={() => updateDraft(plan.id, (d) => {
-                                                                                    const next = { ...d };
-                                                                                    next.exercises = next.exercises.filter((_, i) => i !== exIdx);
-                                                                                    return next;
-                                                                                })}
+                                                                                onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
+                                                                                    ...d,
+                                                                                    exercises: (d.exercises ?? []).filter((_, i) => i !== exIdx),
+                                                                                }))}
                                                                                 className="py-2 text-rose-400 hover:text-rose-300"
                                                                                 aria-label="Remove exercise"
                                                                                 title="Remove exercise"
@@ -520,9 +855,9 @@ export default function GymPage() {
                                                             </tbody>
                                                         </table>
                                                         <button
-                                                            onClick={() => updateDraft(plan.id, (d) => ({
+                                                            onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
                                                                 ...d,
-                                                                exercises: [...d.exercises, { id: generateId(), name: "", muscleGroup: "", sets: ensureSetCount(3, []) } as GymExercise],
+                                                                exercises: [...(d.exercises ?? []), { id: generateId(), name: "", muscleGroup: "", sets: ensureSetCount(3, []) } as GymExercise],
                                                             }))}
                                                             className="mt-3 text-sm text-indigo-300 hover:text-indigo-200"
                                                         >
@@ -530,9 +865,9 @@ export default function GymPage() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </Card>
                         )}
@@ -542,16 +877,32 @@ export default function GymPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="flex flex-col gap-2">
+                                            <label className="text-xs text-slate-400">Plan</label>
+                                            <select
+                                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                value={logPlanId}
+                                                onChange={(e) => setLogPlanId(e.target.value)}
+                                            >
+                                                <option value="">Select plan</option>
+                                                {plans.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.title}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
                                             <label className="text-xs text-slate-400">Day</label>
                                             <select
                                                 className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                                                 value={logDayId}
                                                 onChange={(e) => setLogDayId(e.target.value)}
+                                                disabled={!selectedLogPlan?.days.length}
                                             >
                                                 <option value="">Select day</option>
-                                                {plans.map((p) => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.title}
+                                                {selectedLogPlan?.days.map((d) => (
+                                                    <option key={`log-day-${d.id}`} value={d.id}>
+                                                        {d.title}
                                                     </option>
                                                 ))}
                                             </select>
@@ -567,7 +918,7 @@ export default function GymPage() {
                                         </div>
                                     </div>
 
-                                    {selectedPlan && logDraft ? (
+                                    {selectedLogPlan && logDayId && logDraft ? (
                                         <div className="space-y-4">
                                             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
                                                 <button
@@ -738,7 +1089,7 @@ export default function GymPage() {
                                             </button>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-slate-400">Select a day to start logging.</p>
+                                        <p className="text-sm text-slate-400">Select a plan and day to start logging.</p>
                                     )}
                                 </div>
                             </Card>
@@ -747,17 +1098,31 @@ export default function GymPage() {
                         {activeView === "logs" && (
                             <Card heading={<Basic text="Logs" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs text-slate-400">Plan (optional)</label>
+                                            <select
+                                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                value={logFilterPlanId}
+                                                onChange={(e) => setLogFilterPlanId(e.target.value)}
+                                            >
+                                                <option value="">All plans</option>
+                                                {plans.map((p) => (
+                                                    <option key={`filter-${p.id}`} value={p.id}>{p.title}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-xs text-slate-400">Day (optional)</label>
                                             <select
                                                 className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                                                 value={logFilterDayId}
                                                 onChange={(e) => setLogFilterDayId(e.target.value)}
+                                                disabled={!logFilterPlanId}
                                             >
                                                 <option value="">All days</option>
-                                                {plans.map((p) => (
-                                                    <option key={`filter-${p.id}`} value={p.id}>{p.title}</option>
+                                                {plans.find((p) => p.id === logFilterPlanId)?.days.map((d) => (
+                                                    <option key={`filter-day-${d.id}`} value={d.id}>{d.title}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -796,7 +1161,7 @@ export default function GymPage() {
                                         {logsFeed.map((log) => (
                                             <div key={log.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
                                                 <div className="flex flex-wrap justify-between gap-2 text-sm text-slate-200">
-                                                    <span className="font-semibold text-teal-200">{log.dayTitle}</span>
+                                                    <span className="font-semibold text-teal-200">{log.planTitle} • {log.dayTitle}</span>
                                                     <span>{log.date}</span>
                                                 </div>
                                                 <div className="text-xs text-slate-400">
