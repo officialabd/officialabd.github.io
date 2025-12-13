@@ -35,6 +35,15 @@ const formatDuration = (start?: number | null, end?: number | null) => {
     const mins = Math.max(0, Math.round((end - start) / 60000));
     return `${mins} min`;
 };
+const formatRemaining = (ms?: number | null) => {
+    if (ms === null || ms === undefined) return "-";
+    if (ms <= 0) return "expired";
+    const totalSec = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
+};
 
 const ensureSetCount = (count: number, existing: GymSet[]) => {
     const safe = Math.max(0, count);
@@ -110,6 +119,10 @@ export default function GymPage() {
     const [newPlanTitle, setNewPlanTitle] = useState("");
     const [newDayTitle, setNewDayTitle] = useState("");
 
+    const [sessionIssuedAt, setSessionIssuedAt] = useState<number | null>(null);
+    const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+    const [nowTs, setNowTs] = useState<number>(() => Date.now());
+
     const [viewPlanId, setViewPlanId] = useState<string>("");
     const [viewDayId, setViewDayId] = useState<string>("");
     const [editPlanId, setEditPlanId] = useState<string>("");
@@ -119,6 +132,8 @@ export default function GymPage() {
     const [logDayId, setLogDayId] = useState<string>("");
     const [logDraft, setLogDraft] = useState<Omit<GymLogEntry, "id" | "createdAt"> | null>(null);
     const [logSubmitting, setLogSubmitting] = useState(false);
+    const [draggingExerciseId, setDraggingExerciseId] = useState<string | null>(null);
+    const [dragOverExerciseId, setDragOverExerciseId] = useState<string | null>(null);
 
     const [logsFeed, setLogsFeed] = useState<GymLogEntry[]>([]);
     const [logsFeedLoading, setLogsFeedLoading] = useState(false);
@@ -127,10 +142,30 @@ export default function GymPage() {
     const [logFilterPlanId, setLogFilterPlanId] = useState<string>("");
     const [logFilterDayId, setLogFilterDayId] = useState<string>("");
 
+    const refreshSessionTimes = async (u: User | null) => {
+        if (!u) {
+            setSessionIssuedAt(null);
+            setSessionExpiresAt(null);
+            return;
+        }
+        try {
+            const token = await u.getIdTokenResult();
+            const issued = Date.parse(token.issuedAtTime);
+            const expires = Date.parse(token.expirationTime);
+            setSessionIssuedAt(Number.isFinite(issued) ? issued : null);
+            setSessionExpiresAt(Number.isFinite(expires) ? expires : null);
+        } catch (err) {
+            console.error("Failed to fetch session token info", err);
+            setSessionIssuedAt(null);
+            setSessionExpiresAt(null);
+        }
+    };
+
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (u) => {
             setUser(u);
             setAuthLoading(false);
+            refreshSessionTimes(u);
             if (!u) {
                 setPlans([]);
                 setPlanDrafts({});
@@ -142,9 +177,20 @@ export default function GymPage() {
                 setLogDayId("");
                 setLogDraft(null);
                 setLogsFeed([]);
+                setSessionIssuedAt(null);
+                setSessionExpiresAt(null);
             }
         });
         return () => unsub();
+    }, []);
+
+    useEffect(() => {
+        if (user) refreshSessionTimes(user);
+    }, [user]);
+
+    useEffect(() => {
+        const id = setInterval(() => setNowTs(Date.now()), 60000);
+        return () => clearInterval(id);
     }, []);
 
     const loadPlans = async (preferredPlanId?: string) => {
@@ -301,6 +347,19 @@ export default function GymPage() {
         });
     };
 
+    const reorderExercises = (planId: string, dayId: string, sourceId: string, targetId: string) => {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        updateDayDraft(planId, dayId, (day) => {
+            const exercises = [...(day.exercises ?? [])];
+            const fromIdx = exercises.findIndex((ex) => ex.id === sourceId);
+            const toIdx = exercises.findIndex((ex) => ex.id === targetId);
+            if (fromIdx === -1 || toIdx === -1) return day;
+            const [moved] = exercises.splice(fromIdx, 1);
+            exercises.splice(toIdx, 0, moved);
+            return { ...day, exercises };
+        });
+    };
+
     const handleAddPlan = async () => {
         if (!user || !newPlanTitle.trim()) return;
         const now = Date.now();
@@ -352,6 +411,10 @@ export default function GymPage() {
     };
 
     const handleDeletePlan = async (planId: string) => {
+        const planTitle = planDrafts[planId]?.title || plans.find((p) => p.id === planId)?.title || "this plan";
+        const confirmed = typeof window === "undefined" ? true : window.confirm(`Delete plan "${planTitle}"? This cannot be undone.`);
+        if (!confirmed) return;
+
         await deleteDoc(doc(db, gymCollections.plans, planId));
         if (logPlanId === planId) {
             setLogPlanId("");
@@ -484,18 +547,28 @@ export default function GymPage() {
     return (
         <div className="min-h-screen bg-[#0b1222] text-white">
             <div className="mx-auto max-w-screen-xl px-0 py-10">
-                <div className="flex items-center justify-between flex-wrap gap-4 px-4">
-                    <Basic
-                        text="Gym Plan Manager"
-                        fontSize="text-3xl sm:text-4xl"
-                        fontFamily="font-Nunito"
-                        fontWeight="font-bold"
-                        textColor="text-[#BFACDF]"
-                    />
+                <div className="px-4 flex flex-col gap-1">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <Basic
+                            text="Gym Plan Manager"
+                            fontSize="text-3xl sm:text-4xl"
+                            fontFamily="font-Nunito"
+                            fontWeight="font-bold"
+                            textColor="text-[#BFACDF]"
+                        />
+                        {user && (
+                            <button onClick={handleLogout} className="text-sm text-slate-300 hover:text-white underline whitespace-nowrap">
+                                Sign out
+                            </button>
+                        )}
+                    </div>
                     {user && (
-                        <button onClick={handleLogout} className="text-sm text-slate-300 hover:text-white underline">
-                            Sign out
-                        </button>
+                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2 text-xs sm:text-sm text-slate-200">
+                            <span className="font-semibold text-white break-all">Hello {user.email}</span>
+                            <span className="text-[11px] sm:text-xs text-slate-400">
+                                Logged in Session: {formatTime(sessionIssuedAt)} • Renews in {formatRemaining(sessionExpiresAt ? sessionExpiresAt - nowTs : null)}
+                            </span>
+                        </div>
                     )}
                 </div>
 
@@ -632,244 +705,327 @@ export default function GymPage() {
                         )}
 
                         {activeView === "edit" && (
-                            <Card heading={<Basic text="Edit Plans" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-sm text-slate-300">New plan</label>
-                                            <div className="flex flex-col gap-2 sm:flex-row">
-                                                <input
-                                                    className="w-full rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                    placeholder="Full body - v1"
-                                                    value={newPlanTitle}
-                                                    onChange={(e) => setNewPlanTitle(e.target.value)}
-                                                />
-                                                <button
-                                                    onClick={handleAddPlan}
-                                                    className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
-                                                >
-                                                    Add plan
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col gap-2 w-full">
-                                            <label className="text-sm text-slate-300">Select plan to edit</label>
-                                            <select
-                                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                value={editPlanId}
-                                                onChange={(e) => setEditPlanId(e.target.value)}
-                                            >
-                                                <option value="">Choose a plan</option>
-                                                {plans.map((p) => (
-                                                    <option key={`edit-${p.id}`} value={p.id}>
-                                                        {p.title}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {plansLoading && <LinePulse />}
-
-                                    {!plansLoading && !editPlan && <p className="text-sm text-slate-400">Select a plan to start editing.</p>}
-
-                                    {!plansLoading && editPlan && editDraft && (
-                                        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
-                                            <div className="flex flex-wrap items-center gap-3 justify-between">
-                                                <div className="flex flex-col gap-2 w-full sm:flex-1">
-                                                    <label className="text-xs text-slate-400">Plan title</label>
+                            <div className="space-y-4">
+                                <Card heading={<Basic text="Edit Plans" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-sm text-slate-300">New Plan Name</label>
+                                                <div className="flex flex-row items-stretch gap-2">
                                                     <input
-                                                        className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                        value={editDraft.title}
-                                                        onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, title: e.target.value }))}
+                                                        className="flex-1 min-w-0 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                        placeholder="New Plan"
+                                                        value={newPlanTitle}
+                                                        onChange={(e) => setNewPlanTitle(e.target.value)}
                                                     />
-                                                    <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)} • Updated: {formatTime(editDraft.updatedAt)}</div>
-                                                </div>
-                                                <div className="flex gap-2">
                                                     <button
-                                                        onClick={() => handleSavePlan(editPlan.id)}
-                                                        className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
-                                                        disabled={savingPlanId === editPlan.id}
+                                                        onClick={handleAddPlan}
+                                                        className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400 whitespace-nowrap"
                                                     >
-                                                        {savingPlanId === editPlan.id ? "Saving..." : "Save"}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeletePlan(editPlan.id)}
-                                                        className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
-                                                    >
-                                                        Delete
+                                                        Add plan
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            <div className="mt-4 flex flex-col gap-2">
-                                                <label className="text-xs text-slate-400">Plan notes</label>
-                                                <textarea
-                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                    rows={2}
-                                                    value={editDraft.note ?? ""}
-                                                    onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, note: e.target.value }))}
-                                                />
+                                            <div className="flex flex-col gap-2 w-full">
+                                                <label className="text-sm text-slate-300">Select plan to edit</label>
+                                                <select
+                                                    className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                    value={editPlanId}
+                                                    onChange={(e) => setEditPlanId(e.target.value)}
+                                                >
+                                                    <option value="">Choose a plan</option>
+                                                    {plans.map((p) => (
+                                                        <option key={`edit-${p.id}`} value={p.id}>
+                                                            {p.title}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
+                                        </div>
 
-                                            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs text-slate-400">Day name</label>
-                                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        {plansLoading && <LinePulse />}
+
+                                        {!plansLoading && !editPlan && <p className="text-sm text-slate-400">Select a plan to start editing.</p>}
+
+                                        {!plansLoading && editPlan && editDraft && (
+                                            <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
+                                                <div className="flex flex-wrap items-center gap-3 justify-between">
+                                                    <div className="flex flex-col gap-2 w-full sm:flex-1">
+                                                        <label className="text-xs text-slate-400">Plan title</label>
                                                         <input
-                                                            className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                            placeholder="Day 1 - Push"
-                                                            value={newDayTitle}
-                                                            onChange={(e) => setNewDayTitle(e.target.value)}
+                                                            className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                            value={editDraft.title}
+                                                            onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, title: e.target.value }))}
                                                         />
-                                                        <button
-                                                            onClick={() => handleAddDayToPlan(editPlan.id)}
-                                                            className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
-                                                        >
-                                                            Add day
-                                                        </button>
+                                                        <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)} • Updated: {formatTime(editDraft.updatedAt)}</div>
                                                     </div>
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs text-slate-400">Current day</label>
-                                                    <select
-                                                        className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                        value={editDayId}
-                                                        onChange={(e) => setEditDayId(e.target.value)}
-                                                    >
-                                                        <option value="">Choose a day</option>
-                                                        {editDraft.days.map((d) => (
-                                                            <option key={`edit-day-switch-${d.id}`} value={d.id}>
-                                                                {d.title}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            {editDay && (
-                                                <div className="mt-4 space-y-4">
-                                                    <div className="flex flex-wrap items-center gap-3 justify-between">
-                                                        <div className="flex flex-col gap-2 w-full sm:flex-1">
-                                                            <label className="text-xs text-slate-400">Day title</label>
-                                                            <input
-                                                                className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                                value={editDay.title}
-                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, title: e.target.value }))}
-                                                            />
-                                                        </div>
+                                                    <div className="flex gap-2">
                                                         <button
-                                                            onClick={() => handleDeleteDayFromPlan(editPlan.id, editDay.id)}
+                                                            onClick={() => handleSavePlan(editPlan.id)}
+                                                            className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
+                                                            disabled={savingPlanId === editPlan.id}
+                                                        >
+                                                            {savingPlanId === editPlan.id ? "Saving..." : "Save"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeletePlan(editPlan.id)}
                                                             className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
                                                         >
-                                                            Delete day
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 gap-2">
-                                                        <label className="text-xs text-slate-400">Day notes</label>
-                                                        <textarea
-                                                            className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                                            rows={2}
-                                                            value={editDay.note ?? ""}
-                                                            onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, note: e.target.value }))}
-                                                        />
-                                                    </div>
-
-                                                    <div className="mt-2 overflow-x-auto sm:overflow-visible">
-                                                        <table className="w-full text-sm border-collapse">
-                                                            <thead>
-                                                                <tr className="text-left text-slate-300">
-                                                                    <th className="py-2">Exercise</th>
-                                                                    <th className="py-2">Muscle</th>
-                                                                    <th className="py-2">Sets</th>
-                                                                    <th className="py-2 text-center">-</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {editDay.exercises.map((ex, exIdx) => (
-                                                                    <tr key={ex.id} className="border-t border-slate-800">
-                                                                        <td className="py-2 pr-0.5 sm:pr-2 min-w-[180px]">
-                                                                            <input
-                                                                                className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                                                                value={ex.name}
-                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
-                                                                                    const next = { ...d };
-                                                                                    const exercises = [...(next.exercises ?? [])];
-                                                                                    exercises[exIdx] = { ...exercises[exIdx], name: e.target.value };
-                                                                                    next.exercises = exercises;
-                                                                                    return next;
-                                                                                })}
-                                                                            />
-                                                                        </td>
-                                                                        <td className="py-2 pr-0.5">
-                                                                            <input
-                                                                                className="w-full sm:w-44 rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                                                                value={ex.muscleGroup ?? ""}
-                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
-                                                                                    const next = { ...d };
-                                                                                    const exercises = [...(next.exercises ?? [])];
-                                                                                    exercises[exIdx] = { ...exercises[exIdx], muscleGroup: e.target.value };
-                                                                                    next.exercises = exercises;
-                                                                                    return next;
-                                                                                })}
-                                                                            />
-                                                                        </td>
-                                                                        <td className="py-2 pr-0.5 w-11 sm:w-20">
-                                                                            <input
-                                                                                type="number"
-                                                                                min={0}
-                                                                                className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                                                                value={ex.sets?.length ?? 0}
-                                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
-                                                                                    const count = Number(e.target.value) || 0;
-                                                                                    const next = { ...d };
-                                                                                    const exercises = [...(next.exercises ?? [])];
-                                                                                    exercises[exIdx] = { ...exercises[exIdx], sets: ensureSetCount(count, exercises[exIdx].sets || []) };
-                                                                                    next.exercises = exercises;
-                                                                                    return next;
-                                                                                })}
-                                                                            />
-                                                                        </td>
-                                                                        <td className="py-2 text-center">
-                                                                            <button
-                                                                                onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
-                                                                                    ...d,
-                                                                                    exercises: (d.exercises ?? []).filter((_, i) => i !== exIdx),
-                                                                                }))}
-                                                                                className="py-2 text-rose-400 hover:text-rose-300"
-                                                                                aria-label="Remove exercise"
-                                                                                title="Remove exercise"
-                                                                            >
-                                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                                                                                    <polyline points="3 6 5 6 21 6" />
-                                                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                                                                                    <path d="M14 10v8" />
-                                                                                    <path d="M10 10v8" />
-                                                                                    <path d="M9 6l1-2h4l1 2" />
-                                                                                </svg>
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                        <button
-                                                            onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
-                                                                ...d,
-                                                                exercises: [...(d.exercises ?? []), { id: generateId(), name: "", muscleGroup: "", sets: ensureSetCount(3, []) } as GymExercise],
-                                                            }))}
-                                                            className="mt-3 text-sm text-indigo-300 hover:text-indigo-200"
-                                                        >
-                                                            + Add exercise
+                                                            Delete
                                                         </button>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
+
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs text-slate-400">Plan notes</label>
+                                                    <textarea
+                                                        className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                        rows={2}
+                                                        value={editDraft.note ?? ""}
+                                                        onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, note: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                <Card heading={<Basic text="Days & Exercises" fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />}>
+                                    <div className="space-y-6">
+                                        {plansLoading && <LinePulse />}
+
+                                        {!plansLoading && !editPlan && <p className="text-sm text-slate-400">Select a plan to manage its days.</p>}
+
+                                        {!plansLoading && editPlan && editDraft && (
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
+                                                    <div className="flex flex-col gap-2">
+                                                        <label className="text-xs text-slate-400">New Day Title</label>
+                                                        <div className="flex flex-row items-stretch gap-2">
+                                                            <input
+                                                                className="flex-1 min-w-0 rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                                placeholder="New Day"
+                                                                value={newDayTitle}
+                                                                onChange={(e) => setNewDayTitle(e.target.value)}
+                                                            />
+                                                            <button
+                                                                onClick={() => handleAddDayToPlan(editPlan.id)}
+                                                                className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400 whitespace-nowrap"
+                                                            >
+                                                                Add day
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <label className="text-xs text-slate-400">Current day</label>
+                                                        <select
+                                                            className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                            value={editDayId}
+                                                            onChange={(e) => setEditDayId(e.target.value)}
+                                                        >
+                                                            <option value="">Choose a day</option>
+                                                            {editDraft.days.map((d) => (
+                                                                <option key={`edit-day-switch-${d.id}`} value={d.id}>
+                                                                    {d.title}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                {editDay && (
+                                                    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
+                                                        <div className="flex flex-wrap items-center gap-3 justify-between">
+                                                            <div className="flex flex-col gap-2 w-full sm:flex-1">
+                                                                <label className="text-xs text-slate-400">Day title</label>
+                                                                <input
+                                                                    className="rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                                    value={editDay.title}
+                                                                    onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, title: e.target.value }))}
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleDeleteDayFromPlan(editPlan.id, editDay.id)}
+                                                                className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+                                                            >
+                                                                Delete day
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            <label className="text-xs text-slate-400">Day notes</label>
+                                                            <textarea
+                                                                className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                                                                rows={2}
+                                                                value={editDay.note ?? ""}
+                                                                onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => ({ ...d, note: e.target.value }))}
+                                                            />
+                                                        </div>
+
+                                                        <div className="my-4 h-px w-full bg-slate-800" />
+
+                                                        <div className="mt-2 overflow-x-auto sm:overflow-visible">
+                                                            <table className="min-w-[640px] w-full text-sm border-collapse">
+                                                                <thead>
+                                                                    <tr className="text-left text-slate-300">
+                                                                        <th className="py-2 w-12 text-center">Move</th>
+                                                                        <th className="py-2">Exercise</th>
+                                                                        <th className="py-2">Muscle</th>
+                                                                        <th className="py-2">Sets</th>
+                                                                        <th className="py-2 text-center">Actions</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {editDay.exercises.map((ex, exIdx) => (
+                                                                        <tr
+                                                                            key={ex.id}
+                                                                            onDragEnter={(e) => {
+                                                                                e.preventDefault();
+                                                                                if (!draggingExerciseId || draggingExerciseId === ex.id) return;
+                                                                                setDragOverExerciseId(ex.id);
+                                                                            }}
+                                                                            onDragOver={(e) => {
+                                                                                e.preventDefault();
+                                                                                if (!draggingExerciseId || draggingExerciseId === ex.id) return;
+                                                                            }}
+                                                                            onDragLeave={() => {
+                                                                                if (dragOverExerciseId === ex.id) setDragOverExerciseId(null);
+                                                                            }}
+                                                                            onDrop={(e) => {
+                                                                                e.preventDefault();
+                                                                                const source = draggingExerciseId || e.dataTransfer.getData("text/plain");
+                                                                                reorderExercises(editPlan.id, editDay.id, source, ex.id);
+                                                                                setDragOverExerciseId(null);
+                                                                                setDraggingExerciseId(null);
+                                                                            }}
+                                                                            className={`border-t border-slate-800 transition-all duration-150 ease-out ${draggingExerciseId === ex.id ? "bg-slate-900/60 shadow-inner scale-[0.995]" : dragOverExerciseId === ex.id ? "bg-slate-900/50 ring-1 ring-teal-500/40" : ""}`}
+                                                                        >
+                                                                            <td className="py-2 text-center align-middle">
+                                                                                <button
+                                                                                    draggable
+                                                                                    onDragStart={(e) => {
+                                                                                        setDraggingExerciseId(ex.id);
+                                                                                        setDragOverExerciseId(null);
+                                                                                        e.dataTransfer.effectAllowed = "move";
+                                                                                        e.dataTransfer.setData("text/plain", ex.id);
+                                                                                    }}
+                                                                                    onDragEnd={() => {
+                                                                                        setDragOverExerciseId(null);
+                                                                                        setDraggingExerciseId(null);
+                                                                                    }}
+                                                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 hover:text-white cursor-grab"
+                                                                                    aria-label="Drag to reorder"
+                                                                                    title="Drag to reorder"
+                                                                                >
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                                        <path d="M10 4h4" />
+                                                                                        <path d="M10 9h4" />
+                                                                                        <path d="M10 14h4" />
+                                                                                        <path d="M10 19h4" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </td>
+                                                                            <td className="py-2 pr-0.5 sm:pr-2 min-w-[220px]">
+                                                                                <input
+                                                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                                                                    value={ex.name}
+                                                                                    onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
+                                                                                        const next = { ...d };
+                                                                                        const exercises = [...(next.exercises ?? [])];
+                                                                                        exercises[exIdx] = { ...exercises[exIdx], name: e.target.value };
+                                                                                        next.exercises = exercises;
+                                                                                        return next;
+                                                                                    })}
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-2 pr-0.5 min-w-[140px]">
+                                                                                <input
+                                                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                                                                    value={ex.muscleGroup ?? ""}
+                                                                                    onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
+                                                                                        const next = { ...d };
+                                                                                        const exercises = [...(next.exercises ?? [])];
+                                                                                        exercises[exIdx] = { ...exercises[exIdx], muscleGroup: e.target.value };
+                                                                                        next.exercises = exercises;
+                                                                                        return next;
+                                                                                    })}
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-2 pr-0.5 w-16">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min={0}
+                                                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                                                                    value={ex.sets?.length ?? 0}
+                                                                                    onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
+                                                                                        const count = Number(e.target.value) || 0;
+                                                                                        const next = { ...d };
+                                                                                        const exercises = [...(next.exercises ?? [])];
+                                                                                        exercises[exIdx] = { ...exercises[exIdx], sets: ensureSetCount(count, exercises[exIdx].sets || []) };
+                                                                                        next.exercises = exercises;
+                                                                                        return next;
+                                                                                    })}
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-2 text-center">
+                                                                                <div className="flex items-center justify-center gap-2">
+                                                                                    <button
+                                                                                        onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
+                                                                                            ...d,
+                                                                                            exercises: (d.exercises ?? []).filter((_, i) => i !== exIdx),
+                                                                                        }))}
+                                                                                        className="py-2 text-rose-400 hover:text-rose-300"
+                                                                                        aria-label="Remove exercise"
+                                                                                        title="Remove exercise"
+                                                                                    >
+                                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                                            <polyline points="3 6 5 6 21 6" />
+                                                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                                                                            <path d="M14 10v8" />
+                                                                                            <path d="M10 10v8" />
+                                                                                            <path d="M9 6l1-2h4l1 2" />
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
+                                                                                            if (typeof window !== "undefined") {
+                                                                                                window.location.href = `https://www.google.com/search?q=${query}`;
+                                                                                            }
+                                                                                        }}
+                                                                                        className="p-1 text-indigo-300 hover:text-indigo-100"
+                                                                                        aria-label="Search exercise"
+                                                                                        title="Search exercise"
+                                                                                    >
+                                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                                            <circle cx="11" cy="11" r="7" />
+                                                                                            <line x1="16.65" y1="16.65" x2="21" y2="21" />
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+
+                                                            <button
+                                                                onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
+                                                                    ...d,
+                                                                    exercises: [...(d.exercises ?? []), { id: generateId(), name: "", muscleGroup: "", sets: ensureSetCount(3, []) } as GymExercise],
+                                                                }))}
+                                                                className="mt-3 text-sm text-indigo-300 hover:text-indigo-200"
+                                                            >
+                                                                + Add exercise
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
                         )}
 
                         {activeView === "session" && (
@@ -955,8 +1111,28 @@ export default function GymPage() {
                                                             return (
                                                                 <tr key={`${ex.name}-${exIdx}`} className="border-t border-slate-800">
                                                                     <td className="py-3 pr-3 align-top">
-                                                                        <div className="text-teal-200 font-semibold">{ex.name || "Exercise"}</div>
-                                                                        {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
+                                                                        <div className="flex items-start gap-2">
+                                                                            <div className="flex-1">
+                                                                                <div className="text-teal-200 font-semibold">{ex.name || "Exercise"}</div>
+                                                                                {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
+                                                                                    if (typeof window !== "undefined") {
+                                                                                        window.location.href = `https://www.google.com/search?q=${query}`;
+                                                                                    }
+                                                                                }}
+                                                                                className="p-2 text-indigo-300 hover:text-indigo-100"
+                                                                                aria-label="Search exercise"
+                                                                                title="Search exercise"
+                                                                            >
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                                    <circle cx="11" cy="11" r="7" />
+                                                                                    <line x1="16.65" y1="16.65" x2="21" y2="21" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </div>
                                                                     </td>
                                                                     <td className="py-3 px-2 align-top w-28 text-center">
                                                                         <input
@@ -1016,10 +1192,28 @@ export default function GymPage() {
                                                     const status = getExerciseStatus(ex.sets);
                                                     return (
                                                         <div key={`m-${exIdx}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-3">
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <div className="text-teal-200 font-semibold text-sm">{ex.name || "Exercise"}</div>
-                                                                    {ex.muscleGroup && <div className="text-[11px] text-slate-400">{ex.muscleGroup}</div>}
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <div className="flex items-start gap-2">
+                                                                    <div>
+                                                                        <div className="text-teal-200 font-semibold text-sm">{ex.name || "Exercise"}</div>
+                                                                        {ex.muscleGroup && <div className="text-[11px] text-slate-400">{ex.muscleGroup}</div>}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
+                                                                            if (typeof window !== "undefined") {
+                                                                                window.location.href = `https://www.google.com/search?q=${query}`;
+                                                                            }
+                                                                        }}
+                                                                        className="p-1 text-indigo-300 hover:text-indigo-100"
+                                                                        aria-label="Search exercise"
+                                                                        title="Search exercise"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                            <circle cx="11" cy="11" r="7" />
+                                                                            <line x1="16.65" y1="16.65" x2="21" y2="21" />
+                                                                        </svg>
+                                                                    </button>
                                                                 </div>
                                                                 <span className={`text-[11px] font-semibold ${status.color}`}>{status.label}</span>
                                                             </div>
