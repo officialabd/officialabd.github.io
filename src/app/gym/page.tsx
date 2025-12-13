@@ -64,6 +64,18 @@ const getExerciseStatus = (sets: GymSet[]) => {
     return { label: "Unattempted", color: "text-rose-300" } as const;
 };
 
+const openExerciseSearch = (name: string, muscle?: string | null) => {
+    if (typeof window === "undefined") return;
+    const query = encodeURIComponent(`${muscle ? `${muscle}: ` : ""}${name}`.trim());
+    const url = `https://www.google.com/search?q=${query}`;
+    const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        window.location.href = url;
+    } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+    }
+};
+
 const sanitizeLogForWrite = (draft: Omit<GymLogEntry, "id" | "createdAt">) => ({
     ...draft,
     planId: draft.planId ?? "",
@@ -114,6 +126,7 @@ export default function GymPage() {
 
     const [plans, setPlans] = useState<GymPlan[]>([]);
     const [planDrafts, setPlanDrafts] = useState<Record<string, GymPlan>>({});
+    const [planDirty, setPlanDirty] = useState<Record<string, boolean>>({});
     const [plansLoading, setPlansLoading] = useState(false);
     const [savingPlanId, setSavingPlanId] = useState<string | null>(null);
     const [newPlanTitle, setNewPlanTitle] = useState("");
@@ -215,6 +228,9 @@ export default function GymPage() {
             const drafts: Record<string, GymPlan> = {};
             items.forEach((p) => (drafts[p.id] = { ...p, days: [...(p.days ?? [])] }));
             setPlanDrafts(drafts);
+            const dirty: Record<string, boolean> = {};
+            items.forEach((p) => (dirty[p.id] = false));
+            setPlanDirty(dirty);
 
             const resolvePlanId = (current: string, preferred?: string) => {
                 if (current && items.some((i) => i.id === current)) return current;
@@ -333,7 +349,9 @@ export default function GymPage() {
             const base = prev[planId] ?? plans.find((p) => p.id === planId);
             if (!base) return prev;
             const cloned: GymPlan = { ...base, days: [...(base.days ?? [])] };
-            return { ...prev, [planId]: updater(cloned) };
+            const nextDraft = updater(cloned);
+            setPlanDirty((d) => ({ ...d, [planId]: true }));
+            return { ...prev, [planId]: nextDraft };
         });
     };
 
@@ -404,6 +422,7 @@ export default function GymPage() {
                 })),
             };
             await setDoc(doc(db, gymCollections.plans, planId), planToFirestore(cleaned), { merge: true });
+            setPlanDirty((d) => ({ ...d, [planId]: false }));
             await loadPlans(planId);
         } finally {
             setSavingPlanId(null);
@@ -429,6 +448,11 @@ export default function GymPage() {
             setEditPlanId("");
             setEditDayId("");
         }
+        setPlanDirty((d) => {
+            const next = { ...d };
+            delete next[planId];
+            return next;
+        });
         loadPlans();
     };
 
@@ -759,7 +783,11 @@ export default function GymPage() {
                                                         />
                                                         <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)} • Updated: {formatTime(editDraft.updatedAt)}</div>
                                                     </div>
-                                                    <div className="flex gap-2">
+                                                    <div className="flex flex-col gap-1 items-end">
+                                                        {planDirty[editPlan.id] && (
+                                                            <span className="text-[11px] text-amber-300">Unsaved changes — press Save</span>
+                                                        )}
+                                                        <div className="flex gap-2">
                                                         <button
                                                             onClick={() => handleSavePlan(editPlan.id)}
                                                             className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
@@ -773,6 +801,7 @@ export default function GymPage() {
                                                         >
                                                             Delete
                                                         </button>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -863,6 +892,10 @@ export default function GymPage() {
                                                         </div>
 
                                                         <div className="my-4 h-px w-full bg-slate-800" />
+
+                                                        {planDirty[editPlan.id] && (
+                                                            <div className="text-[11px] text-amber-300">Unsaved changes — press Save</div>
+                                                        )}
 
                                                         <div className="mt-2 overflow-x-auto sm:overflow-visible">
                                                             <table className="min-w-[640px] w-full text-sm border-collapse">
@@ -987,12 +1020,7 @@ export default function GymPage() {
                                                                                         </svg>
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => {
-                                                                                            const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
-                                                                                            if (typeof window !== "undefined") {
-                                                                                                window.location.href = `https://www.google.com/search?q=${query}`;
-                                                                                            }
-                                                                                        }}
+                                                                                        onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
                                                                                         className="p-1 text-indigo-300 hover:text-indigo-100"
                                                                                         aria-label="Search exercise"
                                                                                         title="Search exercise"
@@ -1117,12 +1145,7 @@ export default function GymPage() {
                                                                                 {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
                                                                             </div>
                                                                             <button
-                                                                                onClick={() => {
-                                                                                    const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
-                                                                                    if (typeof window !== "undefined") {
-                                                                                        window.location.href = `https://www.google.com/search?q=${query}`;
-                                                                                    }
-                                                                                }}
+                                                                                onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
                                                                                 className="p-2 text-indigo-300 hover:text-indigo-100"
                                                                                 aria-label="Search exercise"
                                                                                 title="Search exercise"
@@ -1199,12 +1222,7 @@ export default function GymPage() {
                                                                         {ex.muscleGroup && <div className="text-[11px] text-slate-400">{ex.muscleGroup}</div>}
                                                                     </div>
                                                                     <button
-                                                                        onClick={() => {
-                                                                            const query = encodeURIComponent(`${ex.muscleGroup ? `${ex.muscleGroup}: ` : ""}${ex.name}`.trim());
-                                                                            if (typeof window !== "undefined") {
-                                                                                window.location.href = `https://www.google.com/search?q=${query}`;
-                                                                            }
-                                                                        }}
+                                                                        onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
                                                                         className="p-1 text-indigo-300 hover:text-indigo-100"
                                                                         aria-label="Search exercise"
                                                                         title="Search exercise"
