@@ -22,11 +22,12 @@ import {
 
 const generateId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10));
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const toLocalISODate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const todayISO = () => toLocalISODate(new Date());
 const lastMonthISO = () => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().slice(0, 10);
+    return toLocalISODate(d);
 };
 
 const formatTime = (ts?: number | null) => (ts ? new Date(ts).toLocaleString() : "-");
