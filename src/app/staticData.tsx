@@ -17,7 +17,11 @@ const firebaseConst = {
             }
         },
         technologies: "technologies",
-        experiences: "experiences"
+        experiences: "experiences",
+        gym: {
+            plans: "gymPlans",
+            logs: "gymLogs",
+        },
     }
 }
 
