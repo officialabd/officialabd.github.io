@@ -14,6 +14,8 @@ import {
     GymPlan,
     GymPlanDay,
     GymSet,
+    SetType,
+    WeightUnit,
     logEntryFromFirestore,
     logEntryToFirestore,
     planFromFirestore,
@@ -30,7 +32,7 @@ const lastMonthISO = () => {
     return toLocalISODate(d);
 };
 
-const formatTime = (ts?: number | null) => (ts ? new Date(ts).toLocaleString() : "-");
+const formatTime = (ts?: number | null) => (ts ? new Date(ts).toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, month: "short", day: "numeric", year: "numeric" }) : "-");
 const formatDuration = (start?: number | null, end?: number | null) => {
     if (!start || !end) return "-";
     const mins = Math.max(0, Math.round((end - start) / 60000));
@@ -57,9 +59,15 @@ const ensureSetCount = (count: number, existing: GymSet[]) => {
     return next;
 };
 
-const getExerciseStatus = (sets: GymSet[]) => {
+const getExerciseStatus = (sets: GymSet[], setType?: "weight" | "time") => {
     const total = sets?.length ?? 0;
-    const filled = (sets ?? []).filter((s) => s && s.weight !== null && s.weight !== undefined).length;
+    const filled = (sets ?? []).filter((s) => {
+        if (!s) return false;
+        if (setType === "time") {
+            return s.time !== null && s.time !== undefined;
+        }
+        return s.weight !== null && s.weight !== undefined;
+    }).length;
     if (total > 0 && filled === total) return { label: "Completed", color: "text-emerald-300" } as const;
     if (filled > 0) return { label: "Partial", color: "text-orange-300" } as const;
     return { label: "Unattempted", color: "text-rose-300" } as const;
@@ -90,14 +98,18 @@ const sanitizeLogForWrite = (draft: Omit<GymLogEntry, "id" | "createdAt">) => ({
     completedAt: draft.completedAt ?? null,
     status: draft.status ?? null,
     exercises: (draft.exercises ?? []).filter(Boolean).map((ex) => {
+        const isTimeType = ex.setType === "time";
         const sets = Array.isArray(ex.sets)
             ? ex.sets.map((s) => {
-                const hasWeight = s?.weight !== null && s?.weight !== undefined;
+                const hasValue = isTimeType
+                    ? (s?.time !== null && s?.time !== undefined)
+                    : (s?.weight !== null && s?.weight !== undefined);
                 return {
                     weight: s?.weight ?? null,
                     reps: s?.reps ?? null,
+                    time: s?.time ?? null,
                     note: s?.note ?? null,
-                    completed: hasWeight ? true : null,
+                    completed: hasValue ? true : null,
                 } as GymSet;
             })
             : [];
@@ -106,6 +118,8 @@ const sanitizeLogForWrite = (draft: Omit<GymLogEntry, "id" | "createdAt">) => ({
         return {
             name: ex.name ?? "",
             muscleGroup: ex.muscleGroup ?? null,
+            setType: ex.setType ?? "weight",
+            weightUnit: isTimeType ? null : (ex.weightUnit ?? "kg"),
             note: ex.note ?? null,
             completed,
             sets,
@@ -123,7 +137,7 @@ export default function GymPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const [activeView, setActiveView] = useState<ViewTab>("plans");
+    const [activeView, setActiveView] = useState<ViewTab>("session");
 
     const [plans, setPlans] = useState<GymPlan[]>([]);
     const [planDrafts, setPlanDrafts] = useState<Record<string, GymPlan>>({});
@@ -146,6 +160,8 @@ export default function GymPage() {
     const [logDayId, setLogDayId] = useState<string>("");
     const [logDraft, setLogDraft] = useState<Omit<GymLogEntry, "id" | "createdAt"> | null>(null);
     const [logSubmitting, setLogSubmitting] = useState(false);
+    const [currentLogId, setCurrentLogId] = useState<string | null>(null); // Track saved log ID for editing
+    const [loadingRunningSession, setLoadingRunningSession] = useState(false); // Flag to prevent resetting logDraft when loading running session
     const [draggingExerciseId, setDraggingExerciseId] = useState<string | null>(null);
     const [dragOverExerciseId, setDragOverExerciseId] = useState<string | null>(null);
 
@@ -271,20 +287,25 @@ export default function GymPage() {
 
     useEffect(() => {
         if (user) {
-            loadPlans();
+            loadPlans().then(() => loadRunningSession());
         }
     }, [user]);
 
     useEffect(() => {
+        // Skip resetting the draft when we're loading a running session
+        if (loadingRunningSession) return;
+
         if (logPlanId && logDayId && user) {
             const plan = plans.find((p) => p.id === logPlanId);
             const day = plan?.days.find((d) => d.id === logDayId);
             if (plan && day) {
                 setLogDraft(makeLogDraft(plan, day));
+                setCurrentLogId(null); // Reset log ID when switching plan/day
                 return;
             }
         }
         setLogDraft(null);
+        setCurrentLogId(null);
     }, [logPlanId, logDayId, plans, user]);
 
     useEffect(() => {
@@ -488,9 +509,11 @@ export default function GymPage() {
         exercises: (day.exercises ?? []).map((ex) => ({
             name: ex.name,
             muscleGroup: ex.muscleGroup,
+            setType: ex.setType ?? "weight",
+            weightUnit: ex.weightUnit ?? "kg",
             note: "",
             completed: null,
-            sets: ensureSetCount(ex.sets?.length && ex.sets.length > 0 ? ex.sets.length : 3, ex.sets || []).map(() => ({ weight: null, reps: null, note: null } as GymSet)),
+            sets: ensureSetCount(ex.sets?.length && ex.sets.length > 0 ? ex.sets.length : 3, ex.sets || []).map(() => ({ weight: null, reps: null, time: null, note: null } as GymSet)),
         })),
         note: "",
         startedAt: undefined,
@@ -512,10 +535,72 @@ export default function GymPage() {
                 userId: user?.uid ?? null,
                 createdAt: now,
                 startedAt: logDraft.startedAt ?? now,
-                completedAt: logDraft.completedAt ?? now,
-                status: logDraft.status ?? "completed",
+                completedAt: logDraft.completedAt,
+                status: logDraft.status ?? "running",
             } as any);
-            await addDoc(collection(db, gymCollections.logs), logEntryToFirestore(payload as any));
+
+            if (currentLogId) {
+                // Update existing log
+                await setDoc(doc(db, gymCollections.logs, currentLogId), logEntryToFirestore(payload as any), { merge: true });
+            } else {
+                // Create new log and store its ID
+                const docRef = await addDoc(collection(db, gymCollections.logs), logEntryToFirestore(payload as any));
+                setCurrentLogId(docRef.id);
+            }
+            await loadLogsFeed();
+        } finally {
+            setLogSubmitting(false);
+        }
+    };
+
+    const handleCompleteSession = async () => {
+        if (!user || !logDraft) return;
+        setLogSubmitting(true);
+        try {
+            const now = Date.now();
+            const payload = sanitizeLogForWrite({
+                ...logDraft,
+                userId: user?.uid ?? null,
+                createdAt: now,
+                startedAt: logDraft.startedAt ?? now,
+                completedAt: now,
+                status: "completed",
+            } as any);
+
+            if (currentLogId) {
+                await setDoc(doc(db, gymCollections.logs, currentLogId), logEntryToFirestore(payload as any), { merge: true });
+            } else {
+                await addDoc(collection(db, gymCollections.logs), logEntryToFirestore(payload as any));
+            }
+
+            // Clear the form after completing
+            setCurrentLogId(null);
+            const plan = plans.find((p) => p.id === logPlanId);
+            const day = plan?.days.find((d) => d.id === logDayId);
+            if (plan && day) {
+                setLogDraft(makeLogDraft(plan, day));
+            }
+            await loadLogsFeed();
+        } finally {
+            setLogSubmitting(false);
+        }
+    };
+
+    const handleCancelSession = async () => {
+        if (!logDraft) return;
+        setLogSubmitting(true);
+        try {
+            // Delete from Firebase if already saved
+            if (currentLogId) {
+                await deleteDoc(doc(db, gymCollections.logs, currentLogId));
+            }
+            // Clear the form
+            setCurrentLogId(null);
+            const plan = plans.find((p) => p.id === logPlanId);
+            const day = plan?.days.find((d) => d.id === logDayId);
+            if (plan && day) {
+                setLogDraft(makeLogDraft(plan, day));
+            }
             await loadLogsFeed();
         } finally {
             setLogSubmitting(false);
@@ -545,6 +630,46 @@ export default function GymPage() {
             setLogsFeed(snap.docs.map((d) => logEntryFromFirestore(d.id, d.data())));
         } finally {
             setLogsFeedLoading(false);
+        }
+    };
+
+    const loadRunningSession = async () => {
+        if (!user) return;
+        try {
+            // Query for running sessions (status = "running")
+            const q = query(
+                collection(db, gymCollections.logs),
+                where("userId", "==", user.uid),
+                where("status", "==", "running"),
+                orderBy("createdAt", "desc")
+            );
+            const snap = await getDocs(q);
+            if (snap.docs.length > 0) {
+                const runningLog = logEntryFromFirestore(snap.docs[0].id, snap.docs[0].data());
+                // Set the flag to prevent the effect from resetting the draft
+                setLoadingRunningSession(true);
+                setLogPlanId(runningLog.planId);
+                setLogDayId(runningLog.dayId);
+                setCurrentLogId(runningLog.id);
+                // Set the draft with the saved data
+                setLogDraft({
+                    planId: runningLog.planId,
+                    planTitle: runningLog.planTitle,
+                    dayId: runningLog.dayId,
+                    dayTitle: runningLog.dayTitle,
+                    date: runningLog.date,
+                    userId: runningLog.userId,
+                    exercises: runningLog.exercises,
+                    note: runningLog.note,
+                    startedAt: runningLog.startedAt,
+                    completedAt: runningLog.completedAt,
+                    status: runningLog.status,
+                });
+                // Reset the flag after a short delay to allow effects to run
+                setTimeout(() => setLoadingRunningSession(false), 100);
+            }
+        } catch (err) {
+            console.error("Failed to load running session", err);
         }
     };
 
@@ -636,7 +761,7 @@ export default function GymPage() {
                 {user && (
                     <div className="mt-6 space-y-8">
                         <div className="flex flex-wrap gap-3 px-4">
-                            {[{ id: "plans", label: "Plans" }, { id: "edit", label: "Edit Plans" }, { id: "session", label: "Log Session" }, { id: "logs", label: "Logs" }].map((tab) => (
+                            {[{ id: "session", label: "Log Session" }, { id: "plans", label: "Plans" }, { id: "edit", label: "Edit Plans" }, { id: "logs", label: "Logs" }].map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveView(tab.id as ViewTab)}
@@ -691,7 +816,8 @@ export default function GymPage() {
                                             <div className="flex flex-wrap items-center justify-between gap-3">
                                                 <div>
                                                     <div className="text-xl font-semibold text-teal-200">{viewPlan.title}</div>
-                                                    <div className="text-xs text-slate-400">Created: {formatTime(viewPlan.createdAt)} • Updated: {formatTime(viewPlan.updatedAt)}</div>
+                                                    <div className="text-xs text-slate-400">Created: {formatTime(viewPlan.createdAt)}</div>
+                                                    <div className="text-xs text-slate-400">Updated: {formatTime(viewPlan.updatedAt)}</div>
                                                 </div>
                                                 {viewPlan.note && <div className="text-sm text-slate-300">{viewPlan.note}</div>}
                                             </div>
@@ -711,9 +837,22 @@ export default function GymPage() {
                                                         {day.exercises.map((ex) => (
                                                             <div key={ex.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
                                                                 <div className="flex justify-between items-start">
-                                                                    <div>
-                                                                        <div className="text-teal-200 font-semibold">{ex.name || "Exercise"}</div>
-                                                                        {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
+                                                                    <div className="flex items-start gap-2">
+                                                                        <div>
+                                                                            <div className="text-teal-200 font-semibold">{ex.name || "Exercise"}</div>
+                                                                            {ex.muscleGroup && <div className="text-xs text-slate-400">{ex.muscleGroup}</div>}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
+                                                                            className="p-1 text-indigo-300 hover:text-indigo-100"
+                                                                            aria-label="Search exercise"
+                                                                            title="Search exercise"
+                                                                        >
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                                                <circle cx="11" cy="11" r="7" />
+                                                                                <line x1="16.65" y1="16.65" x2="21" y2="21" />
+                                                                            </svg>
+                                                                        </button>
                                                                     </div>
                                                                     <span className="text-xs text-slate-400">Sets: {ex.sets?.length ?? 0}</span>
                                                                 </div>
@@ -782,26 +921,27 @@ export default function GymPage() {
                                                             value={editDraft.title}
                                                             onChange={(e) => updatePlanDraft(editPlan.id, (d) => ({ ...d, title: e.target.value }))}
                                                         />
-                                                        <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)} • Updated: {formatTime(editDraft.updatedAt)}</div>
+                                                        <div className="text-[11px] text-slate-500">Created: {formatTime(editDraft.createdAt)}</div>
+                                                        <div className="text-[11px] text-slate-500">Updated: {formatTime(editDraft.updatedAt)}</div>
                                                     </div>
                                                     <div className="flex flex-col gap-1 items-end">
                                                         {planDirty[editPlan.id] && (
                                                             <span className="text-[11px] text-amber-300">Unsaved changes — press Save</span>
                                                         )}
                                                         <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleSavePlan(editPlan.id)}
-                                                            className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
-                                                            disabled={savingPlanId === editPlan.id}
-                                                        >
-                                                            {savingPlanId === editPlan.id ? "Saving..." : "Save"}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeletePlan(editPlan.id)}
-                                                            className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
-                                                        >
-                                                            Delete
-                                                        </button>
+                                                            <button
+                                                                onClick={() => handleSavePlan(editPlan.id)}
+                                                                className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-400"
+                                                                disabled={savingPlanId === editPlan.id}
+                                                            >
+                                                                {savingPlanId === editPlan.id ? "Saving..." : "Save"}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeletePlan(editPlan.id)}
+                                                                className="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+                                                            >
+                                                                Delete
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -899,13 +1039,15 @@ export default function GymPage() {
                                                         )}
 
                                                         <div className="mt-2 overflow-x-auto sm:overflow-visible">
-                                                            <table className="min-w-[640px] w-full text-sm border-collapse">
+                                                            <table className="min-w-[800px] w-full text-sm border-collapse">
                                                                 <thead>
                                                                     <tr className="text-left text-slate-300">
                                                                         <th className="py-2 w-12 text-center">Move</th>
                                                                         <th className="py-2">Exercise</th>
                                                                         <th className="py-2">Muscle</th>
                                                                         <th className="py-2">Sets</th>
+                                                                        <th className="py-2">Type</th>
+                                                                        <th className="py-2">Unit</th>
                                                                         <th className="py-2 text-center">Actions</th>
                                                                     </tr>
                                                                 </thead>
@@ -1001,6 +1143,40 @@ export default function GymPage() {
                                                                                     })}
                                                                                 />
                                                                             </td>
+                                                                            <td className="py-2 pr-0.5 w-24">
+                                                                                <select
+                                                                                    className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                                                                    value={ex.setType ?? "weight"}
+                                                                                    onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
+                                                                                        const next = { ...d };
+                                                                                        const exercises = [...(next.exercises ?? [])];
+                                                                                        exercises[exIdx] = { ...exercises[exIdx], setType: e.target.value as "weight" | "time" };
+                                                                                        next.exercises = exercises;
+                                                                                        return next;
+                                                                                    })}
+                                                                                >
+                                                                                    <option value="weight">Weight</option>
+                                                                                    <option value="time">Time</option>
+                                                                                </select>
+                                                                            </td>
+                                                                            <td className="py-2 pr-0.5 w-20">
+                                                                                {ex.setType !== "time" && (
+                                                                                    <select
+                                                                                        className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                                                                        value={ex.weightUnit ?? "kg"}
+                                                                                        onChange={(e) => updateDayDraft(editPlan.id, editDay.id, (d) => {
+                                                                                            const next = { ...d };
+                                                                                            const exercises = [...(next.exercises ?? [])];
+                                                                                            exercises[exIdx] = { ...exercises[exIdx], weightUnit: e.target.value as "kg" | "lb" };
+                                                                                            next.exercises = exercises;
+                                                                                            return next;
+                                                                                        })}
+                                                                                    >
+                                                                                        <option value="kg">KG</option>
+                                                                                        <option value="lb">LB</option>
+                                                                                    </select>
+                                                                                )}
+                                                                            </td>
                                                                             <td className="py-2 text-center">
                                                                                 <div className="flex items-center justify-center gap-2">
                                                                                     <button
@@ -1041,7 +1217,7 @@ export default function GymPage() {
                                                             <button
                                                                 onClick={() => updateDayDraft(editPlan.id, editDay.id, (d) => ({
                                                                     ...d,
-                                                                    exercises: [...(d.exercises ?? []), { id: generateId(), name: "", muscleGroup: "", sets: ensureSetCount(3, []) } as GymExercise],
+                                                                    exercises: [...(d.exercises ?? []), { id: generateId(), name: "", muscleGroup: "", setType: "weight", weightUnit: "kg", sets: ensureSetCount(3, []) } as GymExercise],
                                                                 }))}
                                                                 className="mt-3 text-sm text-indigo-300 hover:text-indigo-200"
                                                             >
@@ -1109,18 +1285,38 @@ export default function GymPage() {
                                                 <button
                                                     onClick={() => updateLogDraft((d) => ({ ...d, startedAt: d.startedAt ?? Date.now(), status: "running" }))}
                                                     className="rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white hover:bg-indigo-400"
+                                                    disabled={logDraft.status === "completed"}
                                                 >
-                                                    Start session
+                                                    Start
                                                 </button>
                                                 <button
-                                                    onClick={() => updateLogDraft((d) => ({ ...d, completedAt: Date.now(), status: "completed" }))}
-                                                    className="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white hover:bg-emerald-500"
-                                                    disabled={!logDraft.startedAt}
+                                                    onClick={handleSubmitLog}
+                                                    className="rounded-lg bg-teal-500 px-3 py-2 font-semibold text-white hover:bg-teal-400"
+                                                    disabled={!logDraft.startedAt || logDraft.status === "completed" || logSubmitting}
                                                 >
-                                                    Complete session
+                                                    {logSubmitting ? "Saving..." : "Save"}
                                                 </button>
+                                                <button
+                                                    onClick={handleCompleteSession}
+                                                    className="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white hover:bg-emerald-500"
+                                                    disabled={!logDraft.startedAt || logDraft.status === "completed" || logSubmitting}
+                                                >
+                                                    Complete
+                                                </button>
+                                                <button
+                                                    onClick={handleCancelSession}
+                                                    className="rounded-lg bg-rose-600 px-3 py-2 font-semibold text-white hover:bg-rose-500"
+                                                    disabled={!logDraft.startedAt || logDraft.status === "completed" || logSubmitting}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+
+                                            <div className="items-center gap-3 text-sm text-slate-300">
                                                 <span className="text-xs text-slate-400">Status: {logDraft.status ?? "not started"}</span>
+                                                <br />
                                                 <span className="text-xs text-slate-400">Started: {formatTime(logDraft.startedAt)}</span>
+                                                <br />
                                                 <span className="text-xs text-slate-400">Finished: {formatTime(logDraft.completedAt)}</span>
                                             </div>
 
@@ -1130,13 +1326,13 @@ export default function GymPage() {
                                                         <tr>
                                                             <th className="py-2 text-left">Exercise</th>
                                                             <th className="py-2">Sets #</th>
-                                                            <th className="py-2 text-left">Weights per set</th>
+                                                            <th className="py-2 text-left">Values per set</th>
                                                             <th className="py-2 text-center">Status</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {logDraft.exercises.map((ex, exIdx) => {
-                                                            const status = getExerciseStatus(ex.sets);
+                                                            const status = getExerciseStatus(ex.sets, ex.setType);
                                                             return (
                                                                 <tr key={`${ex.name}-${exIdx}`} className="border-t border-slate-800">
                                                                     <td className="py-3 pr-3 align-top">
@@ -1179,24 +1375,61 @@ export default function GymPage() {
                                                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                                                             {ex.sets.map((set, setIdx) => (
                                                                                 <div key={setIdx} className="rounded-lg border border-slate-800 bg-slate-900/60 p-2 space-y-2">
-                                                                                    <p className="text-xs text-slate-400">Set {setIdx + 1}</p>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        min="0"
-                                                                                        step="0.5"
-                                                                                        className="w-full rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-sm focus:outline-none focus:border-teal-400"
-                                                                                        placeholder="Weight"
-                                                                                        value={set.weight ?? ""}
-                                                                                        disabled={!canEditExercises}
-                                                                                        onChange={(e) => updateLogDraft((d) => {
-                                                                                            const next = { ...d };
-                                                                                            const sets = [...next.exercises[exIdx].sets];
-                                                                                            sets[setIdx] = { ...sets[setIdx], weight: e.target.value === "" ? null : Number(e.target.value) };
-                                                                                            next.exercises = [...next.exercises];
-                                                                                            next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
-                                                                                            return next;
-                                                                                        })}
-                                                                                    />
+                                                                                    <p className="text-xs text-slate-400">Set {setIdx + 1} {ex.setType === "time" ? "(Min)" : `(${ex.weightUnit?.toUpperCase() ?? "KG"})`}</p>
+                                                                                    {ex.setType === "time" ? (
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            min="0"
+                                                                                            className="w-full rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-sm focus:outline-none focus:border-teal-400"
+                                                                                            placeholder="Time (min)"
+                                                                                            value={set.time ?? ""}
+                                                                                            disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                            onChange={(e) => updateLogDraft((d) => {
+                                                                                                const next = { ...d };
+                                                                                                const sets = [...next.exercises[exIdx].sets];
+                                                                                                sets[setIdx] = { ...sets[setIdx], time: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                                next.exercises = [...next.exercises];
+                                                                                                next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                                return next;
+                                                                                            })}
+                                                                                        />
+                                                                                    ) : (
+                                                                                        <div className="flex gap-1">
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                min="0"
+                                                                                                step="0.5"
+                                                                                                className="w-1/2 rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-sm focus:outline-none focus:border-teal-400"
+                                                                                                placeholder="Weight"
+                                                                                                value={set.weight ?? ""}
+                                                                                                disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                                onChange={(e) => updateLogDraft((d) => {
+                                                                                                    const next = { ...d };
+                                                                                                    const sets = [...next.exercises[exIdx].sets];
+                                                                                                    sets[setIdx] = { ...sets[setIdx], weight: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                                    next.exercises = [...next.exercises];
+                                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                                    return next;
+                                                                                                })}
+                                                                                            />
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                min="0"
+                                                                                                className="w-1/2 rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-sm focus:outline-none focus:border-teal-400"
+                                                                                                placeholder="Reps"
+                                                                                                value={set.reps ?? ""}
+                                                                                                disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                                onChange={(e) => updateLogDraft((d) => {
+                                                                                                    const next = { ...d };
+                                                                                                    const sets = [...next.exercises[exIdx].sets];
+                                                                                                    sets[setIdx] = { ...sets[setIdx], reps: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                                    next.exercises = [...next.exercises];
+                                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                                    return next;
+                                                                                                })}
+                                                                                            />
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -1213,7 +1446,7 @@ export default function GymPage() {
                                             {/* Mobile cards */}
                                             <div className="space-y-3 sm:hidden">
                                                 {logDraft.exercises.map((ex, exIdx) => {
-                                                    const status = getExerciseStatus(ex.sets);
+                                                    const status = getExerciseStatus(ex.sets, ex.setType);
                                                     return (
                                                         <div key={`m-${exIdx}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-3">
                                                             <div className="flex justify-between items-center gap-2">
@@ -1254,27 +1487,64 @@ export default function GymPage() {
                                                                     })}
                                                                 />
                                                             </div>
-                                                            <div className="grid grid-cols-3 gap-2">
+                                                            <div className="grid grid-cols-2 gap-2">
                                                                 {ex.sets.map((set, setIdx) => (
-                                                                    <div key={setIdx} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1">
-                                                                        <span className="text-[11px] text-slate-400">{setIdx + 1}</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            min="0"
-                                                                            step="0.5"
-                                                                            className="w-16 rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-xs focus:outline-none focus:border-teal-400"
-                                                                            placeholder="Wt"
-                                                                            value={set.weight ?? ""}
-                                                                            disabled={!canEditExercises}
-                                                                            onChange={(e) => updateLogDraft((d) => {
-                                                                                const next = { ...d };
-                                                                                const sets = [...next.exercises[exIdx].sets];
-                                                                                sets[setIdx] = { ...sets[setIdx], weight: e.target.value === "" ? null : Number(e.target.value) };
-                                                                                next.exercises = [...next.exercises];
-                                                                                next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
-                                                                                return next;
-                                                                            })}
-                                                                        />
+                                                                    <div key={setIdx} className="rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1 space-y-1">
+                                                                        <span className="text-[11px] text-slate-400">Set {setIdx + 1} {ex.setType === "time" ? "(Min)" : `(${ex.weightUnit?.toUpperCase() ?? "KG"})`}</span>
+                                                                        {ex.setType === "time" ? (
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                className="w-full rounded bg-slate-950/70 border border-slate-800 px-2 py-1 text-xs focus:outline-none focus:border-teal-400"
+                                                                                placeholder="Min"
+                                                                                value={set.time ?? ""}
+                                                                                disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                onChange={(e) => updateLogDraft((d) => {
+                                                                                    const next = { ...d };
+                                                                                    const sets = [...next.exercises[exIdx].sets];
+                                                                                    sets[setIdx] = { ...sets[setIdx], time: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                    next.exercises = [...next.exercises];
+                                                                                    next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                    return next;
+                                                                                })}
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="flex gap-1">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    step="0.5"
+                                                                                    className="w-1/2 rounded bg-slate-950/70 border border-slate-800 px-1 py-1 text-xs focus:outline-none focus:border-teal-400"
+                                                                                    placeholder="Wt"
+                                                                                    value={set.weight ?? ""}
+                                                                                    disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                    onChange={(e) => updateLogDraft((d) => {
+                                                                                        const next = { ...d };
+                                                                                        const sets = [...next.exercises[exIdx].sets];
+                                                                                        sets[setIdx] = { ...sets[setIdx], weight: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                        next.exercises = [...next.exercises];
+                                                                                        next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                        return next;
+                                                                                    })}
+                                                                                />
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    className="w-1/2 rounded bg-slate-950/70 border border-slate-800 px-1 py-1 text-xs focus:outline-none focus:border-teal-400"
+                                                                                    placeholder="Reps"
+                                                                                    value={set.reps ?? ""}
+                                                                                    disabled={!canEditExercises || logDraft.status === "completed"}
+                                                                                    onChange={(e) => updateLogDraft((d) => {
+                                                                                        const next = { ...d };
+                                                                                        const sets = [...next.exercises[exIdx].sets];
+                                                                                        sets[setIdx] = { ...sets[setIdx], reps: e.target.value === "" ? null : Number(e.target.value) };
+                                                                                        next.exercises = [...next.exercises];
+                                                                                        next.exercises[exIdx] = { ...next.exercises[exIdx], sets };
+                                                                                        return next;
+                                                                                    })}
+                                                                                />
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1292,14 +1562,6 @@ export default function GymPage() {
                                                     onChange={(e) => updateLogDraft((d) => ({ ...d, note: e.target.value }))}
                                                 />
                                             </div>
-
-                                            <button
-                                                onClick={handleSubmitLog}
-                                                className="inline-flex items-center rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                                                disabled={!canEditExercises || logSubmitting}
-                                            >
-                                                {logSubmitting ? "Saving..." : "Save log"}
-                                            </button>
                                         </div>
                                     ) : (
                                         <p className="text-sm text-slate-400">Select a plan and day to start logging.</p>
@@ -1392,13 +1654,14 @@ export default function GymPage() {
                                                             <tr>
                                                                 <th className="py-2 px-3 text-left">Exercise</th>
                                                                 <th className="py-2 px-3">Sets #</th>
-                                                                <th className="py-2 px-3 text-left">Weights per set</th>
+                                                                <th className="py-2 px-3 text-left">Values per set</th>
                                                                 <th className="py-2 px-3">Status</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {log.exercises.map((ex, idx) => {
-                                                                const status = getExerciseStatus(ex.sets);
+                                                                const status = getExerciseStatus(ex.sets, ex.setType);
+                                                                const isTimeType = ex.setType === "time";
                                                                 return (
                                                                     <tr key={`${log.id}-${idx}`} className="border-t border-slate-800">
                                                                         <td className="py-2 px-3">
@@ -1415,7 +1678,15 @@ export default function GymPage() {
                                                                                         className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] text-slate-100"
                                                                                     >
                                                                                         <span className="text-slate-400">#{i + 1}</span>
-                                                                                        <span className="font-semibold">{s.weight ?? "-"}</span>
+                                                                                        {isTimeType ? (
+                                                                                            <span className="font-semibold">{s.time ?? "-"} min</span>
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                <span className="font-semibold">{s.weight ?? "-"}{ex.weightUnit ?? "kg"}</span>
+                                                                                                <span className="text-slate-400">×</span>
+                                                                                                <span className="font-semibold">{s.reps ?? "-"}</span>
+                                                                                            </>
+                                                                                        )}
                                                                                     </span>
                                                                                 ))}
                                                                             </div>
@@ -1432,7 +1703,8 @@ export default function GymPage() {
                                                 {/* Mobile cards */}
                                                 <div className="space-y-3 sm:hidden">
                                                     {log.exercises.map((ex, idx) => {
-                                                        const status = getExerciseStatus(ex.sets);
+                                                        const status = getExerciseStatus(ex.sets, ex.setType);
+                                                        const isTimeType = ex.setType === "time";
                                                         return (
                                                             <div key={`${log.id}-m-${idx}`} className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2">
                                                                 <div className="flex justify-between text-sm text-teal-200 font-semibold">
@@ -1441,7 +1713,7 @@ export default function GymPage() {
                                                                 </div>
                                                                 {ex.muscleGroup && <div className="text-[11px] text-slate-400">{ex.muscleGroup}</div>}
                                                                 <div className="text-[11px] text-slate-300">Sets: {ex.sets.length}</div>
-                                                                <div className="flex flex-wrap gap-1 text-[11px] text-slate-200">Weights:
+                                                                <div className="flex flex-wrap gap-1 text-[11px] text-slate-200">{isTimeType ? "Times" : "Values"}:
                                                                     {ex.sets.length === 0 && <span className="ml-1 text-slate-500">-</span>}
                                                                     {ex.sets.map((s, i) => (
                                                                         <span
@@ -1449,7 +1721,15 @@ export default function GymPage() {
                                                                             className="ml-1 inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1"
                                                                         >
                                                                             <span className="text-slate-400">#{i + 1}</span>
-                                                                            <span className="font-semibold">{s.weight ?? "-"}</span>
+                                                                            {isTimeType ? (
+                                                                                <span className="font-semibold">{s.time ?? "-"} min</span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <span className="font-semibold">{s.weight ?? "-"}{ex.weightUnit ?? "kg"}</span>
+                                                                                    <span className="text-slate-400">×</span>
+                                                                                    <span className="font-semibold">{s.reps ?? "-"}</span>
+                                                                                </>
+                                                                            )}
                                                                         </span>
                                                                     ))}
                                                                 </div>
