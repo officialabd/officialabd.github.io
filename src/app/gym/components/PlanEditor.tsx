@@ -5,7 +5,14 @@ import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import LinePulse from "../../_layouts/pulse/line";
 import { formatTime, ensureSetCount, openExerciseSearch } from "../utils";
-import { SearchIcon, TrashIcon, DragIcon } from "./icons";
+import { SearchIcon, TrashIcon, DragIcon, PlusIcon } from "./icons";
+
+// Helper to format date nicely
+function formatDate(timestamp: number | null | undefined): string {
+    if (!timestamp) return "—";
+    const date = new Date(timestamp);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 interface PlanEditorProps {
     plans: GymPlan[];
@@ -86,68 +93,80 @@ export function PlanEditor({
     const editDraft = editPlan ? planDrafts[editPlan.id] ?? editPlan : null;
     const editDay = editDraft?.days.find((d) => d.id === selectedDayId);
 
+    const handleAddNewDay = () => {
+        if (editPlan) {
+            onAddDay(editPlan.id);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* Plan Management Card */}
             <Card
                 heading={
-                    <Basic
-                        text="Edit Plans"
-                        fontFamily="font-RobotoMono"
-                        fontSize="text-2xl"
-                        textColor="text-teal-300"
-                    />
+                    <div className="flex items-center justify-between w-full">
+                        <Basic
+                            text="Edit Plans"
+                            fontFamily="font-RobotoMono"
+                            fontSize="text-2xl"
+                            textColor="text-teal-300"
+                        />
+                        <button
+                            onClick={onAddPlan}
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                            Create new plan
+                        </button>
+                    </div>
                 }
             >
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
-                        {/* New plan input */}
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm text-slate-300">New Plan Name</label>
-                            <div className="flex flex-row items-stretch gap-2">
-                                <input
-                                    className="flex-1 min-w-0 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                    placeholder="New Plan"
-                                    value={newPlanTitle}
-                                    onChange={(e) => onNewPlanTitleChange(e.target.value)}
-                                />
-                                <button
-                                    onClick={onAddPlan}
-                                    disabled={!newPlanTitle.trim()}
-                                    className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400 whitespace-nowrap disabled:opacity-50"
-                                >
-                                    Add plan
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Plan selector */}
-                        <div className="flex flex-col gap-2 w-full">
-                            <label className="text-sm text-slate-300">Select plan to edit</label>
-                            <select
-                                className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                value={selectedPlanId}
-                                onChange={(e) => onPlanSelect(e.target.value)}
-                            >
-                                <option value="">Choose a plan</option>
-                                {plans.map((p) => (
-                                    <option key={`edit-${p.id}`} value={p.id}>
-                                        {p.title}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
+                <div className="space-y-4">
                     {isLoading && <LinePulse />}
 
-                    {!isLoading && !editPlan && (
-                        <p className="text-sm text-slate-400">Select a plan to start editing.</p>
+                    {/* Plans List */}
+                    {!isLoading && (
+                        <>
+                            {plans.length === 0 ? (
+                                <p className="text-sm text-slate-400">No plans yet. Create one to get started.</p>
+                            ) : (
+                                <div className="space-y-0">
+                                    {plans.map((plan) => (
+                                        <div
+                                            key={plan.id}
+                                            onClick={() => onPlanSelect(plan.id === selectedPlanId ? "" : plan.id)}
+                                            className={`cursor-pointer border-b border-slate-800 px-3 py-3 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0 ${
+                                                selectedPlanId === plan.id
+                                                    ? "bg-blue-600/20 border-l-2 border-l-blue-500"
+                                                    : "hover:bg-slate-800/50"
+                                            }`}
+                                        >
+                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                                                <span className={`font-medium min-w-[180px] ${
+                                                    selectedPlanId === plan.id ? "text-blue-300" : "text-slate-200"
+                                                }`}>
+                                                    {plan.title}
+                                                </span>
+                                                <span className="text-sm text-slate-400">
+                                                    {plan.days.length} {plan.days.length === 1 ? "day" : "days"}
+                                                </span>
+                                                <span className="text-xs text-slate-500">
+                                                    Created: {formatDate(plan.createdAt)}
+                                                </span>
+                                                <span className="text-xs text-slate-500">
+                                                    Updated: {formatDate(plan.updatedAt)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
 
-                    {/* Selected plan editor */}
+                    {/* Selected Plan Editor */}
                     {!isLoading && editPlan && editDraft && (
-                        <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 shadow-md">
+                        <div className="space-y-4 rounded-2xl border border-blue-500/30 bg-slate-900/40 p-4 shadow-md mt-4">
                             <div className="flex flex-wrap items-center gap-3 justify-between">
                                 <div className="flex flex-col gap-2 w-full sm:flex-1">
                                     <label className="text-xs text-slate-400">Plan title</label>
@@ -158,12 +177,6 @@ export function PlanEditor({
                                             onUpdatePlanTitle(editPlan.id, e.target.value)
                                         }
                                     />
-                                    <div className="text-[11px] text-slate-500">
-                                        Created: {formatTime(editDraft.createdAt)}
-                                    </div>
-                                    <div className="text-[11px] text-slate-500">
-                                        Updated: {formatTime(editDraft.updatedAt)}
-                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-1 items-end">
                                     {planDirty[editPlan.id] && (
@@ -205,62 +218,58 @@ export function PlanEditor({
                 </div>
             </Card>
 
-            {/* Days & Exercises Card */}
-            <Card
-                heading={
-                    <Basic
-                        text="Days & Exercises"
-                        fontFamily="font-RobotoMono"
-                        fontSize="text-2xl"
-                        textColor="text-teal-300"
-                    />
-                }
-            >
-                <div className="space-y-6">
-                    {isLoading && <LinePulse />}
-
-                    {!isLoading && !editPlan && (
-                        <p className="text-sm text-slate-400">Select a plan to manage its days.</p>
-                    )}
-
-                    {!isLoading && editPlan && editDraft && (
+            {/* Days & Exercises Card - Only show when a plan is selected */}
+            {!isLoading && editPlan && editDraft && (
+                <Card
+                    heading={
+                        <div className="flex items-center justify-between w-full">
+                            <Basic
+                                text="Days & Exercises"
+                                fontFamily="font-RobotoMono"
+                                fontSize="text-2xl"
+                                textColor="text-teal-300"
+                            />
+                            <button
+                                onClick={handleAddNewDay}
+                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                Add Day
+                            </button>
+                        </div>
+                    }
+                >
+                    <div className="space-y-6">
                         <div className="space-y-4">
-                            {/* Day management */}
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs text-slate-400">New Day Title</label>
-                                    <div className="flex flex-row items-stretch gap-2">
-                                        <input
-                                            className="flex-1 min-w-0 rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                            placeholder="New Day"
-                                            value={newDayTitle}
-                                            onChange={(e) => onNewDayTitleChange(e.target.value)}
-                                        />
-                                        <button
-                                            onClick={() => onAddDay(editPlan.id)}
-                                            disabled={!newDayTitle.trim()}
-                                            className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400 whitespace-nowrap disabled:opacity-50"
+                            {/* Days list */}
+                            {editDraft.days.length === 0 ? (
+                                <p className="text-sm text-slate-400">No days yet. Add a day to get started.</p>
+                            ) : (
+                                <div className="space-y-0">
+                                    {editDraft.days.map((day) => (
+                                        <div
+                                            key={day.id}
+                                            onClick={() => onDaySelect(day.id === selectedDayId ? "" : day.id)}
+                                            className={`cursor-pointer border-b border-slate-800 px-3 py-3 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0 ${
+                                                selectedDayId === day.id
+                                                    ? "bg-blue-600/20 border-l-2 border-l-blue-500"
+                                                    : "hover:bg-slate-800/50"
+                                            }`}
                                         >
-                                            Add day
-                                        </button>
-                                    </div>
+                                            <div className="flex items-center gap-x-6">
+                                                <span className={`font-medium min-w-[120px] ${
+                                                    selectedDayId === day.id ? "text-blue-300" : "text-slate-200"
+                                                }`}>
+                                                    {day.title}
+                                                </span>
+                                                <span className="text-sm text-slate-400">
+                                                    {day.exercises.length} {day.exercises.length === 1 ? "exercise" : "exercises"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs text-slate-400">Current day</label>
-                                    <select
-                                        className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                                        value={selectedDayId}
-                                        onChange={(e) => onDaySelect(e.target.value)}
-                                    >
-                                        <option value="">Choose a day</option>
-                                        {editDraft.days.map((d) => (
-                                            <option key={`edit-day-switch-${d.id}`} value={d.id}>
-                                                {d.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Selected day editor */}
                             {editDay && (
@@ -294,9 +303,9 @@ export function PlanEditor({
                                 />
                             )}
                         </div>
-                    )}
-                </div>
-            </Card>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 }

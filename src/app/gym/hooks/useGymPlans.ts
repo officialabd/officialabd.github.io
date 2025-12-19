@@ -24,24 +24,39 @@ export function useGymPlans(userId: string | null) {
             store.setPlans(items);
             store.initializeDrafts(items);
 
-            // Resolve selection IDs
-            const resolvePlanId = (current: string, preferred?: string) => {
+            // Resolve selection IDs - for view, auto-select first; for edit, don't auto-select
+            const resolveViewPlanId = (current: string, preferred?: string) => {
                 if (current && items.some((i) => i.id === current)) return current;
                 if (preferred && items.some((i) => i.id === preferred)) return preferred;
                 return items[0]?.id ?? "";
             };
 
-            const resolveDayId = (current: string, planId: string) => {
+            const resolveEditPlanId = (current: string, preferred?: string) => {
+                // For edit view, only keep selection if it still exists, or use preferred
+                if (preferred && items.some((i) => i.id === preferred)) return preferred;
+                if (current && items.some((i) => i.id === current)) return current;
+                return ""; // Don't auto-select for edit view
+            };
+
+            const resolveViewDayId = (current: string, planId: string) => {
                 const plan = items.find((p) => p.id === planId);
                 if (!plan) return "";
                 if (current && plan.days.some((d) => d.id === current)) return current;
                 return plan.days[0]?.id ?? "";
             };
 
-            const nextViewPlanId = resolvePlanId(store.viewPlanId, preferredPlanId);
-            const nextEditPlanId = resolvePlanId(store.editPlanId, preferredPlanId);
-            const nextViewDayId = resolveDayId(store.viewDayId, nextViewPlanId);
-            const nextEditDayId = resolveDayId(store.editDayId, nextEditPlanId);
+            const resolveEditDayId = (current: string, planId: string) => {
+                const plan = items.find((p) => p.id === planId);
+                if (!plan) return "";
+                // For edit view, only keep selection if it still exists
+                if (current && plan.days.some((d) => d.id === current)) return current;
+                return ""; // Don't auto-select for edit view
+            };
+
+            const nextViewPlanId = resolveViewPlanId(store.viewPlanId, preferredPlanId);
+            const nextEditPlanId = resolveEditPlanId(store.editPlanId, preferredPlanId);
+            const nextViewDayId = resolveViewDayId(store.viewDayId, nextViewPlanId);
+            const nextEditDayId = resolveEditDayId(store.editDayId, nextEditPlanId);
 
             store.setViewPlanId(nextViewPlanId);
             store.setEditPlanId(nextEditPlanId);
@@ -53,12 +68,16 @@ export function useGymPlans(userId: string | null) {
     }, [userId, store]);
 
     // Add a new plan
-    const addPlan = useCallback(async (title: string) => {
-        if (!userId || !title.trim()) return;
+    const addPlan = useCallback(async (title?: string) => {
+        if (!userId) return;
+
+        // Generate default title if none provided
+        const planCount = store.plans.length;
+        const finalTitle = title?.trim() || `New Plan ${planCount + 1}`;
 
         const now = Date.now();
         const payload: Omit<GymPlan, "id"> = {
-            title: title.trim(),
+            title: finalTitle,
             note: "",
             userId,
             createdAt: now,
@@ -69,6 +88,7 @@ export function useGymPlans(userId: string | null) {
         const docId = await gymService.createPlan(userId, payload);
         store.setNewPlanTitle("");
         await loadPlans(docId);
+        store.setEditPlanId(docId);
     }, [userId, store, loadPlans]);
 
     // Save a plan

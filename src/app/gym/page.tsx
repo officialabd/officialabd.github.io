@@ -158,11 +158,12 @@ export default function GymPage() {
         }
     }, [viewPlanId, plans, viewDayId]);
 
-    // Sync editDayId
+    // Sync editDayId - only clear if current selection is invalid (not empty)
     useEffect(() => {
         const plan = planDrafts[editPlanId] ?? plans.find((p) => p.id === editPlanId);
-        if (plan && !plan.days.some((d) => d.id === editDayId)) {
-            setEditDayId(plan.days[0]?.id ?? "");
+        // Only reset if there's a selected day that no longer exists
+        if (editDayId && plan && !plan.days.some((d) => d.id === editDayId)) {
+            setEditDayId("");
         }
     }, [editPlanId, plans, planDrafts, editDayId]);
 
@@ -205,10 +206,12 @@ export default function GymPage() {
         setActiveView("edit");
     };
 
-    const handleAddDay = () => {
-        if (editPlanId && newDayTitle.trim()) {
-            addDay(editPlanId, newDayTitle);
-        }
+    const handleAddDay = (planId: string) => {
+        // Get the current plan to determine the next day number
+        const plan = planDrafts[planId] ?? plans.find((p) => p.id === planId);
+        const dayCount = plan?.days.length ?? 0;
+        const defaultTitle = `Day ${dayCount + 1}`;
+        addDay(planId, defaultTitle);
     };
 
     const handleCompleteSession = async () => {
@@ -309,11 +312,14 @@ export default function GymPage() {
                                 newDayTitle={newDayTitle}
                                 draggingExerciseId={draggingExerciseId}
                                 dragOverExerciseId={dragOverExerciseId}
-                                onPlanSelect={setEditPlanId}
+                                onPlanSelect={(planId) => {
+                                    setEditPlanId(planId);
+                                    setEditDayId(""); // Clear day selection when plan changes
+                                }}
                                 onDaySelect={setEditDayId}
                                 onNewPlanTitleChange={setNewPlanTitle}
                                 onNewDayTitleChange={setNewDayTitle}
-                                onAddPlan={() => addPlan(newPlanTitle)}
+                                onAddPlan={() => addPlan()}
                                 onSavePlan={savePlan}
                                 onDeletePlan={deletePlan}
                                 onAddDay={handleAddDay}
