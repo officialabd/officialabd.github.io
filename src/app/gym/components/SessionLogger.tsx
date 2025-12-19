@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { GymPlan, GymSet, LogDraft, GymLogExercise, SetType, WeightUnit } from "../types";
 import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
-import { SearchIcon, PlusIcon, MinusIcon, EditIcon } from "./icons";
+import { SearchIcon, PlusIcon, MinusIcon, EditIcon, CheckIcon, CloseIcon } from "./icons";
 import { formatTime, todayISO, getExerciseStatus, openExerciseSearch } from "../utils";
 
 interface SessionLoggerProps {
@@ -224,7 +224,7 @@ export function SessionLogger({
                             <button
                                 onClick={onStart}
                                 className="rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white hover:bg-indigo-400 disabled:opacity-50"
-                                disabled={isCompleted}
+                                disabled={!!logDraft.startedAt || isCompleted}
                             >
                                 Start
                             </button>
@@ -284,46 +284,34 @@ export function SessionLogger({
                                 )}
                             </div>
                             
-                            {/* Add Exercise Form */}
+                            {/* Add Exercise Form - uses SetEditor in add mode */}
                             {isAddingExercise && (
-                                <div className="rounded-xl border border-emerald-700/50 bg-emerald-900/20 p-3 space-y-3">
-                                    <div className="text-sm font-semibold text-emerald-200">New Exercise</div>
-                                    <div className="flex flex-col sm:flex-row gap-2">
-                                        <input
-                                            type="text"
-                                            className="flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 text-white"
-                                            placeholder="Exercise name"
-                                            value={newExerciseName}
-                                            onChange={(e) => setNewExerciseName(e.target.value)}
-                                        />
-                                        <input
-                                            type="text"
-                                            className="flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 text-white"
-                                            placeholder="Muscle group (optional)"
-                                            value={newExerciseMuscle}
-                                            onChange={(e) => setNewExerciseMuscle(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={handleAddExercise}
-                                            disabled={!newExerciseName.trim()}
-                                            className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                                        >
-                                            Add
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setIsAddingExercise(false);
-                                                setNewExerciseName("");
-                                                setNewExerciseMuscle("");
-                                            }}
-                                            className="flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </div>
+                                <SetEditor
+                                    exercise={{
+                                        name: newExerciseName,
+                                        muscleGroup: newExerciseMuscle,
+                                        sets: [],
+                                        setType: "weight",
+                                        weightUnit: "kg",
+                                    }}
+                                    exerciseIndex={-1}
+                                    canEdit={true}
+                                    isCompleted={false}
+                                    onSetsCountChange={() => {}}
+                                    onSetValueChange={() => {}}
+                                    onUnitChange={() => {}}
+                                    isAddMode={true}
+                                    editName={newExerciseName}
+                                    editMuscle={newExerciseMuscle}
+                                    onEditNameChange={setNewExerciseName}
+                                    onEditMuscleChange={setNewExerciseMuscle}
+                                    onEditSave={handleAddExercise}
+                                    onEditCancel={() => {
+                                        setIsAddingExercise(false);
+                                        setNewExerciseName("");
+                                        setNewExerciseMuscle("");
+                                    }}
+                                />
                             )}
                             
                             {/* Exercise List */}
@@ -388,58 +376,25 @@ export function SessionLogger({
                             
                             {/* Selected Exercise Sets */}
                             {selectedExercise && selectedExerciseIndex !== null && (
-                                <>
-                                    {/* Edit Exercise Form */}
-                                    {editingExerciseIndex === selectedExerciseIndex ? (
-                                        <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 p-3 space-y-3">
-                                            <div className="text-sm font-semibold text-amber-200">Edit Exercise</div>
-                                            <div className="flex flex-col sm:flex-row gap-2">
-                                                <input
-                                                    type="text"
-                                                    className="flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white"
-                                                    placeholder="Exercise name"
-                                                    value={editExerciseName}
-                                                    onChange={(e) => setEditExerciseName(e.target.value)}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    className="flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white"
-                                                    placeholder="Muscle group (optional)"
-                                                    value={editExerciseMuscle}
-                                                    onChange={(e) => setEditExerciseMuscle(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={handleSaveEdit}
-                                                    disabled={!editExerciseName.trim()}
-                                                    className="flex-1 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
-                                                >
-                                                    Update
-                                                </button>
-                                                <button
-                                                    onClick={handleCancelEdit}
-                                                    className="flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <SetEditor
-                                            exercise={selectedExercise}
-                                            exerciseIndex={selectedExerciseIndex}
-                                            canEdit={canEdit}
-                                            isCompleted={isCompleted}
-                                            onSetsCountChange={(count) => onSetsCountChange(selectedExerciseIndex, count)}
-                                            onSetValueChange={(setIdx, field, value) =>
-                                                onSetValueChange(selectedExerciseIndex, setIdx, field, value)
-                                            }
-                                            onUnitChange={(unit) => onUnitChange(selectedExerciseIndex, unit)}
-                                            onEditClick={() => handleStartEdit(selectedExerciseIndex, selectedExercise)}
-                                        />
-                                    )}
-                                </>
+                                <SetEditor
+                                    exercise={selectedExercise}
+                                    exerciseIndex={selectedExerciseIndex}
+                                    canEdit={canEdit}
+                                    isCompleted={isCompleted}
+                                    onSetsCountChange={(count) => onSetsCountChange(selectedExerciseIndex, count)}
+                                    onSetValueChange={(setIdx, field, value) =>
+                                        onSetValueChange(selectedExerciseIndex, setIdx, field, value)
+                                    }
+                                    onUnitChange={(unit) => onUnitChange(selectedExerciseIndex, unit)}
+                                    isEditMode={editingExerciseIndex === selectedExerciseIndex}
+                                    editName={editExerciseName}
+                                    editMuscle={editExerciseMuscle}
+                                    onEditNameChange={setEditExerciseName}
+                                    onEditMuscleChange={setEditExerciseMuscle}
+                                    onEditSave={handleSaveEdit}
+                                    onEditCancel={handleCancelEdit}
+                                    onEditClick={() => handleStartEdit(selectedExerciseIndex, selectedExercise)}
+                                />
                             )}
                         </div>
 
@@ -476,6 +431,15 @@ interface SetEditorProps {
     onSetsCountChange: (count: number) => void;
     onSetValueChange: (setIndex: number, field: keyof GymSet, value: number | null) => void;
     onUnitChange: (unit: WeightUnit) => void;
+    // Edit mode props - when provided, name/muscle become editable
+    isEditMode?: boolean;
+    isAddMode?: boolean; // Uses green styling instead of amber
+    editName?: string;
+    editMuscle?: string;
+    onEditNameChange?: (name: string) => void;
+    onEditMuscleChange?: (muscle: string) => void;
+    onEditSave?: () => void;
+    onEditCancel?: () => void;
     onEditClick?: () => void;
 }
 
@@ -492,11 +456,27 @@ function SetEditor({
     onSetsCountChange,
     onSetValueChange,
     onUnitChange,
+    isEditMode,
+    isAddMode,
+    editName,
+    editMuscle,
+    onEditNameChange,
+    onEditMuscleChange,
+    onEditSave,
+    onEditCancel,
     onEditClick,
 }: SetEditorProps) {
     const setType = (exercise.setType ?? "weight") as SetType;
     const weightUnit = (exercise.weightUnit ?? "kg") as WeightUnit;
     const isTimeType = setType === "time";
+    
+    // Determine if we're in any input mode
+    const isInputMode = isEditMode || isAddMode;
+    const borderColor = isAddMode ? 'border-emerald-700/50 bg-emerald-900/20' : 
+                        isEditMode ? 'border-amber-700/50 bg-amber-900/20' : 
+                        'border-slate-700 bg-slate-900/60';
+    const focusColor = isAddMode ? 'focus:border-emerald-400' : 'focus:border-amber-400';
+    const saveButtonColor = isAddMode ? 'bg-emerald-600/80 hover:bg-emerald-500' : 'bg-emerald-600/80 hover:bg-emerald-500';
     
     // For time type, we store the "unit" in weightUnit field as well
     const [timeUnit, setTimeUnit] = useState<TimeUnit>("mins");
@@ -519,49 +499,96 @@ function SetEditor({
     };
     
     return (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3 space-y-3">
+        <div className={`rounded-xl border ${borderColor} p-3 space-y-3`}>
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div>
-                        <span className="text-sm font-semibold text-teal-200">
-                            {exercise.name || "Exercise"}
-                        </span>
-                        {exercise.muscleGroup && (
-                            <div className="text-xs text-slate-400">{exercise.muscleGroup}</div>
-                        )}
-                    </div>
-                    {canEdit && !isCompleted && onEditClick && (
-                        <button
-                            onClick={onEditClick}
-                            className="p-1.5 text-amber-400 hover:text-amber-300"
-                            aria-label="Edit exercise"
-                        >
-                            <EditIcon className="w-4 h-4" />
-                        </button>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                    {isInputMode ? (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                                type="text"
+                                className={`flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none ${focusColor} text-white`}
+                                placeholder="Exercise name"
+                                value={editName ?? ""}
+                                onChange={(e) => onEditNameChange?.(e.target.value)}
+                            />
+                            <input
+                                type="text"
+                                className={`flex-1 rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none ${focusColor} text-white`}
+                                placeholder="Muscle group (optional)"
+                                value={editMuscle ?? ""}
+                                onChange={(e) => onEditMuscleChange?.(e.target.value)}
+                            />
+                        </div>
+                    ) : (
+                        <div>
+                            <span className="text-sm font-semibold text-teal-200">
+                                {exercise.name || "Exercise"}
+                            </span>
+                            {exercise.muscleGroup && (
+                                <div className="text-xs text-slate-400">{exercise.muscleGroup}</div>
+                            )}
+                        </div>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleRemoveSet}
-                        disabled={!canEdit || isCompleted || exercise.sets.length === 0}
-                        className="p-2 rounded-lg bg-rose-600/80 text-white hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Remove last set"
-                    >
-                        <MinusIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={handleAddSet}
-                        disabled={!canEdit || isCompleted}
-                        className="p-2 rounded-lg bg-emerald-600/80 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Add set"
-                    >
-                        <PlusIcon className="w-4 h-4" />
-                    </button>
+                    {isInputMode ? (
+                        <>
+                            <button
+                                onClick={onEditSave}
+                                disabled={!editName?.trim()}
+                                className="p-2 rounded-lg bg-emerald-600/80 text-white hover:bg-emerald-500 disabled:opacity-40"
+                                aria-label={isAddMode ? "Add" : "Save"}
+                            >
+                                <CheckIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={onEditCancel}
+                                className="p-2 rounded-lg bg-slate-600/80 text-white hover:bg-slate-500"
+                                aria-label="Cancel"
+                            >
+                                <CloseIcon className="w-4 h-4" />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            {canEdit && !isCompleted && onEditClick && (
+                                <button
+                                    onClick={onEditClick}
+                                    className="p-2 rounded-lg bg-amber-600/80 text-white hover:bg-amber-500"
+                                    aria-label="Edit exercise"
+                                >
+                                    <EditIcon className="w-4 h-4" />
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {/* Hide +/- set buttons when in add mode */}
+                    {!isAddMode && (
+                        <>
+                            <button
+                                onClick={handleRemoveSet}
+                                disabled={!canEdit || isCompleted || exercise.sets.length === 0}
+                                className="p-2 rounded-lg bg-rose-600/80 text-white hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                aria-label="Remove last set"
+                            >
+                                <MinusIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={handleAddSet}
+                                disabled={!canEdit || isCompleted}
+                                className="p-2 rounded-lg bg-emerald-600/80 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                aria-label="Add set"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
             
-            {/* Unit selector */}
+            {/* Unit selector - hide in add mode */}
+            {!isAddMode && (
             <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400">Unit:</span>
                 {isTimeType ? (
@@ -588,9 +615,10 @@ function SetEditor({
                     </select>
                 )}
             </div>
+            )}
             
-            {/* Sets Table */}
-            {exercise.sets.length > 0 ? (
+            {/* Sets Table - hide in add mode */}
+            {!isAddMode && exercise.sets.length > 0 ? (
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
@@ -652,11 +680,11 @@ function SetEditor({
                         </tbody>
                     </table>
                 </div>
-            ) : (
+            ) : !isAddMode ? (
                 <p className="text-xs text-slate-500 text-center py-3">
                     No sets. Tap + to add a set.
                 </p>
-            )}
+            ) : null}
         </div>
     );
 }
