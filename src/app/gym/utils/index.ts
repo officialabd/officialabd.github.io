@@ -118,3 +118,25 @@ export const openExerciseSearch = (name: string, muscle?: string | null): void =
         window.open(url, "_blank", "noopener,noreferrer");
     }
 };
+
+/**
+ * Export data to a JSON file and trigger download
+ */
+export const exportToJsonFile = (data: unknown, filename: string): void => {
+    if (typeof window === "undefined") return;
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const fullFilename = `${filename}-${timestamp}.json`;
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fullFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};

@@ -4,7 +4,8 @@ import type { GymPlan, GymLogEntry, LogsFilter } from "../types";
 import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import LinePulse from "../../_layouts/pulse/line";
-import { formatTime, formatDuration, getExerciseStatus } from "../utils";
+import { formatTime, formatDuration, getExerciseStatus, exportToJsonFile } from "../utils";
+import { DownloadIcon } from "./icons";
 
 interface LogsFeedProps {
     logs: GymLogEntry[];
@@ -38,7 +39,7 @@ export function LogsFeed({
         >
             <div className="space-y-4">
                 {/* Filters */}
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
                     <div className="flex flex-col gap-2">
                         <label className="text-xs text-slate-400">Plan (optional)</label>
                         <select
@@ -93,6 +94,18 @@ export function LogsFeed({
                         className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
                     >
                         Refresh
+                    </button>
+                    <button
+                        onClick={() => exportToJsonFile(logs, "gymLogs-backup")}
+                        disabled={logs.length === 0}
+                        className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${
+                            logs.length > 0
+                                ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                                : "bg-slate-800 text-slate-500"
+                        }`}
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        Export Logs
                     </button>
                 </div>
 

@@ -4,8 +4,8 @@ import type { GymPlan } from "../types";
 import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import LinePulse from "../../_layouts/pulse/line";
-import { formatTime, openExerciseSearch } from "../utils";
-import { SearchIcon } from "./icons";
+import { formatTime, openExerciseSearch, exportToJsonFile } from "../utils";
+import { SearchIcon, DownloadIcon } from "./icons";
 
 interface PlansViewProps {
     plans: GymPlan[];
@@ -37,7 +37,7 @@ export function PlansView({
         >
             <div className="space-y-6">
                 {/* Plan selector */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-end">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 items-end">
                     <div className="flex flex-col gap-2">
                         <label className="text-sm text-slate-300">Select plan</label>
                         <select
@@ -67,6 +67,18 @@ export function PlansView({
                         }`}
                     >
                         Edit this plan
+                    </button>
+                    <button
+                        onClick={() => exportToJsonFile(plans, "gymPlans-backup")}
+                        disabled={plans.length === 0}
+                        className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold ${
+                            plans.length > 0
+                                ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                                : "bg-slate-800 text-slate-500"
+                        }`}
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        Export Plans
                     </button>
                 </div>
 

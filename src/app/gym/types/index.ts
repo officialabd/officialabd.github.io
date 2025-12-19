@@ -28,9 +28,9 @@ export type ViewTab = "plans" | "edit" | "session" | "logs";
 // Session status
 export type SessionStatus = "running" | "completed" | null;
 
-// Exercise completion status
-export type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted";
-export type ExerciseStatusColor = "text-emerald-300" | "text-orange-300" | "text-rose-300";
+// Exercise completion status (internal types used by ExerciseStatus)
+type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted";
+type ExerciseStatusColor = "text-emerald-300" | "text-orange-300" | "text-rose-300";
 
 export interface ExerciseStatus {
     label: ExerciseStatusLabel;

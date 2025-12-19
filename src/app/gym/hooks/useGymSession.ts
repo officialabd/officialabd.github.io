@@ -47,9 +47,9 @@ export function useGymSession(userId: string | null) {
             };
 
             if (store.currentLogId) {
-                await gymService.updateLogEntry(store.currentLogId, payload);
+                await gymService.updateLogEntry(userId, store.currentLogId, payload);
             } else {
-                const docId = await gymService.createLogEntry(payload);
+                const docId = await gymService.createLogEntry(userId, payload);
                 store.setCurrentLogId(docId);
             }
         } finally {
@@ -81,9 +81,9 @@ export function useGymSession(userId: string | null) {
                 };
 
                 if (store.currentLogId) {
-                    await gymService.updateLogEntry(store.currentLogId, payload);
+                    await gymService.updateLogEntry(userId, store.currentLogId, payload);
                 } else {
-                    await gymService.createLogEntry(payload);
+                    await gymService.createLogEntry(userId, payload);
                 }
 
                 // Reset for new session
@@ -104,7 +104,7 @@ export function useGymSession(userId: string | null) {
             try {
                 // Delete from Firebase if already saved
                 if (store.currentLogId) {
-                    await gymService.deleteLogEntry(store.currentLogId);
+                    await gymService.deleteLogEntry(userId!, store.currentLogId);
                 }
 
                 // Reset for new session

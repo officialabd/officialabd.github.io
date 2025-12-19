@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { usePlansStore } from "../stores";
 import type { GymPlan, GymPlanDay } from "../types";
 import * as gymService from "../services/gymService";
-import { planToFirestore } from "../../models/Gym";
 
 /**
  * Hook to manage gym plans
@@ -67,13 +66,14 @@ export function useGymPlans(userId: string | null) {
             days: [],
         };
 
-        const docId = await gymService.createPlan(payload);
+        const docId = await gymService.createPlan(userId, payload);
         store.setNewPlanTitle("");
         await loadPlans(docId);
     }, [userId, store, loadPlans]);
 
     // Save a plan
     const savePlan = useCallback(async (planId: string) => {
+        if (!userId) return;
         const draft = store.planDrafts[planId];
         if (!draft) return;
 
@@ -91,17 +91,17 @@ export function useGymPlans(userId: string | null) {
                         ...ex,
                         sets: Array.isArray(ex.sets)
                             ? ex.sets.map((s) => ({
-                                  weight: s?.weight ?? null,
-                                  reps: s?.reps ?? null,
-                                  time: s?.time ?? null,
-                                  note: s?.note ?? null,
-                                  completed: s?.completed ?? null,
-                              }))
+                                weight: s?.weight ?? null,
+                                reps: s?.reps ?? null,
+                                time: s?.time ?? null,
+                                note: s?.note ?? null,
+                                completed: s?.completed ?? null,
+                            }))
                             : [],
                     })),
                 })),
             };
-            await gymService.updatePlan(planId, cleaned);
+            await gymService.updatePlan(userId, planId, cleaned);
             store.markPlanClean(planId);
             await loadPlans(planId);
         } finally {
@@ -123,7 +123,7 @@ export function useGymPlans(userId: string | null) {
 
         if (!confirmed) return;
 
-        await gymService.deletePlan(planId);
+        await gymService.deletePlan(userId!, planId);
         store.removePlan(planId);
         await loadPlans();
     }, [store, loadPlans]);

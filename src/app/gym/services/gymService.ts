@@ -32,12 +32,24 @@ const gymCollections = staticData.firebaseConst.collections.gym;
 // ============================================================================
 
 /**
+ * Get the plans subcollection path for a user
+ */
+function plansCollection(userId: string) {
+    return collection(db, gymCollections.plans, userId, "plans");
+}
+
+/**
+ * Get the logs subcollection path for a user
+ */
+function logsCollection(userId: string) {
+    return collection(db, gymCollections.logs, userId, "logs");
+}
+
+/**
  * Fetch all plans for a user
  */
 export async function fetchPlans(userId: string): Promise<GymPlan[]> {
-    const snap = await getDocs(
-        query(collection(db, gymCollections.plans), where("userId", "==", userId))
-    );
+    const snap = await getDocs(query(plansCollection(userId)));
     const items = snap.docs.map((d) => planFromFirestore(d.id, d.data()));
     items.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.title.localeCompare(b.title));
     return items;
@@ -46,23 +58,23 @@ export async function fetchPlans(userId: string): Promise<GymPlan[]> {
 /**
  * Create a new plan
  */
-export async function createPlan(plan: Omit<GymPlan, "id">): Promise<string> {
-    const docRef = await addDoc(collection(db, gymCollections.plans), planToFirestore(plan as GymPlan));
+export async function createPlan(userId: string, plan: Omit<GymPlan, "id">): Promise<string> {
+    const docRef = await addDoc(plansCollection(userId), planToFirestore(plan as GymPlan));
     return docRef.id;
 }
 
 /**
  * Update an existing plan
  */
-export async function updatePlan(planId: string, plan: GymPlan): Promise<void> {
-    await setDoc(doc(db, gymCollections.plans, planId), planToFirestore(plan), { merge: true });
+export async function updatePlan(userId: string, planId: string, plan: GymPlan): Promise<void> {
+    await setDoc(doc(plansCollection(userId), planId), planToFirestore(plan), { merge: true });
 }
 
 /**
  * Delete a plan
  */
-export async function deletePlan(planId: string): Promise<void> {
-    await deleteDoc(doc(db, gymCollections.plans, planId));
+export async function deletePlan(userId: string, planId: string): Promise<void> {
+    await deleteDoc(doc(plansCollection(userId), planId));
 }
 
 // ============================================================================
@@ -129,7 +141,6 @@ export async function fetchLogs(
     }
 ): Promise<GymLogEntry[]> {
     const constraints: QueryConstraint[] = [
-        where("userId", "==", userId),
         orderBy("createdAt", "desc"),
     ];
 
@@ -146,7 +157,7 @@ export async function fetchLogs(
         constraints.push(where("dayId", "==", options.dayId));
     }
 
-    const q = query(collection(db, gymCollections.logs), ...constraints);
+    const q = query(logsCollection(userId), ...constraints);
     const snap = await getDocs(q);
     return snap.docs.map((d) => logEntryFromFirestore(d.id, d.data()));
 }
@@ -156,8 +167,7 @@ export async function fetchLogs(
  */
 export async function fetchRunningSession(userId: string): Promise<GymLogEntry | null> {
     const q = query(
-        collection(db, gymCollections.logs),
-        where("userId", "==", userId),
+        logsCollection(userId),
         where("status", "==", "running"),
         orderBy("createdAt", "desc")
     );
@@ -171,10 +181,10 @@ export async function fetchRunningSession(userId: string): Promise<GymLogEntry |
 /**
  * Create a new log entry
  */
-export async function createLogEntry(log: Omit<GymLogEntry, "id">): Promise<string> {
+export async function createLogEntry(userId: string, log: Omit<GymLogEntry, "id">): Promise<string> {
     const sanitized = sanitizeLogForWrite(log as LogDraft);
     const docRef = await addDoc(
-        collection(db, gymCollections.logs),
+        logsCollection(userId),
         logEntryToFirestore({ ...sanitized, createdAt: log.createdAt } as Omit<GymLogEntry, "id">)
     );
     return docRef.id;
@@ -183,10 +193,10 @@ export async function createLogEntry(log: Omit<GymLogEntry, "id">): Promise<stri
 /**
  * Update an existing log entry
  */
-export async function updateLogEntry(logId: string, log: Omit<GymLogEntry, "id">): Promise<void> {
+export async function updateLogEntry(userId: string, logId: string, log: Omit<GymLogEntry, "id">): Promise<void> {
     const sanitized = sanitizeLogForWrite(log as LogDraft);
     await setDoc(
-        doc(db, gymCollections.logs, logId),
+        doc(logsCollection(userId), logId),
         logEntryToFirestore({ ...sanitized, createdAt: log.createdAt } as Omit<GymLogEntry, "id">),
         { merge: true }
     );
@@ -195,6 +205,6 @@ export async function updateLogEntry(logId: string, log: Omit<GymLogEntry, "id">
 /**
  * Delete a log entry
  */
-export async function deleteLogEntry(logId: string): Promise<void> {
-    await deleteDoc(doc(db, gymCollections.logs, logId));
+export async function deleteLogEntry(userId: string, logId: string): Promise<void> {
+    await deleteDoc(doc(logsCollection(userId), logId));
 }
