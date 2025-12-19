@@ -10,7 +10,6 @@ interface TabNavigationProps {
 const TABS: { id: ViewTab; label: string }[] = [
     { id: "session", label: "Log Session" },
     { id: "plans", label: "Plans" },
-    { id: "edit", label: "Edit Plans" },
     { id: "logs", label: "Logs" },
 ];
 

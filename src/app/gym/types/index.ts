@@ -23,7 +23,7 @@ export type {
 };
 
 // View/Navigation types
-export type ViewTab = "plans" | "edit" | "session" | "logs";
+export type ViewTab = "plans" | "session" | "logs";
 
 // Session status
 export type SessionStatus = "running" | "completed" | null;

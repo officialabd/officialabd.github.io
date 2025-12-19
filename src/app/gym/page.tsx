@@ -14,7 +14,6 @@ import {
     AuthForm,
     TabNavigation,
     PlansView,
-    PlanEditor,
     SessionLogger,
     LogsFeed,
 } from "./components";
@@ -152,12 +151,13 @@ export default function GymPage() {
 
     // Sync viewDayId - only clear if current selection is invalid (not empty)
     useEffect(() => {
-        const plan = plans.find((p) => p.id === viewPlanId);
+        // Check draft first, then fall back to saved plan
+        const plan = planDrafts[viewPlanId] ?? plans.find((p) => p.id === viewPlanId);
         // Only reset if there's a selected day that no longer exists
         if (viewDayId && plan && !plan.days.some((d) => d.id === viewDayId)) {
             setViewDayId("");
         }
-    }, [viewPlanId, plans, viewDayId]);
+    }, [viewPlanId, plans, planDrafts, viewDayId]);
 
     // Sync editDayId - only clear if current selection is invalid (not empty)
     useEffect(() => {
@@ -202,17 +202,16 @@ export default function GymPage() {
     // HANDLERS
     // =========================================================================
 
-    const handleEditPlan = (planId: string) => {
-        setEditPlanId(planId);
-        setActiveView("edit");
-    };
-
     const handleAddDay = (planId: string) => {
         // Get the current plan to determine the next day number
         const plan = planDrafts[planId] ?? plans.find((p) => p.id === planId);
         const dayCount = plan?.days.length ?? 0;
         const defaultTitle = `Day ${dayCount + 1}`;
-        addDay(planId, defaultTitle);
+        const newDayId = addDay(planId, defaultTitle);
+        // Select the newly added day
+        if (newDayId) {
+            setViewDayId(newDayId);
+        }
     };
 
     const handleCompleteSession = async () => {
@@ -294,37 +293,17 @@ export default function GymPage() {
                                 plans={plans}
                                 selectedPlanId={viewPlanId}
                                 selectedDayId={viewDayId}
+                                planDrafts={planDrafts}
+                                planDirty={planDirty}
                                 isLoading={plansLoading}
+                                isSaving={!!savingPlanId}
+                                draggingExerciseId={draggingExerciseId}
+                                dragOverExerciseId={dragOverExerciseId}
                                 onPlanSelect={(planId) => {
                                     setViewPlanId(planId);
                                     setViewDayId(""); // Clear day selection when plan changes
                                 }}
                                 onDaySelect={setViewDayId}
-                                onEditPlan={handleEditPlan}
-                            />
-                        )}
-
-                        {/* Plan Editor */}
-                        {activeView === "edit" && (
-                            <PlanEditor
-                                plans={plans}
-                                selectedPlanId={editPlanId}
-                                selectedDayId={editDayId}
-                                planDrafts={planDrafts}
-                                planDirty={planDirty}
-                                isLoading={plansLoading}
-                                isSaving={!!savingPlanId}
-                                newPlanTitle={newPlanTitle}
-                                newDayTitle={newDayTitle}
-                                draggingExerciseId={draggingExerciseId}
-                                dragOverExerciseId={dragOverExerciseId}
-                                onPlanSelect={(planId) => {
-                                    setEditPlanId(planId);
-                                    setEditDayId(""); // Clear day selection when plan changes
-                                }}
-                                onDaySelect={setEditDayId}
-                                onNewPlanTitleChange={setNewPlanTitle}
-                                onNewDayTitleChange={setNewDayTitle}
                                 onAddPlan={() => addPlan()}
                                 onSavePlan={savePlan}
                                 onDeletePlan={deletePlan}
