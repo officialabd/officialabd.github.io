@@ -150,11 +150,12 @@ export default function GymPage() {
         }
     }, [logPlanId, plans, logDayId, isLoadingRunning]);
 
-    // Sync viewDayId
+    // Sync viewDayId - only clear if current selection is invalid (not empty)
     useEffect(() => {
         const plan = plans.find((p) => p.id === viewPlanId);
-        if (plan && !plan.days.some((d) => d.id === viewDayId)) {
-            setViewDayId(plan.days[0]?.id ?? "");
+        // Only reset if there's a selected day that no longer exists
+        if (viewDayId && plan && !plan.days.some((d) => d.id === viewDayId)) {
+            setViewDayId("");
         }
     }, [viewPlanId, plans, viewDayId]);
 
@@ -292,8 +293,13 @@ export default function GymPage() {
                             <PlansView
                                 plans={plans}
                                 selectedPlanId={viewPlanId}
+                                selectedDayId={viewDayId}
                                 isLoading={plansLoading}
-                                onPlanSelect={setViewPlanId}
+                                onPlanSelect={(planId) => {
+                                    setViewPlanId(planId);
+                                    setViewDayId(""); // Clear day selection when plan changes
+                                }}
+                                onDaySelect={setViewDayId}
                                 onEditPlan={handleEditPlan}
                             />
                         )}

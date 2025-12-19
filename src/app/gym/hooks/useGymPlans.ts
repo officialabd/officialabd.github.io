@@ -24,39 +24,24 @@ export function useGymPlans(userId: string | null) {
             store.setPlans(items);
             store.initializeDrafts(items);
 
-            // Resolve selection IDs - for view, auto-select first; for edit, don't auto-select
-            const resolveViewPlanId = (current: string, preferred?: string) => {
-                if (current && items.some((i) => i.id === current)) return current;
-                if (preferred && items.some((i) => i.id === preferred)) return preferred;
-                return items[0]?.id ?? "";
-            };
-
-            const resolveEditPlanId = (current: string, preferred?: string) => {
-                // For edit view, only keep selection if it still exists, or use preferred
+            // Resolve selection IDs - don't auto-select, only preserve valid existing selections
+            const resolvePlanId = (current: string, preferred?: string) => {
                 if (preferred && items.some((i) => i.id === preferred)) return preferred;
                 if (current && items.some((i) => i.id === current)) return current;
-                return ""; // Don't auto-select for edit view
+                return ""; // Don't auto-select
             };
 
-            const resolveViewDayId = (current: string, planId: string) => {
+            const resolveDayId = (current: string, planId: string) => {
                 const plan = items.find((p) => p.id === planId);
                 if (!plan) return "";
                 if (current && plan.days.some((d) => d.id === current)) return current;
-                return plan.days[0]?.id ?? "";
+                return ""; // Don't auto-select
             };
 
-            const resolveEditDayId = (current: string, planId: string) => {
-                const plan = items.find((p) => p.id === planId);
-                if (!plan) return "";
-                // For edit view, only keep selection if it still exists
-                if (current && plan.days.some((d) => d.id === current)) return current;
-                return ""; // Don't auto-select for edit view
-            };
-
-            const nextViewPlanId = resolveViewPlanId(store.viewPlanId, preferredPlanId);
-            const nextEditPlanId = resolveEditPlanId(store.editPlanId, preferredPlanId);
-            const nextViewDayId = resolveViewDayId(store.viewDayId, nextViewPlanId);
-            const nextEditDayId = resolveEditDayId(store.editDayId, nextEditPlanId);
+            const nextViewPlanId = resolvePlanId(store.viewPlanId, preferredPlanId);
+            const nextEditPlanId = resolvePlanId(store.editPlanId, preferredPlanId);
+            const nextViewDayId = resolveDayId(store.viewDayId, nextViewPlanId);
+            const nextEditDayId = resolveDayId(store.editDayId, nextEditPlanId);
 
             store.setViewPlanId(nextViewPlanId);
             store.setEditPlanId(nextEditPlanId);

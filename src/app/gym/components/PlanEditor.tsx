@@ -130,12 +130,12 @@ export function PlanEditor({
                             {plans.length === 0 ? (
                                 <p className="text-sm text-slate-400">No plans yet. Create one to get started.</p>
                             ) : (
-                                <div className="space-y-0">
+                                <div className="rounded-lg border border-slate-700 overflow-hidden">
                                     {plans.map((plan) => (
                                         <div
                                             key={plan.id}
                                             onClick={() => onPlanSelect(plan.id === selectedPlanId ? "" : plan.id)}
-                                            className={`cursor-pointer border-b border-slate-800 px-3 py-3 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0 ${
+                                            className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${
                                                 selectedPlanId === plan.id
                                                     ? "bg-blue-600/20 border-l-2 border-l-blue-500"
                                                     : "hover:bg-slate-800/50"
@@ -245,12 +245,12 @@ export function PlanEditor({
                             {editDraft.days.length === 0 ? (
                                 <p className="text-sm text-slate-400">No days yet. Add a day to get started.</p>
                             ) : (
-                                <div className="space-y-0">
+                                <div className="rounded-lg border border-slate-700 overflow-hidden">
                                     {editDraft.days.map((day) => (
                                         <div
                                             key={day.id}
                                             onClick={() => onDaySelect(day.id === selectedDayId ? "" : day.id)}
-                                            className={`cursor-pointer border-b border-slate-800 px-3 py-3 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0 ${
+                                            className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${
                                                 selectedDayId === day.id
                                                     ? "bg-blue-600/20 border-l-2 border-l-blue-500"
                                                     : "hover:bg-slate-800/50"
