@@ -383,50 +383,84 @@ interface ExercisesListProps {
     exercises: GymPlanDay["exercises"];
 }
 
+// Color palette for muscle groups
+const colorPalette = [
+    "bg-rose-500",
+    "bg-amber-500",
+    "bg-emerald-500",
+    "bg-cyan-500",
+    "bg-violet-500",
+    "bg-pink-500",
+    "bg-lime-500",
+    "bg-orange-500",
+    "bg-teal-500",
+    "bg-indigo-500",
+];
+
 function ExercisesList({ exercises }: ExercisesListProps) {
     if (exercises.length === 0) {
         return <p className="text-sm text-slate-400">No exercises in this day yet.</p>;
     }
 
+    // Build muscle group color map
+    const muscleGroupColors: Record<string, string> = {};
+    let colorIndex = 0;
+    exercises.forEach((ex) => {
+        const muscle = ex.muscleGroup?.toLowerCase().trim();
+        if (muscle && !muscleGroupColors[muscle]) {
+            muscleGroupColors[muscle] = colorPalette[colorIndex % colorPalette.length];
+            colorIndex++;
+        }
+    });
+
+    const getMuscleColor = (muscleGroup?: string): string => {
+        if (!muscleGroup) return "bg-slate-600";
+        return muscleGroupColors[muscleGroup.toLowerCase().trim()] ?? "bg-slate-600";
+    };
+
     return (
-        <div className="space-y-3">
-            {exercises.map((ex) => (
-                <div
-                    key={ex.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2"
-                >
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-start gap-2">
-                            <div>
-                                <div className="text-teal-200 font-semibold">
+        <div className="rounded-xl border border-slate-700 overflow-hidden">
+            {exercises.map((ex) => {
+                const muscleColor = getMuscleColor(ex.muscleGroup);
+                const setsCount = ex.sets?.length ?? 0;
+
+                return (
+                    <div
+                        key={ex.id}
+                        className="flex items-center border-b border-slate-700 last:border-b-0 hover:bg-slate-800/30 transition-colors"
+                    >
+                        {/* Muscle group color indicator */}
+                        <div className={`w-1.5 self-stretch ${muscleColor}`} />
+
+                        <div className="flex items-center justify-between flex-1 px-3 py-3">
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className="text-sm font-medium text-slate-200 truncate">
                                     {ex.name || "Exercise"}
-                                </div>
+                                </span>
                                 {ex.muscleGroup && (
-                                    <div className="text-xs text-slate-400">
+                                    <span className="text-xs text-slate-400 truncate">
                                         {ex.muscleGroup}
-                                    </div>
+                                    </span>
                                 )}
                             </div>
-                            <button
-                                onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
-                                className="p-1 text-indigo-300 hover:text-indigo-100"
-                                aria-label="Search exercise"
-                                title="Search exercise"
-                            >
-                                <SearchIcon className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-2 ml-2">
+                                <span className={`text-xs font-semibold ${
+                                    setsCount > 0 ? "text-emerald-400" : "text-slate-500"
+                                }`}>
+                                    {setsCount} {setsCount === 1 ? "set" : "sets"}
+                                </span>
+                                <button
+                                    onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
+                                    className="p-1 text-indigo-300 hover:text-indigo-100"
+                                    aria-label="Search exercise"
+                                >
+                                    <SearchIcon className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
-                        <span className="text-xs text-slate-400">
-                            Sets: {ex.sets?.length ?? 0}
-                        </span>
                     </div>
-                    {!ex.sets?.length && (
-                        <div className="text-xs text-slate-500">
-                            No sets configured yet.
-                        </div>
-                    )}
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
