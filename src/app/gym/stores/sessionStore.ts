@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { GymPlan, GymPlanDay, GymLogExercise, GymSet, LogDraft } from "../types";
+import type { GymPlan, GymPlanDay, GymLogExercise, GymSet, LogDraft, SetType, WeightUnit } from "../types";
 import { todayISO, ensureSetCount } from "../utils";
 
 interface SessionState {
@@ -33,11 +33,12 @@ interface SessionState {
     ) => void;
     updateExerciseUnit: (exerciseIndex: number, unit: "kg" | "lb") => void;
     updateSessionNote: (note: string) => void;
-    
+
     // Exercise manipulation
-    addExercise: (name: string, muscleGroup: string) => void;
+    addExercise: (name: string, muscleGroup: string, setType?: SetType, weightUnit?: WeightUnit) => void;
     removeExercise: (exerciseIndex: number) => void;
     updateExerciseDetails: (exerciseIndex: number, name: string, muscleGroup: string) => void;
+    updateExerciseType: (exerciseIndex: number, setType: SetType, weightUnit: WeightUnit) => void;
 
     // Initialize draft from plan/day
     initializeFromPlanDay: (plan: GymPlan, day: GymPlanDay, userId: string | null) => void;
@@ -134,15 +135,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         get().updateLogDraft((draft) => ({ ...draft, note }));
     },
 
-    // Add a new exercise
-    addExercise: (name, muscleGroup) => {
+    // Add a new exercise (optionally specify set type and weight unit)
+    addExercise: (name, muscleGroup, setType = "weight", weightUnit = "kg") => {
         get().updateLogDraft((draft) => {
             const newExercise: GymLogExercise = {
                 name,
                 muscleGroup: muscleGroup || undefined,
-                setType: "weight",
-                weightUnit: "kg",
-                note: "",
+                setType,
+                weightUnit,
                 completed: null,
                 sets: ensureSetCount(3, []),
             };
@@ -171,6 +171,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         });
     },
 
+    // Update exercise type and unit
+    updateExerciseType: (exerciseIndex, setType, weightUnit) => {
+        get().updateLogDraft((draft) => {
+            const exercises = [...draft.exercises];
+            if (!exercises[exerciseIndex]) return { ...draft };
+            exercises[exerciseIndex] = {
+                ...exercises[exerciseIndex],
+                setType,
+                weightUnit,
+            };
+            return { ...draft, exercises };
+        });
+    },
+
     // Initialize draft from plan and day
     initializeFromPlanDay: (plan, day, userId) => {
         const draft: LogDraft = {
@@ -185,7 +199,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                 muscleGroup: ex.muscleGroup,
                 setType: ex.setType ?? "weight",
                 weightUnit: ex.weightUnit ?? "kg",
-                note: "",
                 completed: null,
                 sets: ensureSetCount(
                     ex.sets?.length && ex.sets.length > 0 ? ex.sets.length : 3,
@@ -194,7 +207,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                     weight: null,
                     reps: null,
                     time: null,
-                    note: null,
                 })),
             })),
             note: "",

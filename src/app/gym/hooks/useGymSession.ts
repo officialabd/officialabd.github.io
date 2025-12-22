@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useSessionStore } from "../stores";
-import type { GymPlan, GymPlanDay, GymSet, GymLogEntry } from "../types";
+import type { GymPlan, GymPlanDay, GymSet, GymLogEntry, SetType, WeightUnit } from "../types";
 import * as gymService from "../services/gymService";
 
 /**
@@ -196,10 +196,10 @@ export function useGymSession(userId: string | null) {
         [store]
     );
 
-    // Add a new exercise
+    // Add a new exercise (optionally specify type and unit)
     const addExercise = useCallback(
-        (name: string, muscleGroup: string) => {
-            store.addExercise(name, muscleGroup);
+        (name: string, muscleGroup: string, setType: SetType = "weight", weightUnit: WeightUnit = "kg") => {
+            store.addExercise(name, muscleGroup, setType, weightUnit);
         },
         [store]
     );
@@ -246,6 +246,7 @@ export function useGymSession(userId: string | null) {
         updateDate,
         updateUnit,
         addExercise,
+        updateExerciseType: store.updateExerciseType,
         removeExercise,
         updateExerciseDetails,
         clearSession: store.clearSession,

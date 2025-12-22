@@ -101,17 +101,16 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
             const isTimeType = ex.setType === "time";
             const sets = Array.isArray(ex.sets)
                 ? ex.sets.map((s) => {
-                      const hasValue = isTimeType
-                          ? s?.time !== null && s?.time !== undefined
-                          : s?.weight !== null && s?.weight !== undefined;
-                      return {
-                          weight: s?.weight ?? null,
-                          reps: s?.reps ?? null,
-                          time: s?.time ?? null,
-                          note: s?.note ?? null,
-                          completed: hasValue ? true : null,
-                      } as GymSet;
-                  })
+                    const hasValue = isTimeType
+                        ? s?.time !== null && s?.time !== undefined
+                        : s?.weight !== null && s?.weight !== undefined;
+                    return {
+                        weight: s?.weight ?? null,
+                        reps: s?.reps ?? null,
+                        time: s?.time ?? null,
+                        completed: hasValue ? true : null,
+                    } as GymSet;
+                })
                 : [];
             const filled = sets.filter((s) => s.completed).length;
             const completed = sets.length > 0 && filled === sets.length ? true : null;
@@ -120,7 +119,6 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
                 muscleGroup: ex.muscleGroup,
                 setType: ex.setType ?? "weight",
                 weightUnit: isTimeType ? undefined : (ex.weightUnit ?? "kg"),
-                note: ex.note,
                 completed,
                 sets,
             } as GymLogExercise;

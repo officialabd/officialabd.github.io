@@ -99,7 +99,6 @@ export function useGymPlans(userId: string | null) {
                                 weight: s?.weight ?? null,
                                 reps: s?.reps ?? null,
                                 time: s?.time ?? null,
-                                note: s?.note ?? null,
                                 completed: s?.completed ?? null,
                             }))
                             : [],
