@@ -119,7 +119,7 @@ export default function GymPage() {
     // Initialize session draft when plan/day selection changes
     useEffect(() => {
         if (isLoadingRunning) return; // Skip when loading running session
-        
+
         // Skip if we already have a running session loaded
         if (logDraft?.status === "running") return;
 

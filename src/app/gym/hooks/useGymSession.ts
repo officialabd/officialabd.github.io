@@ -190,7 +190,7 @@ export function useGymSession(userId: string | null) {
 
     // Update exercise unit
     const updateUnit = useCallback(
-        (exerciseIndex: number, unit: "kg" | "lb") => {
+        (exerciseIndex: number, unit: WeightUnit) => {
             store.updateExerciseUnit(exerciseIndex, unit);
         },
         [store]

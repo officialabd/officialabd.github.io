@@ -58,20 +58,20 @@ export function SessionLogger({
     const selectedPlan = plans.find((p) => p.id === selectedPlanId);
     const canEdit = !!logDraft?.startedAt;
     const isCompleted = logDraft?.status === "completed";
-    
+
     // Track selected exercise index for mobile view
     const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number | null>(null);
-    
+
     // State for adding new exercise
     const [isAddingExercise, setIsAddingExercise] = useState(false);
     const [newExerciseName, setNewExerciseName] = useState("");
     const [newExerciseMuscle, setNewExerciseMuscle] = useState("");
-    
+
     // State for editing exercise
     const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null);
     const [editExerciseName, setEditExerciseName] = useState("");
     const [editExerciseMuscle, setEditExerciseMuscle] = useState("");
-    
+
     // Handle adding new exercise
     const handleAddExercise = () => {
         if (newExerciseName.trim()) {
@@ -81,14 +81,14 @@ export function SessionLogger({
             setIsAddingExercise(false);
         }
     };
-    
+
     // Handle starting edit mode
     const handleStartEdit = (index: number, exercise: GymLogExercise) => {
         setEditingExerciseIndex(index);
         setEditExerciseName(exercise.name || "");
         setEditExerciseMuscle(exercise.muscleGroup || "");
     };
-    
+
     // Handle saving exercise edit
     const handleSaveEdit = () => {
         if (editingExerciseIndex !== null && editExerciseName.trim()) {
@@ -98,14 +98,14 @@ export function SessionLogger({
             setEditExerciseMuscle("");
         }
     };
-    
+
     // Handle cancel edit
     const handleCancelEdit = () => {
         setEditingExerciseIndex(null);
         setEditExerciseName("");
         setEditExerciseMuscle("");
     };
-    
+
     // Helper to get completion fraction
     const getCompletionFraction = (exercise: GymLogExercise): { filled: number; total: number } => {
         const total = exercise.sets?.length ?? 0;
@@ -119,7 +119,16 @@ export function SessionLogger({
         }).length;
         return { filled, total };
     };
-    
+
+    //  Using getCompletionFraction to count completed exercises
+    const countCompletedExercises = (): number => {
+        if (!logDraft) return 0;
+        return logDraft.exercises.filter((ex) => {
+            const { filled, total } = getCompletionFraction(ex);
+            return total > 0 && filled === total;
+        }).length;
+    }
+
     // Get background color for exercise item based on status
     const getExerciseRowBg = (exercise: GymLogExercise, isSelected: boolean): string => {
         if (isSelected) return "bg-blue-900/60 border-blue-500";
@@ -128,15 +137,15 @@ export function SessionLogger({
         if (status.label === "Partial") return "bg-orange-900/30 border-orange-700/50";
         return "bg-slate-900/60 border-slate-700";
     };
-    
+
     // Selected exercise for mobile view
     const selectedExercise = selectedExerciseIndex !== null ? logDraft?.exercises[selectedExerciseIndex] : null;
-    
+
     // Generate muscle group color map
     const muscleGroupColors: Record<string, string> = {};
     const colorPalette = [
         "bg-pink-500",
-        "bg-purple-500", 
+        "bg-purple-500",
         "bg-indigo-500",
         "bg-cyan-500",
         "bg-teal-500",
@@ -154,7 +163,7 @@ export function SessionLogger({
             colorIndex++;
         }
     });
-    
+
     const getMuscleColor = (muscleGroup?: string): string => {
         if (!muscleGroup) return "bg-slate-600";
         return muscleGroupColors[muscleGroup.toLowerCase().trim()] ?? "bg-slate-600";
@@ -271,7 +280,7 @@ export function SessionLogger({
                             {/* Exercise List Header */}
                             <div className="flex items-center justify-between">
                                 <div className="text-sm text-slate-400 font-semibold">
-                                    Exercises ({logDraft.exercises.length}):
+                                    Exercises ({countCompletedExercises()}/{logDraft.exercises.length}):
                                 </div>
                                 {canEdit && !isCompleted && (
                                     <button
@@ -283,7 +292,7 @@ export function SessionLogger({
                                     </button>
                                 )}
                             </div>
-                            
+
                             {/* Add Exercise Form - uses SetEditor in add mode */}
                             {isAddingExercise && (
                                 <SetEditor
@@ -297,9 +306,9 @@ export function SessionLogger({
                                     exerciseIndex={-1}
                                     canEdit={true}
                                     isCompleted={false}
-                                    onSetsCountChange={() => {}}
-                                    onSetValueChange={() => {}}
-                                    onUnitChange={() => {}}
+                                    onSetsCountChange={() => { }}
+                                    onSetValueChange={() => { }}
+                                    onUnitChange={() => { }}
                                     isAddMode={true}
                                     editName={newExerciseName}
                                     editMuscle={newExerciseMuscle}
@@ -313,7 +322,7 @@ export function SessionLogger({
                                     }}
                                 />
                             )}
-                            
+
                             {/* Exercise List */}
                             <div className="rounded-xl border border-slate-700 overflow-hidden">
                                 {logDraft.exercises.map((ex: GymLogExercise, exIdx: number) => {
@@ -321,7 +330,7 @@ export function SessionLogger({
                                     const { filled, total } = getCompletionFraction(ex);
                                     const rowBg = getExerciseRowBg(ex, isSelected);
                                     const muscleColor = getMuscleColor(ex.muscleGroup);
-                                    
+
                                     return (
                                         <div
                                             key={`ex-${exIdx}`}
@@ -330,16 +339,15 @@ export function SessionLogger({
                                         >
                                             {/* Muscle group color indicator */}
                                             <div className={`w-1.5 self-stretch ${muscleColor}`} />
-                                            
+
                                             <div className="flex items-center justify-between flex-1 px-3 py-3">
                                                 <span className={`text-sm font-medium truncate flex-1 ${isSelected ? "text-blue-200" : "text-slate-200"}`}>
                                                     {ex.name || "Exercise"}
                                                 </span>
                                                 <div className="flex items-center gap-2 ml-2">
-                                                    <span className={`text-xs font-semibold ${
-                                                        filled === total && total > 0 ? "text-emerald-400" :
+                                                    <span className={`text-xs font-semibold ${filled === total && total > 0 ? "text-emerald-400" :
                                                         filled > 0 ? "text-orange-400" : "text-slate-400"
-                                                    }`}>
+                                                        }`}>
                                                         {filled}/{total}
                                                     </span>
                                                     <button
@@ -373,7 +381,7 @@ export function SessionLogger({
                                     );
                                 })}
                             </div>
-                            
+
                             {/* Selected Exercise Sets */}
                             {selectedExercise && selectedExerciseIndex !== null && (
                                 <SetEditor
@@ -469,35 +477,35 @@ function SetEditor({
     const setType = (exercise.setType ?? "weight") as SetType;
     const weightUnit = (exercise.weightUnit ?? "kg") as WeightUnit;
     const isTimeType = setType === "time";
-    
+
     // Determine if we're in any input mode
     const isInputMode = isEditMode || isAddMode;
-    const borderColor = isAddMode ? 'border-emerald-700/50 bg-emerald-900/20' : 
-                        isEditMode ? 'border-amber-700/50 bg-amber-900/20' : 
-                        'border-slate-700 bg-slate-900/60';
+    const borderColor = isAddMode ? 'border-emerald-700/50 bg-emerald-900/20' :
+        isEditMode ? 'border-amber-700/50 bg-amber-900/20' :
+            'border-slate-700 bg-slate-900/60';
     const focusColor = isAddMode ? 'focus:border-emerald-400' : 'focus:border-amber-400';
     const saveButtonColor = isAddMode ? 'bg-emerald-600/80 hover:bg-emerald-500' : 'bg-emerald-600/80 hover:bg-emerald-500';
-    
+
     // For time type, we store the "unit" in weightUnit field as well
     const [timeUnit, setTimeUnit] = useState<TimeUnit>("mins");
-    
+
     const handleNumberInput = (
         value: string,
         onChange: (v: number | null) => void
     ) => {
         onChange(value === "" ? null : Number(value));
     };
-    
+
     const handleAddSet = () => {
         onSetsCountChange(exercise.sets.length + 1);
     };
-    
+
     const handleRemoveSet = () => {
         if (exercise.sets.length > 0) {
             onSetsCountChange(exercise.sets.length - 1);
         }
     };
-    
+
     return (
         <div className={`rounded-xl border ${borderColor} p-3 space-y-3`}>
             {/* Header */}
@@ -586,37 +594,37 @@ function SetEditor({
                     )}
                 </div>
             </div>
-            
+
             {/* Unit selector - hide in add mode */}
             {!isAddMode && (
-            <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Unit:</span>
-                {isTimeType ? (
-                    <select
-                        className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
-                        value={timeUnit}
-                        disabled={!canEdit || isCompleted}
-                        onChange={(e) => setTimeUnit(e.target.value as TimeUnit)}
-                    >
-                        {timeUnits.map((u) => (
-                            <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
-                        ))}
-                    </select>
-                ) : (
-                    <select
-                        className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
-                        value={weightUnit}
-                        disabled={!canEdit || isCompleted}
-                        onChange={(e) => onUnitChange(e.target.value as WeightUnit)}
-                    >
-                        {weightUnits.map((u) => (
-                            <option key={u} value={u}>{u.toUpperCase()}</option>
-                        ))}
-                    </select>
-                )}
-            </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Unit:</span>
+                    {isTimeType ? (
+                        <select
+                            className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
+                            value={timeUnit}
+                            disabled={!canEdit || isCompleted}
+                            onChange={(e) => setTimeUnit(e.target.value as TimeUnit)}
+                        >
+                            {timeUnits.map((u) => (
+                                <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <select
+                            className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
+                            value={weightUnit}
+                            disabled={!canEdit || isCompleted}
+                            onChange={(e) => onUnitChange(e.target.value as WeightUnit)}
+                        >
+                            {weightUnits.map((u) => (
+                                <option key={u} value={u}>{u.toUpperCase()}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
             )}
-            
+
             {/* Sets Table - hide in add mode */}
             {!isAddMode && exercise.sets.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -643,7 +651,7 @@ function SetEditor({
                                             placeholder={isTimeType ? "0" : "0"}
                                             value={isTimeType ? (set.time ?? "") : (set.weight ?? "")}
                                             disabled={!canEdit || isCompleted}
-                                            onChange={(e) => 
+                                            onChange={(e) =>
                                                 handleNumberInput(
                                                     e.target.value,
                                                     (v) => onSetValueChange(setIdx, isTimeType ? "time" : "weight", v)
@@ -652,8 +660,8 @@ function SetEditor({
                                         />
                                     </td>
                                     <td className="py-2 pr-2 text-xs text-slate-400">
-                                        {isTimeType 
-                                            ? timeUnit.charAt(0).toUpperCase() + timeUnit.slice(1) 
+                                        {isTimeType
+                                            ? timeUnit.charAt(0).toUpperCase() + timeUnit.slice(1)
                                             : weightUnit.toUpperCase()}
                                     </td>
                                     {!isTimeType && (

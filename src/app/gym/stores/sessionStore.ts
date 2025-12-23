@@ -31,7 +31,7 @@ interface SessionState {
         field: keyof GymSet,
         value: number | null
     ) => void;
-    updateExerciseUnit: (exerciseIndex: number, unit: "kg" | "lb") => void;
+    updateExerciseUnit: (exerciseIndex: number, unit: WeightUnit) => void;
     updateSessionNote: (note: string) => void;
 
     // Exercise manipulation
