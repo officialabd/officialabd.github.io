@@ -1,5 +1,6 @@
 export type type = "weight" | "time";
 export type Unit = "kg" | "lb" | "secs" | "mins" | "hours";
+export type Per = "1hand" | "2hands" | "1leg" | "2legs" | "fullBody";
 
 export type GymSet = {
     value?: number | null;
@@ -13,7 +14,7 @@ export type GymExercise = {
     group?: string;
     type?: type; // default to "weight" if not set
     unit?: Unit; // default to "kg" if not set
-    // sets: GymSet[];
+    per?: Per;
     setsNo?: number;
 };
 
@@ -40,6 +41,7 @@ export type GymLogExercise = {
     group?: string;
     type?: type;
     unit?: Unit;
+    per?: Per;
     setsNo?: number;
     sets: GymSet[];
     completed?: boolean | null;
@@ -72,6 +74,7 @@ const sanitizeExercise = (ex: any): GymExercise => ({
     group: ex?.group ?? undefined,
     type: ex?.type ?? undefined,
     unit: ex?.unit ?? undefined,
+    per: ex?.per ?? undefined,
     setsNo: ex?.setsNo ?? undefined,
 });
 
@@ -80,6 +83,7 @@ const sanitizeLogExercise = (ex: any): GymLogExercise => ({
     group: ex?.group ?? undefined,
     type: ex?.type ?? undefined,
     unit: ex?.unit ?? undefined,
+    per: ex?.per ?? undefined,
     completed: ex?.completed ?? undefined,
     sets: Array.isArray(ex?.sets)
         ? ex.sets.map((s: any) => cleanObject({
@@ -96,6 +100,7 @@ const sanitizeExerciseForWrite = (ex: any) => cleanObject({
     group: ex?.group ?? null,
     type: ex?.type ?? null,
     unit: ex?.unit ?? null,
+    per: ex?.per ?? null,
     setsNo: ex?.setsNo ?? null,
 });
 
@@ -104,6 +109,7 @@ const sanitizeLogExerciseForWrite = (ex: any) => cleanObject({
     group: ex?.group ?? null,
     type: ex?.type ?? null,
     unit: ex?.unit ?? null,
+    per: ex?.per ?? null,
     completed: ex?.completed ?? null,
     sets: Array.isArray(ex?.sets)
         ? ex.sets.map((s: any) => cleanObject({

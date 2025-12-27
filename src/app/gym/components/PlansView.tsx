@@ -528,6 +528,7 @@ function DayEditor({
                             <th className="py-2">Exercise</th>
                             <th className="py-2">Muscle</th>
                             <th className="py-2">Sets</th>
+                            <th className="py-2">Per</th>
                             <th className="py-2">Type</th>
                             <th className="py-2">Unit</th>
                             <th className="py-2 text-center">Actions</th>
@@ -606,6 +607,25 @@ function DayEditor({
                                             );
                                         }}
                                     />
+                                </td>
+                                <td className="py-2 pr-0.5 w-24">
+                                    <select
+                                        className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                        value={ex.per ?? "weight"}
+                                        onChange={(e) =>
+                                            onUpdateExercise(
+                                                exIdx,
+                                                "per",
+                                                e.target.value as type
+                                            )
+                                        }
+                                    >
+                                        <option value="1hand">1 Hand</option>
+                                        <option value="2hands">2 Hands</option>
+                                        <option value="1leg">1 Leg</option>
+                                        <option value="2legs">2 Legs</option>
+                                        <option value="fullBody">Full Body</option>
+                                    </select>
                                 </td>
                                 <td className="py-2 pr-0.5 w-24">
                                     <select

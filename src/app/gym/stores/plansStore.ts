@@ -104,8 +104,6 @@ export const usePlansStore = create<PlansState>((set, get) => ({
             planDrafts: { ...planDrafts, [planId]: nextDraft },
             planDirty: { ...planDirty, [planId]: true },
         });
-
-        console.log("Plan draft", nextDraft);
     },
 
     // Update a day within a plan draft
@@ -170,6 +168,7 @@ export const usePlansStore = create<PlansState>((set, get) => ({
                     group: "",
                     type: "weight",
                     unit: "kg",
+                    per: "1hand",
                     setsNo: 3,
                 } as GymExercise,
             ],

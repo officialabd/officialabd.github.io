@@ -98,7 +98,6 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
         completedAt: draft.completedAt ?? null,
         status: draft.status ?? null,
         exercises: (draft.exercises ?? []).filter(Boolean).map((ex: GymLogExercise) => {
-            const isTimeType = ex.type === "time";
             const sets = Array.isArray(ex.sets)
                 ? ex.sets.map((s) => {
                     const hasValue = s?.value !== null && s?.value !== undefined
@@ -116,6 +115,7 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
                 group: ex.group,
                 type: ex.type ?? "weight",
                 unit: ex.unit ?? "kg",
+                per: ex.per ?? "1hand",
                 completed,
                 sets,
             } as GymLogExercise;
@@ -190,7 +190,6 @@ export async function createLogEntry(userId: string, log: Omit<GymLogEntry, "id"
  */
 export async function updateLogEntry(userId: string, logId: string, log: Omit<GymLogEntry, "id">): Promise<void> {
     const sanitized = sanitizeLogForWrite(log as LogDraft);
-    console.log("sanitized: ", log, sanitized);
 
     await setDoc(
         doc(logsCollection(userId), logId),

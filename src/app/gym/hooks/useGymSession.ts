@@ -45,7 +45,6 @@ export function useGymSession(userId: string | null) {
                 completedAt: store.logDraft.completedAt,
                 status: store.logDraft.status ?? "running",
             };
-            console.log("Saving: ", store.currentLogId, payload);
 
             if (store.currentLogId) {
                 await gymService.updateLogEntry(userId, store.currentLogId, payload);

@@ -87,7 +87,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         if (logDraft) {
             set({ logDraft: updater(logDraft) });
         }
-        console.log("logDraft", get().logDraft);
     },
 
     // Start a session (set startedAt and status)
@@ -99,8 +98,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                 status: "running",
             })
         });
-        console.log("Session started: ", get().logDraft);
-
     },
 
     // Update the number of sets for an exercise
