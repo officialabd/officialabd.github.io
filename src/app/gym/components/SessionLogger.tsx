@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GymPlan, GymSet, LogDraft, GymLogExercise, SetType, WeightUnit } from "../types";
+import type { GymPlan, GymSet, LogDraft, GymLogExercise, type, Unit } from "../types";
 import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import { SearchIcon, PlusIcon, MinusIcon, EditIcon, CheckIcon, CloseIcon } from "./icons";
@@ -27,11 +27,11 @@ interface SessionLoggerProps {
         field: keyof GymSet,
         value: number | null
     ) => void;
-    onUnitChange: (exerciseIndex: number, unit: WeightUnit) => void;
+    onUnitChange: (exerciseIndex: number, unit: Unit) => void;
     onNoteChange: (note: string) => void;
-    onAddExercise: (name: string, muscleGroup: string) => void;
+    onAddExercise: (name: string, group: string) => void;
     onRemoveExercise: (exerciseIndex: number) => void;
-    onUpdateExercise: (exerciseIndex: number, name: string, muscleGroup: string) => void;
+    onUpdateExercise: (exerciseIndex: number, name: string, group: string) => void;
 }
 
 export function SessionLogger({
@@ -86,7 +86,7 @@ export function SessionLogger({
     const handleStartEdit = (index: number, exercise: GymLogExercise) => {
         setEditingExerciseIndex(index);
         setEditExerciseName(exercise.name || "");
-        setEditExerciseMuscle(exercise.muscleGroup || "");
+        setEditExerciseMuscle(exercise.group || "");
     };
 
     // Handle saving exercise edit
@@ -109,13 +109,10 @@ export function SessionLogger({
     // Helper to get completion fraction
     const getCompletionFraction = (exercise: GymLogExercise): { filled: number; total: number } => {
         const total = exercise.sets?.length ?? 0;
-        const setType = exercise.setType ?? "weight";
+        const type = exercise.type ?? "weight";
         const filled = (exercise.sets ?? []).filter((s) => {
             if (!s) return false;
-            if (setType === "time") {
-                return s.time !== null && s.time !== undefined;
-            }
-            return s.weight !== null && s.weight !== undefined;
+            return s.value !== null && s.value !== undefined;
         }).length;
         return { filled, total };
     };
@@ -132,7 +129,7 @@ export function SessionLogger({
     // Get background color for exercise item based on status
     const getExerciseRowBg = (exercise: GymLogExercise, isSelected: boolean): string => {
         if (isSelected) return "bg-blue-900/60 border-blue-500";
-        const status = getExerciseStatus(exercise.sets, exercise.setType);
+        const status = getExerciseStatus(exercise.sets, exercise.type);
         if (status.label === "Completed") return "bg-emerald-900/30 border-emerald-700/50";
         if (status.label === "Partial") return "bg-orange-900/30 border-orange-700/50";
         return "bg-slate-900/60 border-slate-700";
@@ -142,7 +139,7 @@ export function SessionLogger({
     const selectedExercise = selectedExerciseIndex !== null ? logDraft?.exercises[selectedExerciseIndex] : null;
 
     // Generate muscle group color map
-    const muscleGroupColors: Record<string, string> = {};
+    const groupColors: Record<string, string> = {};
     const colorPalette = [
         "bg-pink-500",
         "bg-purple-500",
@@ -157,16 +154,16 @@ export function SessionLogger({
     ];
     let colorIndex = 0;
     logDraft?.exercises.forEach((ex) => {
-        const muscle = ex.muscleGroup?.toLowerCase().trim();
-        if (muscle && !muscleGroupColors[muscle]) {
-            muscleGroupColors[muscle] = colorPalette[colorIndex % colorPalette.length];
+        const muscle = ex.group?.toLowerCase().trim();
+        if (muscle && !groupColors[muscle]) {
+            groupColors[muscle] = colorPalette[colorIndex % colorPalette.length];
             colorIndex++;
         }
     });
 
-    const getMuscleColor = (muscleGroup?: string): string => {
-        if (!muscleGroup) return "bg-slate-600";
-        return muscleGroupColors[muscleGroup.toLowerCase().trim()] ?? "bg-slate-600";
+    const getMuscleColor = (group?: string): string => {
+        if (!group) return "bg-slate-600";
+        return groupColors[group.toLowerCase().trim()] ?? "bg-slate-600";
     };
 
     return (
@@ -298,10 +295,10 @@ export function SessionLogger({
                                 <SetEditor
                                     exercise={{
                                         name: newExerciseName,
-                                        muscleGroup: newExerciseMuscle,
+                                        group: newExerciseMuscle,
                                         sets: [],
-                                        setType: "weight",
-                                        weightUnit: "kg",
+                                        type: "weight",
+                                        unit: "kg",
                                     }}
                                     exerciseIndex={-1}
                                     canEdit={true}
@@ -329,7 +326,7 @@ export function SessionLogger({
                                     const isSelected = selectedExerciseIndex === exIdx;
                                     const { filled, total } = getCompletionFraction(ex);
                                     const rowBg = getExerciseRowBg(ex, isSelected);
-                                    const muscleColor = getMuscleColor(ex.muscleGroup);
+                                    const muscleColor = getMuscleColor(ex.group);
 
                                     return (
                                         <div
@@ -353,7 +350,7 @@ export function SessionLogger({
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            openExerciseSearch(ex.name, ex.muscleGroup);
+                                                            openExerciseSearch(ex.name, ex.group);
                                                         }}
                                                         className="p-1 text-indigo-300 hover:text-indigo-100"
                                                         aria-label="Search exercise"
@@ -438,7 +435,7 @@ interface SetEditorProps {
     isCompleted: boolean;
     onSetsCountChange: (count: number) => void;
     onSetValueChange: (setIndex: number, field: keyof GymSet, value: number | null) => void;
-    onUnitChange: (unit: WeightUnit) => void;
+    onUnitChange: (unit: Unit) => void;
     // Edit mode props - when provided, name/muscle become editable
     isEditMode?: boolean;
     isAddMode?: boolean; // Uses green styling instead of amber
@@ -452,7 +449,7 @@ interface SetEditorProps {
 }
 
 // Unit options
-const weightUnits: WeightUnit[] = ["kg", "lb"];
+const weightUnits: Unit[] = ["kg", "lb"];
 const timeUnits = ["secs", "mins", "hours"] as const;
 type TimeUnit = typeof timeUnits[number];
 
@@ -474,9 +471,9 @@ function SetEditor({
     onEditCancel,
     onEditClick,
 }: SetEditorProps) {
-    const setType = (exercise.setType ?? "weight") as SetType;
-    const weightUnit = (exercise.weightUnit ?? "kg") as WeightUnit;
-    const isTimeType = setType === "time";
+    const type = (exercise.type ?? "weight") as type;
+    const unit = (exercise.unit ?? "kg") as Unit;
+    const isTimeType = type === "time";
 
     // Determine if we're in any input mode
     const isInputMode = isEditMode || isAddMode;
@@ -485,9 +482,6 @@ function SetEditor({
             'border-slate-700 bg-slate-900/60';
     const focusColor = isAddMode ? 'focus:border-emerald-400' : 'focus:border-amber-400';
     const saveButtonColor = isAddMode ? 'bg-emerald-600/80 hover:bg-emerald-500' : 'bg-emerald-600/80 hover:bg-emerald-500';
-
-    // For time type, we store the "unit" in weightUnit field as well
-    const [timeUnit, setTimeUnit] = useState<TimeUnit>("mins");
 
     const handleNumberInput = (
         value: string,
@@ -533,8 +527,8 @@ function SetEditor({
                             <span className="text-sm font-semibold text-teal-200">
                                 {exercise.name || "Exercise"}
                             </span>
-                            {exercise.muscleGroup && (
-                                <div className="text-xs text-slate-400">{exercise.muscleGroup}</div>
+                            {exercise.group && (
+                                <div className="text-xs text-slate-400">{exercise.group}</div>
                             )}
                         </div>
                     )}
@@ -602,9 +596,9 @@ function SetEditor({
                     {isTimeType ? (
                         <select
                             className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
-                            value={timeUnit}
+                            value={unit}
                             disabled={!canEdit || isCompleted}
-                            onChange={(e) => setTimeUnit(e.target.value as TimeUnit)}
+                            onChange={(e) => onUnitChange(e.target.value as TimeUnit)}
                         >
                             {timeUnits.map((u) => (
                                 <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
@@ -613,9 +607,9 @@ function SetEditor({
                     ) : (
                         <select
                             className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
-                            value={weightUnit}
+                            value={unit}
                             disabled={!canEdit || isCompleted}
-                            onChange={(e) => onUnitChange(e.target.value as WeightUnit)}
+                            onChange={(e) => onUnitChange(e.target.value as Unit)}
                         >
                             {weightUnits.map((u) => (
                                 <option key={u} value={u}>{u.toUpperCase()}</option>
@@ -648,21 +642,21 @@ function SetEditor({
                                             min="0"
                                             step={isTimeType ? "1" : "0.5"}
                                             className="w-full rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-2 text-sm focus:outline-none focus:border-blue-400 text-white"
-                                            placeholder={isTimeType ? "0" : "0"}
-                                            value={isTimeType ? (set.time ?? "") : (set.weight ?? "")}
+                                            placeholder={"0"}
+                                            value={(set.value ?? "")}
                                             disabled={!canEdit || isCompleted}
                                             onChange={(e) =>
                                                 handleNumberInput(
                                                     e.target.value,
-                                                    (v) => onSetValueChange(setIdx, isTimeType ? "time" : "weight", v)
+                                                    (v) => onSetValueChange(setIdx, "value", v)
                                                 )
                                             }
                                         />
                                     </td>
                                     <td className="py-2 pr-2 text-xs text-slate-400">
                                         {isTimeType
-                                            ? timeUnit.charAt(0).toUpperCase() + timeUnit.slice(1)
-                                            : weightUnit.toUpperCase()}
+                                            ? unit.charAt(0).toUpperCase() + unit.slice(1)
+                                            : unit.toUpperCase()}
                                     </td>
                                     {!isTimeType && (
                                         <td className="py-2">

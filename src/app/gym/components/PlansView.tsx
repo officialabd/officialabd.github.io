@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GymPlan, GymPlanDay, SetType, WeightUnit } from "../types";
+import type { GymPlan, GymPlanDay, type, Unit } from "../types";
 import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import LinePulse from "../../_layouts/pulse/line";
@@ -121,11 +121,10 @@ export function PlansView({
                             <button
                                 onClick={() => exportToJsonFile(plans, "gymPlans-backup")}
                                 disabled={plans.length === 0}
-                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
-                                    plans.length > 0
-                                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                                        : "bg-slate-800 text-slate-500"
-                                }`}
+                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${plans.length > 0
+                                    ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                                    : "bg-slate-800 text-slate-500"
+                                    }`}
                             >
                                 <DownloadIcon className="w-4 h-4" />
                                 <span className="hidden sm:inline">Export</span>
@@ -155,16 +154,14 @@ export function PlansView({
                                             setIsEditMode(false);
                                         }
                                     }}
-                                    className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${
-                                        selectedPlanId === plan.id
-                                            ? "bg-blue-600/20 border-l-2 border-l-blue-500"
-                                            : "hover:bg-slate-800/50"
-                                    }`}
+                                    className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${selectedPlanId === plan.id
+                                        ? "bg-blue-600/20 border-l-2 border-l-blue-500"
+                                        : "hover:bg-slate-800/50"
+                                        }`}
                                 >
                                     <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-                                        <span className={`font-medium min-w-[180px] ${
-                                            selectedPlanId === plan.id ? "text-blue-300" : "text-slate-200"
-                                        }`}>
+                                        <span className={`font-medium min-w-[180px] ${selectedPlanId === plan.id ? "text-blue-300" : "text-slate-200"
+                                            }`}>
                                             {plan.title}
                                         </span>
                                         <span className="text-sm text-slate-400">
@@ -191,11 +188,10 @@ export function PlansView({
                             <div className="flex items-center gap-2 ml-auto">
                                 <button
                                     onClick={handleToggleEditMode}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
-                                        isEditMode
-                                            ? "bg-slate-700 text-white hover:bg-slate-600"
-                                            : "bg-indigo-500 text-white hover:bg-indigo-400"
-                                    }`}
+                                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${isEditMode
+                                        ? "bg-slate-700 text-white hover:bg-slate-600"
+                                        : "bg-indigo-500 text-white hover:bg-indigo-400"
+                                        }`}
                                 >
                                     <EditIcon className="w-4 h-4" />
                                     {isEditMode ? "Done Editing" : "Edit Plan"}
@@ -290,16 +286,14 @@ export function PlansView({
                                     <div
                                         key={day.id}
                                         onClick={() => onDaySelect(day.id === selectedDayId ? "" : day.id)}
-                                        className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${
-                                            selectedDayId === day.id
-                                                ? "bg-blue-600/20 border-l-2 border-l-blue-500"
-                                                : "hover:bg-slate-800/50"
-                                        }`}
+                                        className={`cursor-pointer border-b border-slate-700 px-3 py-3 transition-colors last:border-b-0 ${selectedDayId === day.id
+                                            ? "bg-blue-600/20 border-l-2 border-l-blue-500"
+                                            : "hover:bg-slate-800/50"
+                                            }`}
                                     >
                                         <div className="flex items-center gap-x-6">
-                                            <span className={`font-medium min-w-[120px] ${
-                                                selectedDayId === day.id ? "text-blue-300" : "text-slate-200"
-                                            }`}>
+                                            <span className={`font-medium min-w-[120px] ${selectedDayId === day.id ? "text-blue-300" : "text-slate-200"
+                                                }`}>
                                                 {day.title}
                                             </span>
                                             <span className="text-sm text-slate-400">
@@ -403,26 +397,26 @@ function ExercisesList({ exercises }: ExercisesListProps) {
     }
 
     // Build muscle group color map
-    const muscleGroupColors: Record<string, string> = {};
+    const groupColors: Record<string, string> = {};
     let colorIndex = 0;
     exercises.forEach((ex) => {
-        const muscle = ex.muscleGroup?.toLowerCase().trim();
-        if (muscle && !muscleGroupColors[muscle]) {
-            muscleGroupColors[muscle] = colorPalette[colorIndex % colorPalette.length];
+        const muscle = ex.group?.toLowerCase().trim();
+        if (muscle && !groupColors[muscle]) {
+            groupColors[muscle] = colorPalette[colorIndex % colorPalette.length];
             colorIndex++;
         }
     });
 
-    const getMuscleColor = (muscleGroup?: string): string => {
-        if (!muscleGroup) return "bg-slate-600";
-        return muscleGroupColors[muscleGroup.toLowerCase().trim()] ?? "bg-slate-600";
+    const getMuscleColor = (group?: string): string => {
+        if (!group) return "bg-slate-600";
+        return groupColors[group.toLowerCase().trim()] ?? "bg-slate-600";
     };
 
     return (
         <div className="rounded-xl border border-slate-700 overflow-hidden">
             {exercises.map((ex) => {
-                const muscleColor = getMuscleColor(ex.muscleGroup);
-                const setsCount = ex.sets?.length ?? 0;
+                const muscleColor = getMuscleColor(ex.group);
+                const setsCount = ex.setsNo ?? 0;
 
                 return (
                     <div
@@ -437,20 +431,19 @@ function ExercisesList({ exercises }: ExercisesListProps) {
                                 <span className="text-sm font-medium text-slate-200 truncate">
                                     {ex.name || "Exercise"}
                                 </span>
-                                {ex.muscleGroup && (
+                                {ex.group && (
                                     <span className="text-xs text-slate-400 truncate">
-                                        {ex.muscleGroup}
+                                        {ex.group}
                                     </span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2 ml-2">
-                                <span className={`text-xs font-semibold ${
-                                    setsCount > 0 ? "text-emerald-400" : "text-slate-500"
-                                }`}>
+                                <span className={`text-xs font-semibold ${setsCount > 0 ? "text-emerald-400" : "text-slate-500"
+                                    }`}>
                                     {setsCount} {setsCount === 1 ? "set" : "sets"}
                                 </span>
                                 <button
-                                    onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
+                                    onClick={() => openExerciseSearch(ex.name, ex.group)}
                                     className="p-1 text-indigo-300 hover:text-indigo-100"
                                     aria-label="Search exercise"
                                 >
@@ -557,13 +550,12 @@ function DayEditor({
                                         draggingExerciseId || e.dataTransfer.getData("text/plain");
                                     onDrop(source, ex.id);
                                 }}
-                                className={`border-t border-slate-800 transition-all duration-150 ease-out ${
-                                    draggingExerciseId === ex.id
-                                        ? "bg-slate-900/60 shadow-inner scale-[0.995]"
-                                        : dragOverExerciseId === ex.id
+                                className={`border-t border-slate-800 transition-all duration-150 ease-out ${draggingExerciseId === ex.id
+                                    ? "bg-slate-900/60 shadow-inner scale-[0.995]"
+                                    : dragOverExerciseId === ex.id
                                         ? "bg-slate-900/50 ring-1 ring-teal-500/40"
                                         : ""
-                                }`}
+                                    }`}
                             >
                                 <td className="py-2 text-center align-middle">
                                     <button
@@ -593,9 +585,9 @@ function DayEditor({
                                 <td className="py-2 pr-0.5 min-w-[140px]">
                                     <input
                                         className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                        value={ex.muscleGroup ?? ""}
+                                        value={ex.group ?? ""}
                                         onChange={(e) =>
-                                            onUpdateExercise(exIdx, "muscleGroup", e.target.value)
+                                            onUpdateExercise(exIdx, "group", e.target.value)
                                         }
                                     />
                                 </td>
@@ -604,13 +596,13 @@ function DayEditor({
                                         type="number"
                                         min={0}
                                         className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                        value={ex.sets?.length ?? 0}
+                                        value={ex.setsNo ?? 3}
                                         onChange={(e) => {
                                             const count = Number(e.target.value) || 0;
                                             onUpdateExercise(
                                                 exIdx,
-                                                "sets",
-                                                ensureSetCount(count, ex.sets || [])
+                                                "setsNo",
+                                                count
                                             );
                                         }}
                                     />
@@ -618,12 +610,12 @@ function DayEditor({
                                 <td className="py-2 pr-0.5 w-24">
                                     <select
                                         className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                        value={ex.setType ?? "weight"}
+                                        value={ex.type ?? "weight"}
                                         onChange={(e) =>
                                             onUpdateExercise(
                                                 exIdx,
-                                                "setType",
-                                                e.target.value as SetType
+                                                "type",
+                                                e.target.value as type
                                             )
                                         }
                                     >
@@ -632,22 +624,31 @@ function DayEditor({
                                     </select>
                                 </td>
                                 <td className="py-2 pr-0.5 w-20">
-                                    {ex.setType !== "time" && (
-                                        <select
-                                            className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
-                                            value={ex.weightUnit ?? "kg"}
-                                            onChange={(e) =>
-                                                onUpdateExercise(
-                                                    exIdx,
-                                                    "weightUnit",
-                                                    e.target.value as WeightUnit
-                                                )
-                                            }
-                                        >
-                                            <option value="kg">KG</option>
-                                            <option value="lb">LB</option>
-                                        </select>
-                                    )}
+                                    <select
+                                        className="w-full rounded-lg bg-slate-950/70 border border-slate-800 px-2 py-2 text-sm focus:outline-none focus:border-teal-400 text-white"
+                                        value={ex.unit ?? "kg"}
+                                        onChange={(e) =>
+                                            onUpdateExercise(
+                                                exIdx,
+                                                "unit",
+                                                e.target.value as Unit
+                                            )
+                                        }
+                                    >
+                                        {ex.type === "time" ? (
+                                            <>
+                                                <option value="secs">Secs</option>
+                                                <option value="mins">Mins</option>
+                                                <option value="hours">Hours</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="kg">KG</option>
+                                                <option value="lb">LB</option>
+                                            </>
+                                        )}
+
+                                    </select>
                                 </td>
                                 <td className="py-2 text-center">
                                     <div className="flex items-center justify-center gap-2">
@@ -660,7 +661,7 @@ function DayEditor({
                                             <TrashIcon className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={() => openExerciseSearch(ex.name, ex.muscleGroup)}
+                                            onClick={() => openExerciseSearch(ex.name, ex.group)}
                                             className="p-1 text-indigo-300 hover:text-indigo-100"
                                             aria-label="Search exercise"
                                             title="Search exercise"
@@ -681,6 +682,6 @@ function DayEditor({
                     + Add exercise
                 </button>
             </div>
-        </div>
+        </div >
     );
 }

@@ -92,7 +92,7 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     },
 
     // Update a plan draft
-    updatePlanDraft: (planId, updater) => {
+    updatePlanDraft: async (planId, updater) => {
         const { planDrafts, plans, planDirty } = get();
         const base = planDrafts[planId] ?? plans.find((p) => p.id === planId);
         if (!base) return;
@@ -104,6 +104,8 @@ export const usePlansStore = create<PlansState>((set, get) => ({
             planDrafts: { ...planDrafts, [planId]: nextDraft },
             planDirty: { ...planDirty, [planId]: true },
         });
+
+        console.log("Plan draft", nextDraft);
     },
 
     // Update a day within a plan draft
@@ -165,14 +167,10 @@ export const usePlansStore = create<PlansState>((set, get) => ({
                 {
                     id: generateId(),
                     name: "",
-                    muscleGroup: "",
-                    setType: "weight",
-                    weightUnit: "kg",
-                    sets: [
-                        { weight: null, reps: null, completed: false },
-                        { weight: null, reps: null, completed: false },
-                        { weight: null, reps: null, completed: false },
-                    ],
+                    group: "",
+                    type: "weight",
+                    unit: "kg",
+                    setsNo: 3,
                 } as GymExercise,
             ],
         }));

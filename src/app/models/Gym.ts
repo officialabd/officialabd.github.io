@@ -1,20 +1,20 @@
-export type SetType = "weight" | "time";
-export type WeightUnit = "kg" | "lb" | "secs" | "mins" | "hours";
+export type type = "weight" | "time";
+export type Unit = "kg" | "lb" | "secs" | "mins" | "hours";
 
 export type GymSet = {
-    weight?: number | null;
+    value?: number | null;
     reps?: number | null;
-    time?: number | null; // time in seconds for time-based sets
     completed?: boolean | null;
 };
 
 export type GymExercise = {
     id: string;
     name: string;
-    muscleGroup?: string;
-    setType?: SetType; // default to "weight" if not set
-    weightUnit?: WeightUnit; // default to "kg" if not set
-    sets: GymSet[];
+    group?: string;
+    type?: type; // default to "weight" if not set
+    unit?: Unit; // default to "kg" if not set
+    // sets: GymSet[];
+    setsNo?: number;
 };
 
 export type GymPlanDay = {
@@ -37,9 +37,10 @@ export type GymPlan = {
 
 export type GymLogExercise = {
     name: string;
-    muscleGroup?: string;
-    setType?: SetType;
-    weightUnit?: WeightUnit;
+    group?: string;
+    type?: type;
+    unit?: Unit;
+    setsNo?: number;
     sets: GymSet[];
     completed?: boolean | null;
 };
@@ -68,30 +69,22 @@ const cleanObject = <T extends Record<string, any>>(obj: T): T => {
 const sanitizeExercise = (ex: any): GymExercise => ({
     id: ex?.id ?? "",
     name: ex?.name ?? "",
-    muscleGroup: ex?.muscleGroup ?? undefined,
-    setType: ex?.setType ?? undefined,
-    weightUnit: ex?.weightUnit ?? undefined,
-    sets: Array.isArray(ex?.sets)
-        ? ex.sets.map((s: any) => cleanObject({
-            weight: s?.weight ?? undefined,
-            reps: s?.reps ?? undefined,
-            time: s?.time ?? undefined,
-            completed: s?.completed ?? undefined,
-        }))
-        : [],
+    group: ex?.group ?? undefined,
+    type: ex?.type ?? undefined,
+    unit: ex?.unit ?? undefined,
+    setsNo: ex?.setsNo ?? undefined,
 });
 
 const sanitizeLogExercise = (ex: any): GymLogExercise => ({
     name: ex?.name ?? "",
-    muscleGroup: ex?.muscleGroup ?? undefined,
-    setType: ex?.setType ?? undefined,
-    weightUnit: ex?.weightUnit ?? undefined,
+    group: ex?.group ?? undefined,
+    type: ex?.type ?? undefined,
+    unit: ex?.unit ?? undefined,
     completed: ex?.completed ?? undefined,
     sets: Array.isArray(ex?.sets)
         ? ex.sets.map((s: any) => cleanObject({
-            weight: s?.weight ?? undefined,
+            value: s?.value ?? undefined,
             reps: s?.reps ?? undefined,
-            time: s?.time ?? undefined,
             completed: s?.completed ?? undefined,
         }))
         : [],
@@ -100,30 +93,22 @@ const sanitizeLogExercise = (ex: any): GymLogExercise => ({
 const sanitizeExerciseForWrite = (ex: any) => cleanObject({
     id: ex?.id ?? "",
     name: ex?.name ?? "",
-    muscleGroup: ex?.muscleGroup ?? null,
-    setType: ex?.setType ?? null,
-    weightUnit: ex?.weightUnit ?? null,
-    sets: Array.isArray(ex?.sets)
-        ? ex.sets.map((s: any) => cleanObject({
-            weight: s?.weight ?? null,
-            reps: s?.reps ?? null,
-            time: s?.time ?? null,
-            completed: s?.completed ?? null,
-        }))
-        : [],
+    group: ex?.group ?? null,
+    type: ex?.type ?? null,
+    unit: ex?.unit ?? null,
+    setsNo: ex?.setsNo ?? null,
 });
 
 const sanitizeLogExerciseForWrite = (ex: any) => cleanObject({
     name: ex?.name ?? "",
-    muscleGroup: ex?.muscleGroup ?? null,
-    setType: ex?.setType ?? null,
-    weightUnit: ex?.weightUnit ?? null,
+    group: ex?.group ?? null,
+    type: ex?.type ?? null,
+    unit: ex?.unit ?? null,
     completed: ex?.completed ?? null,
     sets: Array.isArray(ex?.sets)
         ? ex.sets.map((s: any) => cleanObject({
-            weight: s?.weight ?? null,
+            value: s?.value ?? null,
             reps: s?.reps ?? null,
-            time: s?.time ?? null,
             completed: s?.completed ?? null,
         }))
         : [],

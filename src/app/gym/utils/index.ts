@@ -1,4 +1,4 @@
-import type { GymSet, ExerciseStatus, SetType } from "../types";
+import type { GymSet, ExerciseStatus, type } from "../types";
 
 /**
  * Generate a unique ID using crypto.randomUUID or fallback
@@ -34,13 +34,13 @@ export const lastMonthISO = (): string => {
 export const formatTime = (ts?: number | null): string =>
     ts
         ? new Date(ts).toLocaleString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-          })
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        })
         : "-";
 
 /**
@@ -73,7 +73,7 @@ export const ensureSetCount = (count: number, existing: GymSet[]): GymSet[] => {
     const next = [...existing];
     if (next.length < safe) {
         while (next.length < safe) {
-            next.push({ weight: null, reps: null, time: null, completed: false });
+            next.push({ value: null, reps: null, completed: false });
         }
     } else if (next.length > safe) {
         next.length = safe;
@@ -84,14 +84,11 @@ export const ensureSetCount = (count: number, existing: GymSet[]): GymSet[] => {
 /**
  * Get the completion status of an exercise based on its sets
  */
-export const getExerciseStatus = (sets: GymSet[], setType?: SetType): ExerciseStatus => {
+export const getExerciseStatus = (sets: GymSet[], type?: type): ExerciseStatus => {
     const total = sets?.length ?? 0;
     const filled = (sets ?? []).filter((s) => {
         if (!s) return false;
-        if (setType === "time") {
-            return s.time !== null && s.time !== undefined;
-        }
-        return s.weight !== null && s.weight !== undefined;
+        return s.value !== null && s.value !== undefined;
     }).length;
 
     if (total > 0 && filled === total) {
@@ -124,14 +121,14 @@ export const openExerciseSearch = (name: string, muscle?: string | null): void =
  */
 export const exportToJsonFile = (data: unknown, filename: string): void => {
     if (typeof window === "undefined") return;
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fullFilename = `${filename}-${timestamp}.json`;
-    
+
     const jsonString = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.href = url;
     link.download = fullFilename;

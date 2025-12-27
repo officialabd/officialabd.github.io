@@ -98,16 +98,13 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
         completedAt: draft.completedAt ?? null,
         status: draft.status ?? null,
         exercises: (draft.exercises ?? []).filter(Boolean).map((ex: GymLogExercise) => {
-            const isTimeType = ex.setType === "time";
+            const isTimeType = ex.type === "time";
             const sets = Array.isArray(ex.sets)
                 ? ex.sets.map((s) => {
-                    const hasValue = isTimeType
-                        ? s?.time !== null && s?.time !== undefined
-                        : s?.weight !== null && s?.weight !== undefined;
+                    const hasValue = s?.value !== null && s?.value !== undefined
                     return {
-                        weight: s?.weight ?? null,
+                        value: s?.value ?? null,
                         reps: s?.reps ?? null,
-                        time: s?.time ?? null,
                         completed: hasValue ? true : null,
                     } as GymSet;
                 })
@@ -116,9 +113,9 @@ export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
             const completed = sets.length > 0 && filled === sets.length ? true : null;
             return {
                 name: ex.name ?? "",
-                muscleGroup: ex.muscleGroup,
-                setType: ex.setType ?? "weight",
-                weightUnit: isTimeType ? undefined : (ex.weightUnit ?? "kg"),
+                group: ex.group,
+                type: ex.type ?? "weight",
+                unit: ex.unit ?? "kg",
                 completed,
                 sets,
             } as GymLogExercise;
@@ -193,6 +190,8 @@ export async function createLogEntry(userId: string, log: Omit<GymLogEntry, "id"
  */
 export async function updateLogEntry(userId: string, logId: string, log: Omit<GymLogEntry, "id">): Promise<void> {
     const sanitized = sanitizeLogForWrite(log as LogDraft);
+    console.log("sanitized: ", log, sanitized);
+
     await setDoc(
         doc(logsCollection(userId), logId),
         logEntryToFirestore({ ...sanitized, createdAt: log.createdAt } as Omit<GymLogEntry, "id">),

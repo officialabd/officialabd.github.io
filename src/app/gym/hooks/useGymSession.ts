@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useSessionStore } from "../stores";
-import type { GymPlan, GymPlanDay, GymSet, GymLogEntry, SetType, WeightUnit } from "../types";
+import type { GymPlan, GymPlanDay, GymSet, GymLogEntry, type, Unit } from "../types";
 import * as gymService from "../services/gymService";
 
 /**
@@ -45,6 +45,7 @@ export function useGymSession(userId: string | null) {
                 completedAt: store.logDraft.completedAt,
                 status: store.logDraft.status ?? "running",
             };
+            console.log("Saving: ", store.currentLogId, payload);
 
             if (store.currentLogId) {
                 await gymService.updateLogEntry(userId, store.currentLogId, payload);
@@ -122,7 +123,7 @@ export function useGymSession(userId: string | null) {
 
         // Set loading flag BEFORE async fetch to prevent race conditions
         store.setLoadingRunning(true);
-        
+
         try {
             const runningLog = await gymService.fetchRunningSession(userId);
             if (runningLog) {
@@ -190,7 +191,7 @@ export function useGymSession(userId: string | null) {
 
     // Update exercise unit
     const updateUnit = useCallback(
-        (exerciseIndex: number, unit: WeightUnit) => {
+        (exerciseIndex: number, unit: Unit) => {
             store.updateExerciseUnit(exerciseIndex, unit);
         },
         [store]
@@ -198,8 +199,8 @@ export function useGymSession(userId: string | null) {
 
     // Add a new exercise (optionally specify type and unit)
     const addExercise = useCallback(
-        (name: string, muscleGroup: string, setType: SetType = "weight", weightUnit: WeightUnit = "kg") => {
-            store.addExercise(name, muscleGroup, setType, weightUnit);
+        (name: string, group: string, type: type = "weight", unit: Unit = "kg") => {
+            store.addExercise(name, group, type, unit);
         },
         [store]
     );
@@ -214,8 +215,8 @@ export function useGymSession(userId: string | null) {
 
     // Update exercise details (name and muscle group)
     const updateExerciseDetails = useCallback(
-        (exerciseIndex: number, name: string, muscleGroup: string) => {
-            store.updateExerciseDetails(exerciseIndex, name, muscleGroup);
+        (exerciseIndex: number, name: string, group: string) => {
+            store.updateExerciseDetails(exerciseIndex, name, group);
         },
         [store]
     );

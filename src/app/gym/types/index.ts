@@ -1,7 +1,7 @@
 // Import types from models
 import type {
-    SetType,
-    WeightUnit,
+    type,
+    Unit,
     GymSet,
     GymExercise,
     GymPlanDay,
@@ -12,8 +12,8 @@ import type {
 
 // Re-export all types from models for convenience
 export type {
-    SetType,
-    WeightUnit,
+    type,
+    Unit,
     GymSet,
     GymExercise,
     GymPlanDay,

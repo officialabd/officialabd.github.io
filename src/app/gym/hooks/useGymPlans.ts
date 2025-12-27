@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { usePlansStore } from "../stores";
-import type { GymPlan, GymPlanDay } from "../types";
+import type { GymPlan, GymPlanDay, Unit } from "../types";
 import * as gymService from "../services/gymService";
 
 /**
@@ -94,14 +94,7 @@ export function useGymPlans(userId: string | null) {
                     ...day,
                     exercises: (day.exercises ?? []).filter(Boolean).map((ex) => ({
                         ...ex,
-                        sets: Array.isArray(ex.sets)
-                            ? ex.sets.map((s) => ({
-                                weight: s?.weight ?? null,
-                                reps: s?.reps ?? null,
-                                time: s?.time ?? null,
-                                completed: s?.completed ?? null,
-                            }))
-                            : [],
+                        setsNo: ex.setsNo,
                     })),
                 })),
             };
@@ -169,6 +162,20 @@ export function useGymPlans(userId: string | null) {
         (planId: string, dayId: string, exerciseIndex: number, field: string, value: any) => {
             store.updateDayDraft(planId, dayId, (day) => {
                 const exercises = [...(day.exercises ?? [])];
+
+                if (field === 'type') {
+                    // Reset unit when type changes
+                    let newUnit = exercises[exerciseIndex]?.unit || "";
+                    if (value === "weight") {
+                        newUnit = "kg";
+                    } else if (value === "time") {
+                        newUnit = "mins";
+                    } else {
+                        newUnit = "unknown";
+                    }
+                    exercises[exerciseIndex] = { ...exercises[exerciseIndex], unit: newUnit as Unit };
+                }
+
                 exercises[exerciseIndex] = { ...exercises[exerciseIndex], [field]: value };
                 return { ...day, exercises };
             });

@@ -98,11 +98,10 @@ export function LogsFeed({
                     <button
                         onClick={() => exportToJsonFile(logs, "gymLogs-backup")}
                         disabled={logs.length === 0}
-                        className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${
-                            logs.length > 0
-                                ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                                : "bg-slate-800 text-slate-500"
-                        }`}
+                        className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${logs.length > 0
+                            ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                            : "bg-slate-800 text-slate-500"
+                            }`}
                     >
                         <DownloadIcon className="w-4 h-4" />
                         Export Logs
@@ -163,8 +162,8 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                     </thead>
                     <tbody>
                         {log.exercises.map((ex, idx) => {
-                            const status = getExerciseStatus(ex.sets, ex.setType);
-                            const isTimeType = ex.setType === "time";
+                            const status = getExerciseStatus(ex.sets, ex.type);
+                            const isTimeType = ex.type === "time";
                             return (
                                 <tr
                                     key={`${log.id}-${idx}`}
@@ -174,13 +173,13 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                         <div className="text-teal-200 font-semibold">
                                             {ex.name}
                                         </div>
-                                        {ex.muscleGroup && (
+                                        {ex.group && (
                                             <div className="text-xs text-slate-400">
-                                                {ex.muscleGroup}
+                                                {ex.group}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-2 px-3 text-center">{ex.sets.length}</td>
+                                    <td className="py-2 px-3 text-center">{ex.sets.filter((s) => s.completed).length}/{ex.sets.length}</td>
                                     <td className="py-2 px-3">
                                         <div className="flex flex-wrap gap-1 justify-start">
                                             {ex.sets.length === 0 && (
@@ -191,23 +190,20 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                                     key={`${log.id}-${idx}-set-${i}`}
                                                     className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] text-slate-100"
                                                 >
-                                                    <span className="text-slate-400">#{i + 1}</span>
-                                                    {isTimeType ? (
+                                                    <span className="font-bold">
+                                                        {s.value ?? "- "}
+                                                    </span>
+                                                    <span>
+                                                        {ex.unit ?? "kg"}
+                                                    </span>
+
+                                                    {!isTimeType && <>
+                                                        <span className="text-slate-400">×</span>
                                                         <span className="font-semibold">
-                                                            {s.time ?? "-"} min
+                                                            {s.reps ?? "-"}
                                                         </span>
-                                                    ) : (
-                                                        <>
-                                                            <span className="font-semibold">
-                                                                {s.weight ?? "-"}
-                                                                {ex.weightUnit ?? "kg"}
-                                                            </span>
-                                                            <span className="text-slate-400">×</span>
-                                                            <span className="font-semibold">
-                                                                {s.reps ?? "-"}
-                                                            </span>
-                                                        </>
-                                                    )}
+                                                    </>
+                                                    }
                                                 </span>
                                             ))}
                                         </div>
@@ -225,56 +221,52 @@ function LogEntryCard({ log }: LogEntryCardProps) {
             </div>
 
             {/* Mobile cards */}
-            <div className="space-y-3 sm:hidden">
+            <div className="space-y-1 sm:hidden">
                 {log.exercises.map((ex, idx) => {
-                    const status = getExerciseStatus(ex.sets, ex.setType);
-                    const isTimeType = ex.setType === "time";
+                    const status = getExerciseStatus(ex.sets, ex.type);
+                    const isTimeType = ex.type === "time";
                     return (
                         <div
                             key={`${log.id}-m-${idx}`}
-                            className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2"
+                            className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 space-y-1"
                         >
-                            <div className="flex justify-between text-sm text-teal-200 font-semibold">
+                            <div className="flex justify-between text-sm text-slate-100 font-semibold">
                                 <span>{ex.name}</span>
-                                <span className={`text-[11px] font-semibold ${status.color}`}>
-                                    {status.label}
+
+                                <span className={`text-[11px] font-semibold text-slate-300`}>
+                                    <span className={`${status.color}`}> {status.label} </span>
+                                    {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
                                 </span>
                             </div>
-                            {ex.muscleGroup && (
+
+                            {ex.group && (
                                 <div className="text-[11px] text-slate-400">
-                                    {ex.muscleGroup}
+                                    {ex.group}
                                 </div>
                             )}
-                            <div className="text-[11px] text-slate-300">
-                                Sets: {ex.sets.length}
-                            </div>
-                            <div className="flex flex-wrap gap-1 text-[11px] text-slate-200">
-                                {isTimeType ? "Times" : "Values"}:
+                            <div className="flex flex-wrap gap-1 text-[12px] text-slate-200">
                                 {ex.sets.length === 0 && (
                                     <span className="ml-1 text-slate-500">-</span>
                                 )}
-                                {ex.sets.map((s, i) => (
+                                {ex.sets.filter((s) => s.completed).map((s, i) => (
                                     <span
                                         key={`${log.id}-m-${idx}-set-${i}`}
-                                        className="ml-1 inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1"
+                                        className="mr-0.5 inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-0.5"
                                     >
-                                        <span className="text-slate-400">#{i + 1}</span>
-                                        {isTimeType ? (
+                                        <span className="font-bold">
+                                            {s.value ?? "- "}
+                                        </span>
+                                        <span className="text-[10px]">
+                                            {ex.unit ?? "kg"}
+                                        </span>
+
+                                        {!isTimeType && <>
+                                            <span className="text-slate-400">×</span>
                                             <span className="font-semibold">
-                                                {s.time ?? "-"} min
+                                                {s.reps ?? "-"}
                                             </span>
-                                        ) : (
-                                            <>
-                                                <span className="font-semibold">
-                                                    {s.weight ?? "-"}
-                                                    {ex.weightUnit ?? "kg"}
-                                                </span>
-                                                <span className="text-slate-400">×</span>
-                                                <span className="font-semibold">
-                                                    {s.reps ?? "-"}
-                                                </span>
-                                            </>
-                                        )}
+                                        </>
+                                        }
                                     </span>
                                 ))}
                             </div>
