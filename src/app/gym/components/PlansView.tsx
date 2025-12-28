@@ -418,6 +418,15 @@ function ExercisesList({ exercises }: ExercisesListProps) {
                 const muscleColor = getMuscleColor(ex.group);
                 const setsCount = ex.setsNo ?? 0;
 
+                const perValue = ex.per || "";
+                let value = perValue;
+                if (perValue.length > 0) {
+                    value = perValue.charAt(0).toUpperCase() + perValue.slice(1);
+                    if (perValue.charAt(0).match(/\d/)) {
+                        value = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
+                    }
+                }
+
                 return (
                     <div
                         key={ex.id}
@@ -427,7 +436,7 @@ function ExercisesList({ exercises }: ExercisesListProps) {
                         <div className={`w-1.5 self-stretch ${muscleColor}`} />
 
                         <div className="flex items-center justify-between flex-1 px-3 py-3">
-                            <div className="flex flex-col flex-1 min-w-0">
+                            <div className="flex flex-col flex-1 min-w-0 w-48">
                                 <span className="text-sm font-medium text-slate-200 truncate">
                                     {ex.name || "Exercise"}
                                 </span>
@@ -437,7 +446,12 @@ function ExercisesList({ exercises }: ExercisesListProps) {
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2 ml-2">
+                            <div className="flex items-center text-xs font-semibold ml-1 w-12 justify-start">
+                                <span>
+                                    {value}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 ml-1 justify-end w-16">
                                 <span className={`text-xs font-semibold ${setsCount > 0 ? "text-emerald-400" : "text-slate-500"
                                     }`}>
                                     {setsCount} {setsCount === 1 ? "set" : "sets"}
