@@ -80,6 +80,7 @@ export default function GymPage() {
         updateSetsCount,
         updateSetValue,
         updateUnit,
+        updatePer,
         updateNote,
         updateDate,
         addExercise: addSessionExercise,
@@ -347,6 +348,7 @@ export default function GymPage() {
                                 onSetsCountChange={updateSetsCount}
                                 onSetValueChange={updateSetValue}
                                 onUnitChange={updateUnit}
+                                onPerChange={updatePer}
                                 onNoteChange={updateNote}
                                 onAddExercise={addSessionExercise}
                                 onRemoveExercise={removeSessionExercise}

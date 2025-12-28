@@ -6,6 +6,7 @@ import Card from "../../_layouts/card/card";
 import Basic from "../../_layouts/texts/basic";
 import { SearchIcon, PlusIcon, MinusIcon, EditIcon, CheckIcon, CloseIcon } from "./icons";
 import { formatTime, todayISO, getExerciseStatus, openExerciseSearch } from "../utils";
+import { Per } from "@/app/models/Gym";
 
 interface SessionLoggerProps {
     plans: GymPlan[];
@@ -28,6 +29,7 @@ interface SessionLoggerProps {
         value: number | null
     ) => void;
     onUnitChange: (exerciseIndex: number, unit: Unit) => void;
+    onPerChange: (exerciseIndex: number, per: Per) => void;
     onNoteChange: (note: string) => void;
     onAddExercise: (name: string, group: string) => void;
     onRemoveExercise: (exerciseIndex: number) => void;
@@ -50,6 +52,7 @@ export function SessionLogger({
     onSetsCountChange,
     onSetValueChange,
     onUnitChange,
+    onPerChange,
     onNoteChange,
     onAddExercise,
     onRemoveExercise,
@@ -299,6 +302,7 @@ export function SessionLogger({
                                         sets: [],
                                         type: "weight",
                                         unit: "kg",
+                                        per: "1hand"
                                     }}
                                     exerciseIndex={-1}
                                     canEdit={true}
@@ -306,6 +310,7 @@ export function SessionLogger({
                                     onSetsCountChange={() => { }}
                                     onSetValueChange={() => { }}
                                     onUnitChange={() => { }}
+                                    onPerChange={() => { }}
                                     isAddMode={true}
                                     editName={newExerciseName}
                                     editMuscle={newExerciseMuscle}
@@ -391,6 +396,7 @@ export function SessionLogger({
                                         onSetValueChange(selectedExerciseIndex, setIdx, field, value)
                                     }
                                     onUnitChange={(unit) => onUnitChange(selectedExerciseIndex, unit)}
+                                    onPerChange={(per) => onPerChange(selectedExerciseIndex, per)}
                                     isEditMode={editingExerciseIndex === selectedExerciseIndex}
                                     editName={editExerciseName}
                                     editMuscle={editExerciseMuscle}
@@ -436,6 +442,7 @@ interface SetEditorProps {
     onSetsCountChange: (count: number) => void;
     onSetValueChange: (setIndex: number, field: keyof GymSet, value: number | null) => void;
     onUnitChange: (unit: Unit) => void;
+    onPerChange: (per: Per) => void;
     // Edit mode props - when provided, name/muscle become editable
     isEditMode?: boolean;
     isAddMode?: boolean; // Uses green styling instead of amber
@@ -451,6 +458,7 @@ interface SetEditorProps {
 // Unit options
 const weightUnits: Unit[] = ["kg", "lb"];
 const timeUnits = ["secs", "mins", "hours"] as const;
+const pers: Per[] = ["1hand", "2hands", "1leg", "2legs", "fullBody"];
 type TimeUnit = typeof timeUnits[number];
 
 function SetEditor({
@@ -461,6 +469,7 @@ function SetEditor({
     onSetsCountChange,
     onSetValueChange,
     onUnitChange,
+    onPerChange,
     isEditMode,
     isAddMode,
     editName,
@@ -473,6 +482,7 @@ function SetEditor({
 }: SetEditorProps) {
     const type = (exercise.type ?? "weight") as type;
     const unit = (exercise.unit ?? "kg") as Unit;
+    const per = (exercise.per ?? "1hand") as Per;
     const isTimeType = type === "time";
 
     // Determine if we're in any input mode
@@ -616,6 +626,21 @@ function SetEditor({
                             ))}
                         </select>
                     )}
+                    <span className="text-xs text-slate-400">Per:</span>
+                    <select
+                        className="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:border-teal-400 text-white"
+                        value={per}
+                        disabled={!canEdit || isCompleted}
+                        onChange={(e) => onPerChange(e.target.value as Per)}
+                    >
+                        {pers.map((u) => {
+                            let value = u.charAt(0).toUpperCase() + u.slice(1);
+                            if (u.charAt(0).match(/\d/)) {
+                                value = u.charAt(0) + ' ' + u.charAt(1).toUpperCase() + u.slice(2);
+                            }
+                            return <option key={u} value={u}>{value}</option>
+                        })}
+                    </select>
                 </div>
             )}
 

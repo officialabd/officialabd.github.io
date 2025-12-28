@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useSessionStore } from "../stores";
 import type { GymPlan, GymPlanDay, GymSet, GymLogEntry, type, Unit } from "../types";
 import * as gymService from "../services/gymService";
+import { Per } from "@/app/models/Gym";
 
 /**
  * Hook to manage gym session logging
@@ -196,6 +197,13 @@ export function useGymSession(userId: string | null) {
         [store]
     );
 
+    const updatePer = useCallback(
+        (exerciseIndex: number, per: Per) => {
+            store.updateExercisePer(exerciseIndex, per);
+        },
+        [store]
+    );
+
     // Add a new exercise (optionally specify type and unit)
     const addExercise = useCallback(
         (name: string, group: string, type: type = "weight", unit: Unit = "kg") => {
@@ -245,6 +253,7 @@ export function useGymSession(userId: string | null) {
         updateNote,
         updateDate,
         updateUnit,
+        updatePer,
         addExercise,
         updateExerciseType: store.updateExerciseType,
         removeExercise,

@@ -155,6 +155,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                     <thead className="text-slate-300">
                         <tr>
                             <th className="py-2 px-3 text-left">Exercise</th>
+                            <th className="py-2 px-3">Per</th>
                             <th className="py-2 px-3">Sets #</th>
                             <th className="py-2 px-3 text-left">Values per set</th>
                             <th className="py-2 px-3">Status</th>
@@ -164,6 +165,14 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                         {log.exercises.map((ex, idx) => {
                             const status = getExerciseStatus(ex.sets, ex.type);
                             const isTimeType = ex.type === "time";
+                            const perValue = ex.per || "";
+                            let value = perValue;
+                            if (perValue.length > 0) {
+                                value = perValue.charAt(0).toUpperCase() + perValue.slice(1);
+                                if (perValue.charAt(0).match(/\d/)) {
+                                    value = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
+                                }
+                            }
                             return (
                                 <tr
                                     key={`${log.id}-${idx}`}
@@ -179,6 +188,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                             </div>
                                         )}
                                     </td>
+                                    <td className="py-2 px-3 text-center">{value}</td>
                                     <td className="py-2 px-3 text-center">{ex.sets.filter((s) => s.completed).length}/{ex.sets.length}</td>
                                     <td className="py-2 px-3">
                                         <div className="flex flex-wrap gap-1 justify-start">
@@ -225,6 +235,14 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                 {log.exercises.map((ex, idx) => {
                     const status = getExerciseStatus(ex.sets, ex.type);
                     const isTimeType = ex.type === "time";
+                    const perValue = ex.per || "";
+                    let value = perValue;
+                    if (perValue.length > 0) {
+                        value = perValue.charAt(0).toUpperCase() + perValue.slice(1);
+                        if (perValue.charAt(0).match(/\d/)) {
+                            value = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
+                        }
+                    }
                     return (
                         <div
                             key={`${log.id}-m-${idx}`}
@@ -234,6 +252,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                 <span>{ex.name}</span>
 
                                 <span className={`text-[11px] font-semibold text-slate-300`}>
+                                    {value} •
                                     <span className={`${status.color}`}> {status.label} </span>
                                     {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
                                 </span>

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { GymPlan, GymPlanDay, GymLogExercise, GymSet, LogDraft, type, Unit } from "../types";
 import { todayISO, ensureSetCount } from "../utils";
+import { Per } from "@/app/models/Gym";
 
 interface SessionState {
     // Selection
@@ -33,6 +34,7 @@ interface SessionState {
     ) => void;
     updateExerciseUnit: (exerciseIndex: number, unit: Unit) => void;
     updateSessionNote: (note: string) => void;
+    updateExercisePer: (exerciseIndex: number, per: Per) => void;
 
     // Exercise manipulation
     addExercise: (name: string, group: string, type?: type, unit?: Unit) => void;
@@ -132,19 +134,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         });
     },
 
+    updateExercisePer: (exerciseIndex, per) => {
+        get().updateLogDraft((draft) => {
+            const exercises = [...draft.exercises];
+            exercises[exerciseIndex] = { ...exercises[exerciseIndex], per: per };
+            return { ...draft, exercises };
+        });
+    },
+
     // Update session note
     updateSessionNote: (note) => {
         get().updateLogDraft((draft) => ({ ...draft, note }));
     },
 
     // Add a new exercise (optionally specify set type and weight unit)
-    addExercise: (name, group, type = "weight", unit = "kg") => {
+    addExercise: (name, group, type = "weight", unit = "kg", per = "1hand" as Per) => {
         get().updateLogDraft((draft) => {
             const newExercise: GymLogExercise = {
                 name,
                 group: group || undefined,
                 type,
                 unit,
+                per: per || undefined,
                 completed: null,
                 sets: ensureSetCount(3, []),
             };
@@ -201,6 +212,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                 group: ex.group,
                 type: ex.type ?? "weight",
                 unit: ex.unit ?? "kg",
+                per: ex.per ?? "1hand",
                 completed: null,
                 setsNo: ex.setsNo ?? 3,
                 sets: ensureSetCount(
