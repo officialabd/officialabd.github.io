@@ -195,7 +195,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                             {ex.sets.length === 0 && (
                                                 <span className="text-xs text-slate-500">-</span>
                                             )}
-                                            {ex.sets.map((s, i) => (
+                                            {ex.sets.filter((s) => s.completed).map((s, i) => (
                                                 <span
                                                     key={`${log.id}-${idx}-set-${i}`}
                                                     className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] text-slate-100"
