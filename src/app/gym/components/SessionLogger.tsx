@@ -271,7 +271,7 @@ export function SessionLogger({
                             </span>
                             <br />
                             <span className="text-xs text-slate-400">
-                                Finished: {formatTime(logDraft.completedAt)}
+                                Duration: {logDraft.startedAt ? ((new Date().getTime() - new Date(logDraft.startedAt).getTime()) / 60000).toPrecision(2) + " mins" : "-"}
                             </span>
                         </div>
 

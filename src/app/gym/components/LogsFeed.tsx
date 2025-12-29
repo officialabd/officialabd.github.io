@@ -151,14 +151,14 @@ function LogEntryCard({ log }: LogEntryCardProps) {
 
             {/* Desktop table */}
             <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/50 hidden sm:block">
-                <table className="w-full text-sm border-collapse min-w-[640px]">
+                <table className="w-full text-sm border-collapse min-w-[640px] table-fixed">
                     <thead className="text-slate-300">
                         <tr>
-                            <th className="py-2 px-3 text-left">Exercise</th>
-                            <th className="py-2 px-3">Per</th>
-                            <th className="py-2 px-3">Sets #</th>
-                            <th className="py-2 px-3 text-left">Values per set</th>
-                            <th className="py-2 px-3">Status</th>
+                            <th className="py-2 px-3 w-[35%] text-left">Exercise</th>
+                            <th className="py-2 px-3 w-[10%]">Per</th>
+                            <th className="py-2 px-3 w-[10%]">Sets #</th>
+                            <th className="py-2 px-3 w-[35%] text-left">Values per set</th>
+                            <th className="py-2 px-3 w-[10%]">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -179,7 +179,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                     className="border-t border-slate-800"
                                 >
                                     <td className="py-2 px-3">
-                                        <div className="text-teal-200 font-semibold">
+                                        <div className="text-sm text-slate-100 font-semibold">
                                             {ex.name}
                                         </div>
                                         {ex.group && (
@@ -219,7 +219,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                         </div>
                                     </td>
                                     <td className="py-2 px-3 text-center text-xs">
-                                        <span className={`font-semibold ${status.color}`}>
+                                        <span className={`font-semibold text-${status.color}`}>
                                             {status.label}
                                         </span>
                                     </td>
@@ -236,11 +236,11 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                     const status = getExerciseStatus(ex.sets, ex.type);
                     const isTimeType = ex.type === "time";
                     const perValue = ex.per || "";
-                    let value = perValue;
+                    let per = perValue;
                     if (perValue.length > 0) {
-                        value = perValue.charAt(0).toUpperCase() + perValue.slice(1);
+                        per = perValue.charAt(0).toUpperCase() + perValue.slice(1);
                         if (perValue.charAt(0).match(/\d/)) {
-                            value = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
+                            per = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
                         }
                     }
                     return (
@@ -252,9 +252,10 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                 <span>{ex.name}</span>
 
                                 <span className={`text-[11px] font-semibold text-slate-300`}>
-                                    {value} •
-                                    <span className={`${status.color}`}> {status.label} </span>
-                                    {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
+                                    {per} •
+                                    <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold bg-${status.color} text-black`}>
+                                        {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
+                                    </span>
                                 </span>
                             </div>
 

@@ -30,7 +30,7 @@ export type SessionStatus = "running" | "completed" | null;
 
 // Exercise completion status (internal types used by ExerciseStatus)
 type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted";
-type ExerciseStatusColor = "text-emerald-300" | "text-orange-300" | "text-rose-300";
+type ExerciseStatusColor = "emerald-300" | "orange-300" | "rose-300";
 
 export interface ExerciseStatus {
     label: ExerciseStatusLabel;
