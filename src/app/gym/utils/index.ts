@@ -92,12 +92,12 @@ export const getExerciseStatus = (sets: GymSet[], type?: type): ExerciseStatus =
     }).length;
 
     if (total > 0 && filled === total) {
-        return { label: "Completed", color: "emerald-300" };
+        return { label: "Completed", textColor: "text-emerald-300", bgColor: "bg-emerald-300" };
     }
     if (filled > 0) {
-        return { label: "Partial", color: "orange-300" };
+        return { label: "Partial", textColor: "text-orange-300", bgColor: "bg-orange-300" };
     }
-    return { label: "Unattempted", color: "rose-300" };
+    return { label: "Unattempted", textColor: "text-rose-300", bgColor: "bg-rose-300" };
 };
 
 /**

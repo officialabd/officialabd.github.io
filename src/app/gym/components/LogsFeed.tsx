@@ -219,7 +219,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
                                         </div>
                                     </td>
                                     <td className="py-2 px-3 text-center text-xs">
-                                        <span className={`font-semibold text-${status.color}`}>
+                                        <span className={`font-semibold ${status.textColor}`}>
                                             {status.label}
                                         </span>
                                     </td>
@@ -253,7 +253,7 @@ function LogEntryCard({ log }: LogEntryCardProps) {
 
                                 <span className={`text-[11px] font-semibold text-slate-300`}>
                                     {per} •
-                                    <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold bg-${status.color} text-black`}>
+                                    <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold ${status.bgColor} text-black`}>
                                         {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
                                     </span>
                                 </span>
