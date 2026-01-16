@@ -83,30 +83,38 @@ export default function Intro(
         {loading ?
             <LinePulse />
             :
-            <div className="relative z-10 text-center px-4">
-                <Basic
-                    text={"Hey, I'm Abd"}
-                    fontSize="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
-                    fontFamily="font-Nunito"
-                    fontWeight="font-bold"
-                    textColor="text-white"
-                    margin="mb-4 sm:mb-6 md:mb-8"
-                />
+            <div>
 
-                <Basic
-                    text={myInfo?.getTitle()!}
-                    fontSize="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl"
-                    fontFamily="font-Nunito"
-                    fontWeight="font-bold"
-                    textColor="text-slate-300"
-                    margin="mb-6 sm:mb-8 md:mb-10"
-                />
+                <div className="relative z-10 text-center px-4">
+                    <Basic
+                        text={"Hey, I'm Abd"}
+                        fontSize="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
+                        fontFamily="font-Nunito"
+                        fontWeight="font-bold"
+                        textColor="text-white"
+                        margin="mb-4 sm:mb-6 md:mb-8"
+                    />
 
-
-                <div className="mt-12 sm:mt-16 md:mt-20 opacity-50">
-                    <svg className="w-6 h-6 sm:w-8 sm:h-8 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
+                    <Basic
+                        text={myInfo?.getTitle()!}
+                        fontSize="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl"
+                        fontFamily="font-Nunito"
+                        fontWeight="font-bold"
+                        textColor="text-slate-300"
+                        margin="mb-6 sm:mb-8 md:mb-10"
+                    />
+                </div>
+                <div className="absolute bottom-24 sm:bottom-16 md:bottom-20 left-0 right-0 z-10 px-4">
+                    <Basic
+                        text={myInfo?.getDescription()!}
+                        fontSize="text-sm"
+                        fontFamily=""
+                        fontWeight="font-light"
+                        textColor="text-slate-300"
+                        margin=""
+                        other="max-w-2xl mx-auto leading-7"
+                        align="text-center"
+                    />
                 </div>
             </div>
         }
