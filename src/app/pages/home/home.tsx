@@ -3,11 +3,15 @@ import DetailedList from "@/app/_layouts/detailedList/detailedList";
 import Footer from "@/app/_layouts/footer/footer";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
+import { Technology } from "@/app/models/Technology";
 import staticData from "@/app/staticData";
 import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
+import { fetchTechnologiesData } from "./sections/technologies/controller";
+import Header from "@/app/_layouts/header/header";
 
 function sortItems(items: DetailedListItem[]): DetailedListItem[] {
     return items.sort((a, b) => {
@@ -43,6 +47,7 @@ export default function MyHome() {
         educations: boolean,
         projects: boolean,
         experiences: boolean,
+        technologies: boolean,
     }>({
         myInfo: true,
         skills: true,
@@ -50,6 +55,7 @@ export default function MyHome() {
         educations: true,
         projects: true,
         experiences: true,
+        technologies: true,
     });
     const [myInfo, setMyInfo] = useState<Info>();
     const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
@@ -58,6 +64,7 @@ export default function MyHome() {
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
     const [experiences, setExperiences] = useState<Object>([]);
+    const [technologies, setTechnologies] = useState<Technology[]>([]);
     // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
     if (loading.myInfo) {
         fetchMyInfoData({
@@ -150,32 +157,69 @@ export default function MyHome() {
         });
     }
 
+    if (loading.technologies) {
+        fetchTechnologiesData({
+            colName: staticData.firebaseConst.collections.technologies,
+            successCallback: (data: []) => {
+                setLoading((other) => ({ ...other, technologies: false }));
+                setTechnologies(Technology.objectsToItemsList(data));
+            },
+            errorCallback: (error: any) => console.log(error)
+        });
+    }
+
 
     return <>
-        {/* <Header loading={loading.skills}
-            myInfo={myInfo!}
-            techs={techsSkills}
-            interpersonalSkills={personalSkills}
-        /> */}
-        {/* <div className="mt-14 sm:mt-24" /> */}
         <Intro
             myInfo={myInfo}
             loading={loading.myInfo}
+            technologies={technologies}
+            loadingTechnologies={loading.technologies}
         />
-        <div className="mt-14 sm:mt-24" />
-        <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
+
+        <AnimatedSection delay={10}>
+            <div className="mt-14 sm:mt-24" />
+            <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={10}>
+            <div className="mt-10" />
+            <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={10}>
+            <div className="mt-10" />
+            <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={10}>
+            <div className="mt-10" />
+            <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={10}>
+            <div className="mt-10" />
+            <Technologies title="Technologies" technologies={technologies} loading={loading.technologies} />
+        </AnimatedSection>
+
         <div className="mt-10" />
-        <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
-        <div className="mt-10" />
-        <Technologies title="Technologies" />
-        <div className="mt-10" />
-        <Footer id="footer"
-            loading={loading.myInfo}
-            myInfo={myInfo}
-        />
+        <Footer id="footer" loading={loading.myInfo} myInfo={myInfo} />
     </>;
+}
+
+function AnimatedSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+    const { ref, isVisible } = useScrollAnimation(0.1);
+
+    return (
+        <div
+            ref={ref}
+            className={`transition-all duration-700 transform ${isVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-10'
+                }`}
+            style={{ transitionDelay: `${delay}ms` }}
+        >
+            {children}
+        </div>
+    );
 }
