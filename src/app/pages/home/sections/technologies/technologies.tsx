@@ -1,6 +1,6 @@
-import Avatar from "@/app/_components/avatar/avatar";
-import Basic from "@/app/_components/texts/basic";
-import Card from "@/app/layouts/card/card";
+import Avatar from "@/app/_layouts/avatar/avatar";
+import Card from "@/app/_layouts/card/card";
+import Basic from "@/app/_layouts/texts/basic";
 import { Technology } from "@/app/models/Technology";
 import Constants from "@/app/utilities/Constants";
 import { useState } from 'react';

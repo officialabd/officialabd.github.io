@@ -1,7 +1,7 @@
 import { MyImageItem } from "@/app/models/Item";
 import Constants from "@/app/utilities/Constants";
-import { useState } from 'react';
-import LinePulse from "../../_components/pulse/line";
+import { useEffect, useState } from 'react';
+import LinePulse from "../pulse/line";
 
 export default function ImagerViewer(
     {
@@ -11,10 +11,24 @@ export default function ImagerViewer(
         loading?: boolean
     }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [pulseEffect, setPulseEffect] = useState(true);
+    const [pulseEffect, setPulseEffect] = useState(false);
+    const [imageKey, setImageKey] = useState(0);
+
     if (!images || images.length === 0) {
         return null;
     }
+
+    // Force re-render when the current image's URL changes
+    useEffect(() => {
+        const checkInterval = setInterval(() => {
+            if (images[currentImageIndex]?.url) {
+                setImageKey(prev => prev + 1);
+                clearInterval(checkInterval);
+            }
+        }, 100);
+
+        return () => clearInterval(checkInterval);
+    }, [currentImageIndex, images]);
 
     const prevImage = () => {
         setPulseEffect(true);
@@ -24,6 +38,14 @@ export default function ImagerViewer(
     const nextImage = () => {
         setPulseEffect(true);
         setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images?.length!);
+    };
+
+    const handleImageLoad = () => {
+        setPulseEffect(false);
+    };
+
+    const handleImageError = () => {
+        setPulseEffect(false);
     };
 
     return (<div>
@@ -36,18 +58,26 @@ export default function ImagerViewer(
                         onClick={() => prevImage()}>
                         <img src={Constants.ICONS.arrowBack} className="fill-white" alt="Arrow Back" />
                     </div>
-                    <img
-                        loading="lazy"
-                        onLoad={() => setPulseEffect(false)}
-                        src={images[currentImageIndex]?.url}
-                        alt={images[currentImageIndex]?.alt}
-                        className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
-                    />
+                    {images[currentImageIndex]?.url ? (
+                        <img
+                            key={imageKey}
+                            loading="lazy"
+                            onLoad={handleImageLoad}
+                            onError={handleImageError}
+                            src={images[currentImageIndex].url}
+                            alt={images[currentImageIndex]?.alt || ''}
+                            className={`h-full ${pulseEffect ? "animate-pulse brightness-75" : ""} object-contain border-2 border-black rounded-lg`}
+                        />
+                    ) : (
+                        <div className="h-full flex items-center justify-center">
+                            <LinePulse />
+                        </div>
+                    )}
                     <div className="rounded-md ms-2 w-8 h-12 bg-[#99999988] hover:bg-[#99999955] text-white flex items-center justify-center cursor-pointer transition-opacity"
                         onClick={() => nextImage()}>
                         <img src={Constants.ICONS.arrowForward} alt="Arrow Forward" />
                     </div>
-                </div>
+                </div >
                 <div className="flex justify-center mt-2">
                     {images?.map((image, index) => (
                         <div
@@ -57,9 +87,9 @@ export default function ImagerViewer(
                         />
                     ))}
                 </div>
-            </div>
+            </div >
         }
-    </div>
+    </div >
 
     );
 }

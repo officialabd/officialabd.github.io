@@ -1,6 +1,7 @@
 "use client"
-import Footer from "@/app/layouts/footer/footer";
 import Roadmap from "@/app/layouts/roadmap/roadmap";
+import DetailedList from "@/app/_layouts/detailedList/detailedList";
+import Footer from "@/app/_layouts/footer/footer";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
 import Constants from "@/app/utilities/Constants";
@@ -10,6 +11,31 @@ import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
 
 export const dynamic = "force-static";
+function sortItems(items: DetailedListItem[]): DetailedListItem[] {
+    return items.sort((a, b) => {
+        const endDateA = a.getEndDate();
+        const endDateB = b.getEndDate();
+
+        if (endDateA === "Present") return -1;
+        if (endDateB === "Present") return 1;
+
+        if (endDateA === undefined && endDateB === undefined) {
+            const startDateA = a.getStartDate();
+            const startDateB = b.getStartDate();
+
+            if (startDateA === undefined && startDateB === undefined) return 0;
+            if (startDateA === undefined) return 1;
+            if (startDateB === undefined) return -1;
+
+            return new Date(startDateB).getTime() - new Date(startDateA).getTime();
+        }
+
+        if (endDateA === undefined) return 1;
+        if (endDateB === undefined) return -1;
+
+        return new Date(endDateB).getTime() - new Date(endDateA).getTime();
+    });
+}
 
 export default function MyHome() {
     const [loading, setLoading] = useState<{
@@ -67,7 +93,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.educations,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, educations: false }));
-                setEducation(DetailedListItem.objectsToItemsList(data, "Education").reverse())
+                setEducation(sortItems(DetailedListItem.objectsToItemsList(data, "Education").reverse()))
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -77,7 +103,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.courses,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, courses: false }));
-                setCourses(DetailedListItem.objectsToItemsList(data, "Course").reverse());
+                setCourses(sortItems(DetailedListItem.objectsToItemsList(data, "Course").reverse()));
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -88,7 +114,7 @@ export default function MyHome() {
             colName: Constants.FIREBASE_CONST.collections.experiences,
             successCallback: (data: []) => {
                 setLoading((other) => ({ ...other, experiences: false }));
-                setExperiences(DetailedListItem.objectsToItemsList(data, "Experience").reverse());
+                setExperiences(sortItems(DetailedListItem.objectsToItemsList(data, "Experience").reverse()));
             },
             errorCallback: (error: any) => console.log(error)
         });
@@ -98,7 +124,7 @@ export default function MyHome() {
         fetchSectionsData({
             colName: Constants.FIREBASE_CONST.collections.projects,
             successCallback: (data: []) => {
-                var tempProjects: DetailedListItem[] = DetailedListItem.objectsToItemsList(data, "Project");
+                var tempProjects: DetailedListItem[] = sortItems(DetailedListItem.objectsToItemsList(data, "Project"));
                 tempProjects.forEach(pt => {
                     const imgsNum = pt.getImages()?.length;
                     pt.getImages()?.forEach((imgItem, i) => {
