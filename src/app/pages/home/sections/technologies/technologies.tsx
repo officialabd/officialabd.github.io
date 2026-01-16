@@ -1,23 +1,18 @@
 import Avatar from "@/app/_layouts/avatar/avatar";
-import Card from "@/app/_layouts/card/card";
-import Basic from "@/app/_layouts/texts/basic";
 import { Technology } from "@/app/models/Technology";
+import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 
-export default function Technologies({ title, technologies = [], loading = false }: { title: string, technologies?: Technology[], loading?: boolean }) {
-    return <Card heading={
-        <Basic
-            text={title}
-            textColor="text-[#BFACDF]"
-            fontFamily="font-RobotoMono"
-            fontSize="text-3xl sm:text-4xl"
-            letterSpacing="tracking-tight"
-            fontWeight="font-bold"
-            margin="mx-auto lg:mx-0"
-            underline={true}
-            other=""
-        />
-    }>
-        <div className="flex flex-wrap mt-8 gap-8 justify-center content-center">
+export default function Technologies({ technologies = [], loading = false }: { technologies?: Technology[], loading?: boolean }) {
+    const { ref, isVisible } = useScrollAnimation(0.2);
+    
+    return <div className="max-w-7xl mx-auto">
+        <div 
+            ref={ref}
+            className={`transition-all duration-700 transform ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`}
+>
+            <div className="flex flex-wrap gap-8 justify-center content-center">
             {technologies.map((item, i) => (
                 <div
                     key={`Technologies-${i}`}
@@ -48,5 +43,6 @@ export default function Technologies({ title, technologies = [], loading = false
                 </div>
             ))}
         </div>
-    </Card>
+        </div>
+    </div>
 }

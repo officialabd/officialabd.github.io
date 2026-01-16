@@ -1,6 +1,7 @@
 "use client"
 import DetailedList from "@/app/_layouts/detailedList/detailedList";
 import Footer from "@/app/_layouts/footer/footer";
+import TimelineSection from "@/app/_layouts/timeline/TimelineSection";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
 import { Technology } from "@/app/models/Technology";
@@ -9,9 +10,7 @@ import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
-import { useScrollAnimation } from "@/app/hooks/useScrollAnimation";
 import { fetchTechnologiesData } from "./sections/technologies/controller";
-import Header from "@/app/_layouts/header/header";
 
 function sortItems(items: DetailedListItem[]): DetailedListItem[] {
     return items.sort((a, b) => {
@@ -177,49 +176,29 @@ export default function MyHome() {
             loadingTechnologies={loading.technologies}
         />
 
-        <AnimatedSection delay={10}>
-            <div className="mt-14 sm:mt-24" />
-            <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
-        </AnimatedSection>
+        <div className="mt-14 sm:mt-24" />
 
-        <AnimatedSection delay={10}>
-            <div className="mt-10" />
-            <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
-        </AnimatedSection>
+        <TimelineSection id="experience" title="Experience">
+            <DetailedList loading={loading.experiences} items={experiences as DetailedListItem[]} />
+        </TimelineSection>
 
-        <AnimatedSection delay={10}>
-            <div className="mt-10" />
-            <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
-        </AnimatedSection>
+        <TimelineSection id="courses" title="Courses">
+            <DetailedList loading={loading.courses} items={courses as DetailedListItem[]} />
+        </TimelineSection>
 
-        <AnimatedSection delay={10}>
-            <div className="mt-10" />
-            <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
-        </AnimatedSection>
+        <TimelineSection id="education" title="Education">
+            <DetailedList loading={loading.educations} items={educations as DetailedListItem[]} />
+        </TimelineSection>
 
-        <AnimatedSection delay={10}>
-            <div className="mt-10" />
-            <Technologies title="Technologies" technologies={technologies} loading={loading.technologies} />
-        </AnimatedSection>
+        <TimelineSection id="projects" title="Projects">
+            <DetailedList loading={loading.projects} items={projects as DetailedListItem[]} />
+        </TimelineSection>
+
+        <TimelineSection id="technologies" title="Technologies" showTimeline={false}>
+            <Technologies technologies={technologies} loading={loading.technologies} />
+        </TimelineSection>
 
         <div className="mt-10" />
         <Footer id="footer" loading={loading.myInfo} myInfo={myInfo} />
     </>;
-}
-
-function AnimatedSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-    const { ref, isVisible } = useScrollAnimation(0.1);
-
-    return (
-        <div
-            ref={ref}
-            className={`transition-all duration-700 transform ${isVisible
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-10'
-                }`}
-            style={{ transitionDelay: `${delay}ms` }}
-        >
-            {children}
-        </div>
-    );
 }
