@@ -1,4 +1,4 @@
-import LinePulse from "@/app/_components/pulse/line";
+import LinePulse from "@/app/_layouts/pulse/line";
 import { CardData } from "@/app/models/roadmap/data/CardData";
 import { CardDataGroup } from "@/app/models/roadmap/data/CardDataGroup";
 import Constants from "@/app/utilities/Constants";

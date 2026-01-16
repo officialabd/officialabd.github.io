@@ -1,8 +1,8 @@
-import { Tags } from "@/app/_components/tags/tags";
-import Basic from "@/app/_components/texts/basic";
+import { Tags } from "@/app/_layouts/tags/tags";
+import Basic from "@/app/_layouts/texts/basic";
 import Constants from "@/app/utilities/Constants";
-import LinePulse from "../../_components/pulse/line";
-import MultiLinePulse from "../../_components/pulse/multiLine";
+import LinePulse from "../../_layouts/pulse/line";
+import MultiLinePulse from "../../_layouts/pulse/multiLine";
 import { DetailedListItem } from "../../models/Item";
 import Card from "../card/card";
 import ImagerViewer from "../imagesViewer/ImagersViewer";

@@ -1,6 +1,6 @@
-import Icon from "@/app/_components/icon/icon";
-import Basic from "@/app/_components/texts/basic";
-import BasicHRef from "@/app/_components/texts/basicHRef";
+import Icon from "@/app/_layouts/icon/icon";
+import Basic from "@/app/_layouts/texts/basic";
+import BasicHRef from "@/app/_layouts/texts/basicHRef";
 import { Info } from "@/app/models/Info";
 
 export default function Footer(

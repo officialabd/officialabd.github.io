@@ -1,8 +1,8 @@
 // components/RoadmapCard.tsx
 'use client';
 
-import MultiLinePulse from "@/app/_components/pulse/multiLine";
-import Basic from "@/app/_components/texts/basic";
+import MultiLinePulse from "@/app/_layouts/pulse/multiLine";
+import Basic from "@/app/_layouts/texts/basic";
 import { DetailedListItem } from "@/app/models/Item";
 import { CardData } from "@/app/models/roadmap/data/CardData";
 

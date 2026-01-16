@@ -1,7 +1,7 @@
-import Basic from "@/app/_components/texts/basic";
+import Basic from "@/app/_layouts/texts/basic";
 import { Info } from "@/app/models/Info";
 import Constants from "@/app/utilities/Constants";
-import Avatar from "../../_components/avatar/avatar";
+import Avatar from "../../_layouts/avatar/avatar";
 import Headline from "./headline";
 
 export default function Header(
