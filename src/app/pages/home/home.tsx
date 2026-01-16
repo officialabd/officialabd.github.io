@@ -1,13 +1,16 @@
 "use client"
 import DetailedList from "@/app/_layouts/detailedList/detailedList";
 import Footer from "@/app/_layouts/footer/footer";
+import TimelineSection from "@/app/_layouts/timeline/TimelineSection";
 import { Info } from "@/app/models/Info";
 import { DetailedListItem } from "@/app/models/Item";
+import { Technology } from "@/app/models/Technology";
 import staticData from "@/app/staticData";
 import { useState } from 'react';
 import { fetchImage, fetchMyInfoData, fetchSectionsData, fetchSkillsData } from "./controller";
 import Intro from "./sections/intro/intro";
 import Technologies from "./sections/technologies/technologies";
+import { fetchTechnologiesData } from "./sections/technologies/controller";
 
 function sortItems(items: DetailedListItem[]): DetailedListItem[] {
     return items.sort((a, b) => {
@@ -43,6 +46,7 @@ export default function MyHome() {
         educations: boolean,
         projects: boolean,
         experiences: boolean,
+        technologies: boolean,
     }>({
         myInfo: true,
         skills: true,
@@ -50,6 +54,7 @@ export default function MyHome() {
         educations: true,
         projects: true,
         experiences: true,
+        technologies: true,
     });
     const [myInfo, setMyInfo] = useState<Info>();
     const [techsSkills, setTechsSkills] = useState<Array<string>>([]);
@@ -58,6 +63,7 @@ export default function MyHome() {
     const [educations, setEducation] = useState<Object>([]);
     const [projects, setProjects] = useState<Object>([]);
     const [experiences, setExperiences] = useState<Object>([]);
+    const [technologies, setTechnologies] = useState<Technology[]>([]);
     // writeCollection({ collectionName: "myInfo", docName: "basic", object: staticData.myInfo });
     if (loading.myInfo) {
         fetchMyInfoData({
@@ -150,32 +156,49 @@ export default function MyHome() {
         });
     }
 
+    if (loading.technologies) {
+        fetchTechnologiesData({
+            colName: staticData.firebaseConst.collections.technologies,
+            successCallback: (data: []) => {
+                setLoading((other) => ({ ...other, technologies: false }));
+                setTechnologies(Technology.objectsToItemsList(data));
+            },
+            errorCallback: (error: any) => console.log(error)
+        });
+    }
+
 
     return <>
-        {/* <Header loading={loading.skills}
-            myInfo={myInfo!}
-            techs={techsSkills}
-            interpersonalSkills={personalSkills}
-        /> */}
-        {/* <div className="mt-14 sm:mt-24" /> */}
         <Intro
             myInfo={myInfo}
             loading={loading.myInfo}
+            technologies={technologies}
+            loadingTechnologies={loading.technologies}
         />
+
         <div className="mt-14 sm:mt-24" />
-        <DetailedList title="Experience" loading={loading.experiences} items={experiences as DetailedListItem[]} />
+
+        <TimelineSection id="experience" title="Experience">
+            <DetailedList loading={loading.experiences} items={experiences as DetailedListItem[]} />
+        </TimelineSection>
+
+        <TimelineSection id="courses" title="Courses">
+            <DetailedList loading={loading.courses} items={courses as DetailedListItem[]} />
+        </TimelineSection>
+
+        <TimelineSection id="education" title="Education">
+            <DetailedList loading={loading.educations} items={educations as DetailedListItem[]} />
+        </TimelineSection>
+
+        <TimelineSection id="projects" title="Projects">
+            <DetailedList loading={loading.projects} items={projects as DetailedListItem[]} />
+        </TimelineSection>
+
+        <TimelineSection id="technologies" title="Technologies" showTimeline={false}>
+            <Technologies technologies={technologies} loading={loading.technologies} />
+        </TimelineSection>
+
         <div className="mt-10" />
-        <DetailedList title="Courses" loading={loading.courses} items={courses as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Education" loading={loading.educations} items={educations as DetailedListItem[]} />
-        <div className="mt-10" />
-        <DetailedList title="Projects" loading={loading.projects} items={projects as DetailedListItem[]} />
-        <div className="mt-10" />
-        <Technologies title="Technologies" />
-        <div className="mt-10" />
-        <Footer id="footer"
-            loading={loading.myInfo}
-            myInfo={myInfo}
-        />
+        <Footer id="footer" loading={loading.myInfo} myInfo={myInfo} />
     </>;
 }
