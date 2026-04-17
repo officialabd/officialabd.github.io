@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import staticData from "@/app/staticData";
 import { DetailedListItem } from "../../models/Item";
 import ImagerViewer from "../imagesViewer/ImagersViewer";
@@ -116,9 +117,7 @@ const ListItemNode = (
                                     {loading ?
                                         <MultiLinePulse width="w-62" />
                                         :
-                                        item.getDescription() && item.getDescription()!.map((dcp, i) =>
-                                            <p key={`${id}-description-${i}`} className="text-sm leading-6 text-gray-400">{dcp}</p>
-                                        )
+                                        item.getDescription() && <ExpandableDescription id={id} descriptions={item.getDescription()!} />
                                     }
                                 </div>
                             </div>
@@ -140,5 +139,40 @@ const ListItemNode = (
                 </div>
             </div>
         </div>
+    );
+}
+
+const ExpandableDescription = ({ id, descriptions }: { id: string, descriptions: string[] }) => {
+    const [expanded, setExpanded] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [isClamped, setIsClamped] = useState(false);
+
+    // Check if the content is actually being clamped
+    useEffect(() => {
+        const el = contentRef.current;
+        if (el) {
+            setIsClamped(el.scrollHeight > el.clientHeight);
+        }
+    }, [descriptions]);
+
+    return (
+        <>
+            <div
+                ref={contentRef}
+                className={`space-y-2 ${!expanded ? "line-clamp-4 sm:line-clamp-none" : ""}`}
+            >
+                {descriptions.map((dcp, i) => (
+                    <p key={`${id}-description-${i}`} className="text-sm leading-6 text-gray-400">{dcp}</p>
+                ))}
+            </div>
+            {isClamped && (
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="sm:hidden text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200 cursor-pointer mt-1"
+                >
+                    {expanded ? "Show Less" : "Show More"}
+                </button>
+            )}
+        </>
     );
 }
