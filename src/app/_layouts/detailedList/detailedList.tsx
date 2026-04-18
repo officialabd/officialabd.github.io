@@ -10,6 +10,21 @@ import TimelineItem from "../timeline/TimelineItem";
 
 export default function DetailedList(
     { items, loading = false, showDateBadge = true }: { items: Array<DetailedListItem>, loading?: boolean, showDateBadge?: boolean }) {
+
+    // Handle scrolling to URL hash after async data loads
+    useEffect(() => {
+        if (!loading && typeof window !== 'undefined' && window.location.hash) {
+            // Need a tiny timeout to ensure the DOM has painted the newly loaded items
+            setTimeout(() => {
+                const id = window.location.hash.substring(1);
+                const element = document.getElementById(id);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 100);
+        }
+    }, [loading]);
+
     return <>
         {loading ?
             <TimelineItem index={0}>
@@ -40,8 +55,10 @@ const ListItemNode = (
         ? `${startYear} - ${endYear}`
         : startYear || endYear;
 
+    const urlSafeId = String(id);
+
     return (
-        <div key={id} className="relative w-full group">
+        <div id={urlSafeId} key={id} className="relative w-full group scroll-mt-32">
             {/* Date Badge on Timeline */}
             {showDateBadge && dateText && !loading && (
                 <div className="absolute -left-20 md:-left-28 top-8 sm:block">
@@ -71,7 +88,7 @@ const ListItemNode = (
                                     </div>
                                     <div className="grid w-full grid-cols-1">
                                         <div className="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1">
-                                            <div className="relative mt-3">
+                                            <div className="relative mt-3 flex items-center group/title">
                                                 <Basic text={item.getTitle()!}
                                                     fontFamily="font-Nunito"
                                                     fontSize="text-lg"
@@ -81,6 +98,9 @@ const ListItemNode = (
                                                     loading={loading}
                                                     linePulseWidth="w-72"
                                                 />
+                                                {!loading && (
+                                                    <CopyLinkButton urlId={urlSafeId} />
+                                                )}
                                             </div>
                                             <div className="relative mt-2 ms-2 flex items-center gap-x-4">
                                                 <Basic text={item.getSite()!}
@@ -176,3 +196,33 @@ const ExpandableDescription = ({ id, descriptions }: { id: string, descriptions:
         </>
     );
 }
+
+const CopyLinkButton = ({ urlId }: { urlId: string }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        const url = `${window.location.origin}${window.location.pathname}#${urlId}`;
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            title="Copy link to this item"
+            className="ml-2 p-1 text-slate-500 hover:text-blue-400 transition-all duration-200 cursor-pointer rounded-md hover:bg-slate-700/50"
+        >
+            {copied ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-green-400">
+                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                </svg>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" />
+                    <path d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" />
+                </svg>
+            )}
+        </button>
+    );
+};
