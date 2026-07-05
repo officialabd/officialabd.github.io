@@ -26,7 +26,8 @@ html {
 
 body {
   /* color: rgb(var(--foreground-rgb)); */
-  background: var(--background-my-color);
+  background: linear-gradient(135deg, #0E141B 0%, #1a1f2e 50%, #0E141B 100%);
+  background-attachment: fixed;
 }
 
 @layer utilities {
@@ -45,4 +46,41 @@ body {
       /* Firefox */
     }
   }
+}
+
+/* Custom Animations - Simplified and Professional */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
+
+  25% {
+    transform: translateY(-20px) translateX(10px);
+  }
+
+  50% {
+    transform: translateY(-40px) translateX(-10px);
+  }
+
+  75% {
+    transform: translateY(-20px) translateX(-20px);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float 20s ease-in-out infinite;
 }
