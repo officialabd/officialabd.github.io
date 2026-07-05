@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 
 export default function QueryHash() {
   useEffect(() => {
+    // 1. Safety check to ensure code only executes in the user's active browser viewport
+    if (typeof window === 'undefined') return;
+
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const project = urlParams.get('p');
