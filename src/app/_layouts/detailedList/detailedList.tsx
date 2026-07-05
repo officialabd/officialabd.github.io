@@ -201,7 +201,7 @@ const CopyLinkButton = ({ urlId }: { urlId: string }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
-        const url = `${window.location.origin}${window.location.pathname}#${urlId}`;
+        const url = `${window.location.origin}${window.location.pathname}?p=${urlId}`;
         navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
