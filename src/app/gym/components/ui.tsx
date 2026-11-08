@@ -1,8 +1,15 @@
 "use client";
 
 /**
- * Small presentational building blocks shared by the gym views,
- * so every tab uses the same look.
+ * Small presentational building blocks shared by the gym views, so every tab uses the same look.
+ *
+ * Consistency rules:
+ * - Two control heights: regular (h-10) for inputs, selects, segmented switches and buttons in page,
+ *   filter and section-header rows; compact (h-8) for buttons inside forms/editors and for controls
+ *   inside a stats panel.
+ * - Labels sit above their control (Field), never inline.
+ * - Section-header buttons show an icon plus a label that is hidden on phones (HeaderButton).
+ * - Filters sit in one FilterBar row at the top of a tab.
  */
 import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import Basic from "../../_layouts/texts/basic";
@@ -10,11 +17,13 @@ import type { SaveState } from "../types";
 import { unitLabel } from "../utils";
 import { CloseIcon, InfoIcon } from "./icons";
 
+/** Regular text input / select / textarea. */
 export const inputClass =
-    "w-full rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-400 disabled:opacity-60";
+    "w-full min-h-[2.5rem] rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-400 disabled:opacity-60";
 
+/** Compact select, for controls inside editors and stats panels. */
 export const compactInputClass =
-    "rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-teal-400 disabled:opacity-60";
+    "h-8 rounded-lg bg-slate-900/70 border border-slate-700 px-2 text-xs text-white focus:outline-none focus:border-teal-400 disabled:opacity-60";
 
 export const listClass = "rounded-lg border border-slate-700 overflow-hidden";
 
@@ -23,21 +32,57 @@ export const rowClass = (selected: boolean) =>
         selected ? "bg-blue-600/20 border-l-2 border-l-blue-500" : "hover:bg-slate-800/50"
     }`;
 
-export function SectionTitle({ text, actions }: { text: string; actions?: ReactNode }) {
+/**
+ * Section heading with optional actions on the right. A `pageTitle` (a tab's main heading) is shown
+ * on phones only: on larger screens the tab bar already names the page.
+ */
+export function SectionTitle({ text, actions, pageTitle }: { text: string; actions?: ReactNode; pageTitle?: boolean }) {
     return (
         <div className="flex items-center justify-between gap-3 w-full">
-            <Basic text={text} fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />
-            {actions && <div className="flex items-center gap-2">{actions}</div>}
+            <div className={pageTitle ? "sm:hidden" : undefined}>
+                <Basic text={text} fontFamily="font-RobotoMono" fontSize="text-2xl" textColor="text-teal-300" />
+            </div>
+            {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
         </div>
     );
 }
 
-export function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
+/**
+ * A control with its label above. Use `as="div"` for groups of buttons (e.g. Segmented),
+ * which must not be wrapped in a <label>.
+ */
+export function Field({
+    label,
+    children,
+    className = "",
+    as: Tag = "label",
+}: {
+    label: string;
+    children: ReactNode;
+    className?: string;
+    as?: "label" | "div";
+}) {
     return (
-        <label className={`flex flex-col gap-2 ${className}`}>
+        <Tag className={`flex flex-col gap-2 ${className}`}>
             <span className="text-xs text-slate-400">{label}</span>
             {children}
-        </label>
+        </Tag>
+    );
+}
+
+/** One row of filters at the top of a tab. */
+export function FilterBar({ children }: { children: ReactNode }) {
+    return <div className="flex flex-wrap items-end gap-3 [&>*]:w-full sm:[&>*]:w-auto sm:[&>*]:min-w-[9rem]">{children}</div>;
+}
+
+/** Small summary figure (label, value, optional hint), used in Profile and Stats. */
+export function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
+    return (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2">
+            <div className="text-xs text-slate-400">{label}</div>
+            <div className="text-lg font-semibold text-slate-100">{value}</div>
+            {hint && <div className="text-xs text-slate-400">{hint}</div>}
+        </div>
     );
 }
 
@@ -59,14 +104,29 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     size?: "sm" | "md";
 }
 
+const BUTTON_SIZES = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm" };
+
 export function Button({ variant = "primary", size = "md", className = "", type = "button", ...props }: ButtonProps) {
-    const sizing = variant === "ghost" ? "p-1" : size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm";
+    const sizing = variant === "ghost" ? `${BUTTON_SIZES[size]} !px-1` : BUTTON_SIZES[size];
     return (
         <button
             type={type}
             className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${sizing} ${VARIANTS[variant]} ${className}`}
             {...props}
         />
+    );
+}
+
+/**
+ * Button for a section header (top-right): icon plus a label that is hidden on phones.
+ * The label stays available to screen readers.
+ */
+export function HeaderButton({ icon, label, ...props }: Omit<ButtonProps, "children" | "size"> & { icon: ReactNode; label: string }) {
+    return (
+        <Button {...props} aria-label={label} title={label}>
+            {icon}
+            <span className="hidden sm:inline">{label}</span>
+        </Button>
     );
 }
 
@@ -81,38 +141,36 @@ export function IconButton({ className = "", type = "button", ...props }: Button
     );
 }
 
-/** Pill-style single choice, e.g. KG | LB. */
+/** Pill-style single choice, e.g. KG | LB. Regular height by default; "sm" inside stats panels. Label it with Field as="div". */
 export function Segmented<T extends string>({
     value,
     options,
     onChange,
     disabled,
-    label,
+    size = "md",
 }: {
     value: T;
     options: { value: T; label?: string }[];
     onChange: (value: T) => void;
     disabled?: boolean;
-    label?: string;
+    size?: "sm" | "md";
 }) {
     return (
-        <div className="inline-flex items-center gap-2">
-            {label && <span className="text-xs text-slate-400">{label}</span>}
-            <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
-                {options.map((o) => (
-                    <button
-                        key={o.value}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => onChange(o.value)}
-                        className={`px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                            value === o.value ? "bg-teal-500/30 text-teal-100" : "bg-slate-900/60 text-slate-300 hover:bg-slate-800"
-                        }`}
-                    >
-                        {o.label ?? unitLabel(o.value)}
-                    </button>
-                ))}
-            </div>
+        <div className={`inline-flex w-fit rounded-lg border border-slate-700 overflow-hidden ${size === "sm" ? "h-8" : "h-10"}`}>
+            {options.map((o) => (
+                <button
+                    key={o.value}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onChange(o.value)}
+                    aria-pressed={value === o.value}
+                    className={`px-3 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        value === o.value ? "bg-teal-500/30 text-teal-100" : "bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                    }`}
+                >
+                    {o.label ?? unitLabel(o.value)}
+                </button>
+            ))}
         </div>
     );
 }
@@ -204,16 +262,18 @@ export function GymSelect({
     value,
     onChange,
     disabled,
+    className,
 }: {
     gyms: string[];
     value: string | null;
     onChange: (gym: string | null) => void;
     disabled?: boolean;
+    className?: string;
 }) {
     const options = value && !gyms.includes(value) ? [...gyms, value] : gyms;
     if (options.length === 0) return null;
     return (
-        <Field label="Gym">
+        <Field label="Gym" className={className}>
             <select className={inputClass} value={value ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value || null)}>
                 <option value="">No gym</option>
                 {options.map((g) => (

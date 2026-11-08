@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import { HEIGHT_UNITS, WEIGHT_UNITS } from "../constants";
 import type { HeightUnit, MeasurementEntry, WeightUnit } from "../types";
 import { useProfileStore } from "../stores";
@@ -11,7 +11,8 @@ import { DataTransfer } from "./DataTransfer";
 import { GymsCard } from "./GymsCard";
 import { TrashIcon } from "./icons";
 import { AddMeasurement, BasicsFields, type BasicsValue } from "./ProfileForms";
-import { Button, EmptyState, SectionTitle } from "./ui";
+import { AccountCard, type AccountInfo } from "./AccountCard";
+import { Button, EmptyState, SectionTitle, StatTile } from "./ui";
 
 /** The weight converted to the other unit, e.g. "176.4 LB" for 80 kg. */
 const inOtherUnit = (value: number, unit: WeightUnit) => {
@@ -36,7 +37,7 @@ function BothWeights({ value, unit }: { value: number; unit: WeightUnit }) {
     );
 }
 
-export function ProfileView() {
+export function ProfileView({ account }: { account: AccountInfo }) {
     const { profile, isSaving, save, addWeight, addHeight, removeWeight, removeHeight } = useProfileStore();
     const [basics, setBasics] = useState<BasicsValue>(() => ({
         name: profile.name,
@@ -55,23 +56,23 @@ export function ProfileView() {
 
     return (
         <div className="space-y-4">
-            <Card heading={<SectionTitle text="Profile" />}>
+            <Card heading={<SectionTitle text="Profile" pageTitle />}>
                 <div className="space-y-5">
                     <div className="grid grid-cols-2 sm:grid-cols-4 auto-rows-fr gap-3">
-                        <Stat
+                        <StatTile
                             label="Age"
                             value={age !== null ? `${age}` : "-"}
-                            hint={profile.birthdate ? { label: formatISODate(profile.birthdate), color: "text-slate-400" } : undefined}
+                            hint={profile.birthdate ? formatISODate(profile.birthdate) : undefined}
                         />
-                        <Stat
+                        <StatTile
                             label="Weight"
                             value={latestWeight ? `${latestWeight.value} ${unitLabel(latestWeight.unit)}` : "-"}
-                            hint={latestWeight ? { label: inOtherUnit(latestWeight.value, latestWeight.unit), color: "text-slate-400" } : undefined}
+                            hint={latestWeight ? inOtherUnit(latestWeight.value, latestWeight.unit) : undefined}
                         />
-                        <Stat
+                        <StatTile
                             label="Height"
                             value={latestHeight ? `${convertHeight(latestHeight.value, latestHeight.unit, units.height)} ${unitLabel(units.height)}` : "-"}
-                            hint={latestHeight ? { label: otherHeight(latestHeight.value, latestHeight.unit, units.height), color: "text-slate-400" } : undefined}
+                            hint={latestHeight ? otherHeight(latestHeight.value, latestHeight.unit, units.height) : undefined}
                         />
                         <BmiCard weight={latestWeight} height={latestHeight} />
                     </div>
@@ -118,16 +119,8 @@ export function ProfileView() {
             <GymsCard />
 
             <DataTransfer />
-        </div>
-    );
-}
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: { label: string; color: string } }) {
-    return (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2">
-            <div className="text-xs text-slate-400">{label}</div>
-            <div className="text-lg font-semibold text-slate-100">{value}</div>
-            {hint && <div className={`text-xs ${hint.color}`}>{hint.label}</div>}
+            <AccountCard {...account} />
         </div>
     );
 }

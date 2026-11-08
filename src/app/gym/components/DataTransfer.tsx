@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import { loadAccount } from "../hooks";
 import {
     applyImport,

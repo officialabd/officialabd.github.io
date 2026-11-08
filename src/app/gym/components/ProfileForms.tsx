@@ -31,24 +31,27 @@ export function BasicsFields({ value, onChange }: { value: BasicsValue; onChange
                 </Field>
             </div>
             <div className="flex flex-wrap gap-4">
-                <Segmented
-                    label="Weight:"
-                    value={value.units.weight}
-                    options={WEIGHT_UNITS.map((u) => ({ value: u }))}
-                    onChange={(weight) => onChange({ ...value, units: { ...value.units, weight } })}
-                />
-                <Segmented
-                    label="Height:"
-                    value={value.units.height}
-                    options={HEIGHT_UNITS.map((u) => ({ value: u }))}
-                    onChange={(height) => onChange({ ...value, units: { ...value.units, height } })}
-                />
-                <Segmented
-                    label="Distance:"
-                    value={value.units.distance}
-                    options={DISTANCE_UNITS.map((u) => ({ value: u }))}
-                    onChange={(distance) => onChange({ ...value, units: { ...value.units, distance } })}
-                />
+                <Field as="div" label="Weight unit">
+                    <Segmented
+                        value={value.units.weight}
+                        options={WEIGHT_UNITS.map((u) => ({ value: u }))}
+                        onChange={(weight) => onChange({ ...value, units: { ...value.units, weight } })}
+                    />
+                </Field>
+                <Field as="div" label="Height unit">
+                    <Segmented
+                        value={value.units.height}
+                        options={HEIGHT_UNITS.map((u) => ({ value: u }))}
+                        onChange={(height) => onChange({ ...value, units: { ...value.units, height } })}
+                    />
+                </Field>
+                <Field as="div" label="Distance unit">
+                    <Segmented
+                        value={value.units.distance}
+                        options={DISTANCE_UNITS.map((u) => ({ value: u }))}
+                        onChange={(distance) => onChange({ ...value, units: { ...value.units, distance } })}
+                    />
+                </Field>
             </div>
         </div>
     );
@@ -92,9 +95,9 @@ export function MeasurementFields<U extends string>({
                     onChange={(e) => onChange({ ...value, value: e.target.value })}
                 />
             </Field>
-            <div className="pb-1.5">
+            <Field as="div" label="Unit">
                 <Segmented value={value.unit} options={units.map((u) => ({ value: u }))} onChange={(unit) => onChange({ ...value, unit })} />
-            </div>
+            </Field>
             <Field label="Date" className="col-span-2 sm:col-span-1">
                 <input
                     type="date"

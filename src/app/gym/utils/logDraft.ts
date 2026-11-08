@@ -139,17 +139,17 @@ export const buildDraftFromDay = (
 });
 
 /**
- * Copy weights (never reps) from a previous performance of the same exercise.
+ * Copy weights (never reps) set by set from a previous performance of the same exercise.
+ * Set N gets the weight of the previous set N; sets that were empty (or didn't exist) stay empty.
  * The previous unit is kept so the recorded values stay exact.
  */
 const fillWeightsFrom = (ex: GymLogExercise, previous: GymLogExercise | undefined): GymLogExercise => {
     if (!previous || !isWeightExercise(ex) || !isWeightExercise(previous)) return ex;
-    const prevValues = previous.sets.map((s) => s.value).filter((v): v is number => v !== null);
-    if (prevValues.length === 0) return ex;
+    if (!previous.sets.some((s) => s.value !== null)) return ex;
     return {
         ...ex,
         unit: previous.unit,
-        sets: ex.sets.map((s, i) => ({ ...s, value: prevValues[Math.min(i, prevValues.length - 1)] })),
+        sets: ex.sets.map((s, i) => ({ ...s, value: previous.sets[i]?.value ?? null })),
     };
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import { WEIGHT_UNITS } from "../constants";
 import type { GymLogExercise, WeightUnit } from "../types";
 import {
@@ -11,7 +11,7 @@ import {
     useSessionStore,
     useUIStore,
 } from "../stores";
-import { confirmAction, formatISODate, formatTime, isWeightExercise, isWeightUnit, todayISO, withWeightUnit } from "../utils";
+import { confirmAction, formatISODate, formatShortDateTime, formatTime, isWeightExercise, isWeightUnit, todayISO, withWeightUnit } from "../utils";
 import { LogExercisesEditor } from "./LogExercisesEditor";
 import { Button, Field, GymSelect, inputClass, Notice, SaveIndicator, SectionTitle, Segmented } from "./ui";
 
@@ -21,6 +21,13 @@ const sharedWeightUnit = (exercises: GymLogExercise[]): WeightUnit | null => {
     const [only] = Array.from(units);
     return units.size === 1 && isWeightUnit(only) ? only : null;
 };
+
+/**
+ * Session actions are one joined button group on a single row (Start / Load…, then Complete / Cancel).
+ * Each label stays on one line and its button fits it; on phones the group fills the row.
+ */
+const BUTTON_GROUP = "flex w-full sm:w-fit overflow-hidden rounded-lg divide-x divide-slate-950/50";
+const GROUP_BUTTON = "flex-auto !rounded-none !px-2 !text-[13px] whitespace-nowrap sm:flex-none sm:!px-4 sm:!text-sm";
 
 export function SessionLogger() {
     const plans = usePlansStore((s) => s.plans);
@@ -67,7 +74,7 @@ export function SessionLogger() {
     const showGym = gyms.length > 0 || !!draft?.gym;
 
     return (
-        <Card heading={<SectionTitle text="Log Session" />}>
+        <Card heading={<SectionTitle text="Log Session" pageTitle />}>
             <div className="space-y-4">
                 {isRunning && staleSince && (
                     <Notice tone="warn">
@@ -91,7 +98,7 @@ export function SessionLogger() {
                     </Notice>
                 )}
 
-                <div className={`grid grid-cols-1 gap-4 ${showGym ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+                <div className={`grid grid-cols-2 gap-4 ${showGym ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
                     <Field label="Plan">
                         <select
                             className={inputClass}
@@ -122,7 +129,7 @@ export function SessionLogger() {
                             ))}
                         </select>
                     </Field>
-                    <Field label="Date">
+                    <Field label="Date" className="col-span-2 sm:col-span-1">
                         <input
                             type="date"
                             className={inputClass}
@@ -133,6 +140,7 @@ export function SessionLogger() {
                     </Field>
                     {showGym && (
                         <GymSelect
+                            className="col-span-2 sm:col-span-1"
                             gyms={gyms}
                             value={draft?.gym ?? null}
                             disabled={!draft}
@@ -145,61 +153,58 @@ export function SessionLogger() {
                     <p className="text-sm text-slate-400">Select a plan and day to start logging.</p>
                 ) : (
                     <div className="space-y-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                            {!isRunning ? (
-                                <>
-                                    <Button onClick={handleStart} disabled={isBusy || draft.exercises.length === 0}>
-                                        Start
-                                    </Button>
-                                    <Button variant="info" onClick={() => session.loadPrevious("values")} disabled={isBusy}>
-                                        Load previous values
-                                    </Button>
-                                    <Button variant="accent" onClick={() => session.loadPrevious("session")} disabled={isBusy}>
-                                        Load previous session
-                                    </Button>
-                                    {prefill && (
-                                        <Button variant="ghost" onClick={session.resetDraft}>
-                                            Reset to plan
-                                        </Button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Button variant="success" onClick={() => session.complete()} disabled={isBusy}>
-                                        Complete
-                                    </Button>
-                                    <Button variant="danger" onClick={handleCancel} disabled={isBusy}>
-                                        Cancel
-                                    </Button>
-                                    <SaveIndicator state={saveState} onRetry={session.flush} />
-                                </>
-                            )}
-                        </div>
+                        {!isRunning ? (
+                            <div className={BUTTON_GROUP}>
+                                <Button className={GROUP_BUTTON} onClick={handleStart} disabled={isBusy || draft.exercises.length === 0}>
+                                    Start
+                                </Button>
+                                <Button
+                                    variant="info"
+                                    className={GROUP_BUTTON}
+                                    onClick={() => session.loadPrevious("values")}
+                                    disabled={isBusy}
+                                    title="Load previous values"
+                                >
+                                    <span className="text-center">
+                                        Load <span className="sm:hidden">prev</span>
+                                        <span className="hidden sm:inline">previous</span> values
+                                    </span>
+                                </Button>
+                                <Button
+                                    variant="accent"
+                                    className={GROUP_BUTTON}
+                                    onClick={() => session.loadPrevious("session")}
+                                    disabled={isBusy}
+                                    title="Load previous session"
+                                >
+                                    <span className="text-center">
+                                        Load <span className="sm:hidden">prev</span>
+                                        <span className="hidden sm:inline">previous</span> session
+                                    </span>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className={BUTTON_GROUP}>
+                                <Button variant="success" className={GROUP_BUTTON} onClick={() => session.complete()} disabled={isBusy}>
+                                    Complete
+                                </Button>
+                                <Button variant="danger" className={GROUP_BUTTON} onClick={handleCancel} disabled={isBusy}>
+                                    Cancel
+                                </Button>
+                            </div>
+                        )}
 
                         {!isRunning && prefill && (
                             <Notice>
                                 {prefill.mode === "values" ? "Weights" : "Exercises and weights"} loaded from the session on{" "}
-                                {formatISODate(prefill.date)}. Reps are left empty.
+                                {formatISODate(prefill.date)}. Reps are left empty.{" "}
+                                <button type="button" onClick={session.resetDraft} className="font-semibold underline hover:text-white">
+                                    Reset to plan
+                                </button>
                             </Notice>
                         )}
                         {!isRunning && prefillMessage && <Notice tone="warn">{prefillMessage}</Notice>}
 
-                        {isRunning && draft.startedAt && (
-                            <div className="text-xs text-slate-400 space-y-0.5">
-                                <div>Started: {formatTime(draft.startedAt)}</div>
-                                <div>Duration: {Math.max(0, Math.round((nowTs - draft.startedAt) / 60000))} mins</div>
-                            </div>
-                        )}
-
-                        {hasWeightExercises && (
-                            <Segmented<WeightUnit | "">
-                                label="All weights in:"
-                                value={weightUnit ?? ""}
-                                options={WEIGHT_UNITS.map((u) => ({ value: u }))}
-                                disabled={!isRunning}
-                                onChange={(unit) => unit && session.update((d) => withWeightUnit(d, unit))}
-                            />
-                        )}
 
                         <LogExercisesEditor
                             exercises={draft.exercises}
@@ -207,6 +212,31 @@ export function SessionLogger() {
                             library={library}
                             editable={isRunning}
                             defaultDistanceUnit={distanceUnit}
+                            status={
+                                isRunning && (
+                                    <>
+                                        {draft.startedAt && (
+                                            <span className="text-xs text-slate-400" title="Started">
+                                                {formatShortDateTime(draft.startedAt)} ({Math.max(0, Math.round((nowTs - draft.startedAt) / 60000))}{" "}
+                                                mins)
+                                            </span>
+                                        )}
+                                        <SaveIndicator state={saveState} onRetry={session.flush} />
+                                    </>
+                                )
+                            }
+                            actions={
+                                // Records every weight exercise of the session in one unit (relabels, no conversion).
+                                isRunning &&
+                                hasWeightExercises && (
+                                    <Segmented<WeightUnit | "">
+                                        size="sm"
+                                        value={weightUnit ?? ""}
+                                        options={WEIGHT_UNITS.map((u) => ({ value: u }))}
+                                        onChange={(unit) => unit && session.update((d) => withWeightUnit(d, unit))}
+                                    />
+                                )
+                            }
                         />
 
                         <Field label="Session notes">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { DISTANCE_UNITS, PER_OPTIONS, TIME_UNITS, WEIGHT_UNITS } from "../constants";
 import type { DistanceUnit, GymExercise, GymLogExercise, GymSet, Per, TimeUnit, Unit } from "../types";
 import {
@@ -30,10 +30,14 @@ interface LogExercisesEditorProps {
     /** Values can be edited (session started, or editing a log). */
     editable: boolean;
     defaultDistanceUnit: DistanceUnit;
+    /** Shown next to the exercise count, e.g. the session's save status. */
+    status?: ReactNode;
+    /** Extra controls shown before the add button, e.g. the session's KG/LB switch. */
+    actions?: ReactNode;
 }
 
 /** Exercise list + set editor, shared by the running session and the log editor. */
-export function LogExercisesEditor({ exercises, onChange, library, editable, defaultDistanceUnit }: LogExercisesEditorProps) {
+export function LogExercisesEditor({ exercises, onChange, library, editable, defaultDistanceUnit, status, actions }: LogExercisesEditorProps) {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [isPicking, setIsPicking] = useState(false);
 
@@ -58,18 +62,25 @@ export function LogExercisesEditor({ exercises, onChange, library, editable, def
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <div className="text-sm text-slate-400 font-semibold">
-                    Exercises ({completedCount}/{exercises.length}){skippedCount > 0 && `, ${skippedCount} skipped`}:
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-sm text-slate-300 font-semibold tabular-nums" title="Completed exercises">
+                        {completedCount}/{exercises.length}
+                        {skippedCount > 0 && <span className="font-normal text-slate-400">, {skippedCount} skipped</span>}
+                    </span>
+                    {status}
                 </div>
-                {editable && (
-                    <IconButton
-                        onClick={() => setIsPicking(true)}
-                        className="p-1.5 bg-emerald-600/80 hover:bg-emerald-500"
-                        aria-label="Add exercise"
-                    >
-                        <PlusIcon className="w-4 h-4" />
-                    </IconButton>
-                )}
+                <div className="flex items-center gap-2">
+                    {actions}
+                    {editable && (
+                        <IconButton
+                            onClick={() => setIsPicking(true)}
+                            className="p-1.5 bg-emerald-600/80 hover:bg-emerald-500"
+                            aria-label="Add exercise"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                        </IconButton>
+                    )}
+                </div>
             </div>
 
             {isPicking && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import { DEFAULT_SETS, DISTANCE_UNITS, MUSCLE_GROUPS, PER_OPTIONS, TIME_UNITS, WEIGHT_UNITS } from "../constants";
 import type { DistanceUnit, ExerciseType, GymExercise, GymExerciseInput, MuscleGroup, Per, Unit } from "../types";
@@ -19,8 +19,8 @@ import {
     withType,
 } from "../utils";
 import { MergeExercises } from "./MergeExercises";
-import { PlusIcon, SearchIcon } from "./icons";
-import { Button, EmptyState, Field, inputClass, Notice, SectionTitle } from "./ui";
+import { MergeIcon, PlusIcon, SearchIcon } from "./icons";
+import { Button, EmptyState, Field, HeaderButton, inputClass, Notice, SectionTitle } from "./ui";
 
 type Editing = { mode: "new" } | { mode: "edit"; exercise: GymExercise } | { mode: "merge" } | null;
 
@@ -46,15 +46,17 @@ export function ExercisesView() {
             heading={
                 <SectionTitle
                     text="Exercises"
+                    pageTitle
                     actions={
                         <>
-                            <Button variant="neutral" onClick={() => setEditing({ mode: "merge" })} disabled={exercises.length < 2}>
-                                Merge
-                            </Button>
-                            <Button onClick={() => setEditing({ mode: "new" })}>
-                                <PlusIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">New Exercise</span>
-                            </Button>
+                            <HeaderButton
+                                variant="neutral"
+                                icon={<MergeIcon />}
+                                label="Merge"
+                                onClick={() => setEditing({ mode: "merge" })}
+                                disabled={exercises.length < 2}
+                            />
+                            <HeaderButton icon={<PlusIcon />} label="New Exercise" onClick={() => setEditing({ mode: "new" })} />
                         </>
                     }
                 />

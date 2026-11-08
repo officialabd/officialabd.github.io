@@ -73,6 +73,12 @@ export const formatISODate = (iso: string | null | undefined): string => {
 export const formatDate = (ts: number | null | undefined): string =>
     ts ? new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-";
 
+/** Month, day and time without the year, e.g. "Nov 8, 6:42 PM". */
+export const formatShortDateTime = (ts?: number | null): string =>
+    ts
+        ? new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
+        : "-";
+
 export const formatTime = (ts?: number | null): string =>
     ts
         ? new Date(ts).toLocaleString("en-US", {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import { MIN_DAY_LOGS } from "../constants";
 import type { GymLogEntry, GymLogExercise, GymSet, LogDraft, WeightDisplay } from "../types";
@@ -24,8 +24,8 @@ import {
     unitLabel,
 } from "../utils";
 import { LogExercisesEditor } from "./LogExercisesEditor";
-import { EditIcon } from "./icons";
-import { Button, EmptyState, Field, GymSelect, inputClass, Notice, SectionTitle, Segmented } from "./ui";
+import { EditIcon, RefreshIcon } from "./icons";
+import { Button, EmptyState, Field, FilterBar, GymSelect, HeaderButton, inputClass, Notice, SectionTitle, Segmented } from "./ui";
 
 export function LogsFeed() {
     const { logs, filter, isLoading, error, extendedBeyondRange, setFilter, load } = useLogsStore();
@@ -36,55 +36,65 @@ export function LogsFeed() {
     const filterPlan = plans.find((p) => p.id === filter.planId);
 
     return (
-        <Card heading={<SectionTitle text="Logs" />}>
+        <Card
+            heading={
+                <SectionTitle
+                    text="Logs"
+                    pageTitle
+                    actions={
+                        <HeaderButton variant="neutral" icon={<RefreshIcon />} label="Refresh" onClick={load} disabled={isLoading} />
+                    }
+                />
+            }
+        >
             <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
-                    <Field label="Plan (optional)">
-                        <select
-                            className={inputClass}
-                            value={filter.planId}
-                            onChange={(e) => setFilter({ planId: e.target.value, dayId: "" })}
-                        >
-                            <option value="">All plans</option>
-                            {plans.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.title}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
-                    <Field label="Day (optional)">
-                        <select
-                            className={inputClass}
-                            value={filter.dayId}
-                            onChange={(e) => setFilter({ dayId: e.target.value })}
-                            disabled={!filterPlan}
-                        >
-                            <option value="">All days</option>
-                            {filterPlan?.days.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                    {d.title}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
+                <FilterBar>
+                    {/* Plan and Day share a row on phones; on wider screens they flow with the other filters. */}
+                    <div className="grid grid-cols-2 gap-3 sm:contents">
+                        <Field label="Plan" className="min-w-0 sm:min-w-[9rem]">
+                            <select
+                                className={inputClass}
+                                value={filter.planId}
+                                onChange={(e) => setFilter({ planId: e.target.value, dayId: "" })}
+                            >
+                                <option value="">All plans</option>
+                                {plans.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+                        <Field label="Day" className="min-w-0 sm:min-w-[9rem]">
+                            <select
+                                className={inputClass}
+                                value={filter.dayId}
+                                onChange={(e) => setFilter({ dayId: e.target.value })}
+                                disabled={!filterPlan}
+                            >
+                                <option value="">All days</option>
+                                {filterPlan?.days.map((d) => (
+                                    <option key={d.id} value={d.id}>
+                                        {d.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+                    </div>
                     <Field label="From">
                         <input type="date" className={inputClass} value={filter.from} onChange={(e) => setFilter({ from: e.target.value })} />
                     </Field>
                     <Field label="To">
                         <input type="date" className={inputClass} value={filter.to} onChange={(e) => setFilter({ to: e.target.value })} />
                     </Field>
-                    <Button className="h-10" onClick={load}>
-                        Refresh
-                    </Button>
-                </div>
-
-                <Segmented<WeightDisplay>
-                    label="Show weights in:"
-                    value={logsWeightDisplay}
-                    options={[{ value: "logged", label: "As logged" }, { value: "kg" }, { value: "lb" }]}
-                    onChange={setLogsWeightDisplay}
-                />
+                    <Field as="div" label="Weights in">
+                        <Segmented<WeightDisplay>
+                            value={logsWeightDisplay}
+                            options={[{ value: "logged", label: "As logged" }, { value: "kg" }, { value: "lb" }]}
+                            onChange={setLogsWeightDisplay}
+                        />
+                    </Field>
+                </FilterBar>
 
                 {isLoading && <LinePulse />}
                 {error && <Notice tone="error">{error}</Notice>}

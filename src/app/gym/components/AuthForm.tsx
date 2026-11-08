@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import Basic from "../../_layouts/texts/basic";
 
 interface AuthFormProps {

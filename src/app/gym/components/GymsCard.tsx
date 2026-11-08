@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import { useProfileStore } from "../stores";
 import { cleanName, confirmAction } from "../utils";
 import { StarIcon, TrashIcon } from "./icons";
@@ -37,7 +37,7 @@ export function GymsCard() {
                         onChange={(e) => setName(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                     />
-                    <Button size="sm" onClick={handleAdd} disabled={!cleaned || duplicate || isSaving}>
+                    <Button onClick={handleAdd} disabled={!cleaned || duplicate || isSaving}>
                         Add
                     </Button>
                 </div>

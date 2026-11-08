@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import type { GymExercise, GymPlan, GymPlanDay } from "../types";
 import { useExercisesStore, usePlansStore } from "../stores";
 import { confirmAction, formatDate, formatGroups, groupColor, openExerciseSearch, perLabel } from "../utils";
 import { ExercisePicker } from "./ExercisePicker";
 import { DragIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
-import { Button, EmptyState, Field, inputClass, listClass, Notice, rowClass, SectionTitle } from "./ui";
+import { Button, EmptyState, Field, HeaderButton, inputClass, listClass, Notice, rowClass, SectionTitle } from "./ui";
 
 export function PlansView() {
     const store = usePlansStore();
@@ -33,11 +33,9 @@ export function PlansView() {
                 heading={
                     <SectionTitle
                         text="Plans"
+                        pageTitle
                         actions={
-                            <Button onClick={store.addPlan}>
-                                <PlusIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">Create Plan</span>
-                            </Button>
+                            <HeaderButton icon={<PlusIcon />} label="New Plan" onClick={store.addPlan} />
                         }
                     />
                 }
@@ -143,10 +141,7 @@ export function PlansView() {
                             text="Days"
                             actions={
                                 isEditMode && (
-                                    <Button onClick={() => store.addDay(plan.id)}>
-                                        <PlusIcon className="w-4 h-4" />
-                                        Add Day
-                                    </Button>
+                                    <HeaderButton icon={<PlusIcon />} label="Add Day" onClick={() => store.addDay(plan.id)} />
                                 )
                             }
                         />
@@ -186,9 +181,12 @@ export function PlansView() {
                             text={`Exercises - ${day.title}`}
                             actions={
                                 isEditMode && (
-                                    <Button size="sm" variant="danger" onClick={() => store.deleteDay(plan.id, day.id)}>
-                                        Delete Day
-                                    </Button>
+                                    <HeaderButton
+                                        variant="danger"
+                                        icon={<TrashIcon />}
+                                        label="Delete Day"
+                                        onClick={() => store.deleteDay(plan.id, day.id)}
+                                    />
                                 )
                             }
                         />

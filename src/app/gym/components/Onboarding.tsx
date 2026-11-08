@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import { HEIGHT_UNITS, WEIGHT_UNITS } from "../constants";
 import type { GymProfile } from "../types";
 import { useProfileStore } from "../stores";
@@ -65,10 +65,10 @@ export function Onboarding() {
                 <MeasurementFields label="Height" units={HEIGHT_UNITS} value={height} onChange={setHeight} />
                 {error && <Notice tone="error">{error}</Notice>}
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="save" onClick={handleSave} disabled={isSaving}>
+                    <Button size="sm" variant="save" onClick={handleSave} disabled={isSaving}>
                         {isSaving ? "Saving..." : "Save profile"}
                     </Button>
-                    <Button variant="neutral" onClick={() => submit({})} disabled={isSaving}>
+                    <Button size="sm" variant="neutral" onClick={() => submit({})} disabled={isSaving}>
                         Skip for now
                     </Button>
                 </div>

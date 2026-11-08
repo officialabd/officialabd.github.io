@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import Card from "../../_layouts/card/card";
+import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import { WEIGHT_UNITS } from "../constants";
 import type { GymExercise, GymLogEntry, WeightUnit } from "../types";
@@ -35,7 +35,21 @@ import {
     type StatsPeriod,
 } from "../utils";
 import { BarList, CalendarHeatmap, LineChart, SegmentedBar, SERIES_COLORS } from "./charts";
-import { Button, EmptyState, InfoTip, inputClass, Notice, SectionTitle, Segmented, TermList } from "./ui";
+import { RefreshIcon } from "./icons";
+import {
+    compactInputClass,
+    EmptyState,
+    Field,
+    FilterBar,
+    HeaderButton,
+    InfoTip,
+    inputClass,
+    Notice,
+    SectionTitle,
+    Segmented,
+    StatTile,
+    TermList,
+} from "./ui";
 
 const PERIODS: { value: StatsPeriod; label: string }[] = [
     { value: "3m", label: "3 months" },
@@ -66,14 +80,25 @@ export function StatsView() {
     );
 
     return (
-        <Card heading={<SectionTitle text="Stats" />}>
+        <Card
+            heading={
+                <SectionTitle
+                    text="Stats"
+                    pageTitle
+                    actions={
+                        <HeaderButton variant="neutral" icon={<RefreshIcon />} label="Refresh" onClick={load} disabled={isLoading} />
+                    }
+                />
+            }
+        >
             <div className="space-y-4">
-                <div className="flex flex-wrap items-end gap-4">
-                    <Segmented label="Period:" value={period} options={PERIODS} onChange={setPeriod} />
+                <FilterBar>
+                    <Field as="div" label="Period">
+                        <Segmented value={period} options={PERIODS} onChange={setPeriod} />
+                    </Field>
                     {gymOptions.length > 0 && (
-                        <label className="inline-flex items-center gap-2 text-xs text-slate-400">
-                            Gym:
-                            <select className={`${inputClass} !w-auto !py-1 text-xs`} value={gym} onChange={(e) => setGym(e.target.value)}>
+                        <Field label="Gym">
+                            <select className={inputClass} value={gym} onChange={(e) => setGym(e.target.value)}>
                                 <option value="">All gyms</option>
                                 {gymOptions.map((g) => (
                                     <option key={g} value={g}>
@@ -82,13 +107,12 @@ export function StatsView() {
                                 ))}
                                 <option value={NO_GYM}>No gym set</option>
                             </select>
-                        </label>
+                        </Field>
                     )}
-                    <Segmented label="Weights in:" value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
-                    <Button size="sm" variant="neutral" onClick={load} disabled={isLoading}>
-                        Refresh
-                    </Button>
-                </div>
+                    <Field as="div" label="Weights in">
+                        <Segmented value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
+                    </Field>
+                </FilterBar>
 
                 {isLoading && allLogs.length === 0 && <LinePulse />}
                 {error && <Notice tone="error">{error}</Notice>}
@@ -154,17 +178,7 @@ function Panel({
     );
 }
 
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-    return (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2">
-            <div className="text-xs text-slate-400">{label}</div>
-            <div className="text-lg font-semibold text-slate-100">{value}</div>
-            {hint && <div className="text-xs text-slate-400">{hint}</div>}
-        </div>
-    );
-}
-
-const compactSelect = `${inputClass} !w-auto !py-1 text-xs`;
+const compactSelect = compactInputClass;
 
 function ExerciseSelect({ exercises, value, onChange }: { exercises: GymExercise[]; value: string; onChange: (id: string) => void }) {
     return (
@@ -234,10 +248,10 @@ function ConsistencyPanel({ logs, from, today }: { logs: GymLogEntry[]; from: st
             ]}
         >
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Tile label="Sessions" value={`${logs.length}`} hint="in this period" />
-                <Tile label="Per week" value={`${stats.averagePerWeek}`} hint="average" />
-                <Tile label="Week streak" value={`${stats.currentStreak}`} hint={`best ${stats.longestStreak}`} />
-                <Tile label="Typical session" value={typical !== null ? `${Math.round(typical)} min` : "-"} hint="median duration" />
+                <StatTile label="Sessions" value={`${logs.length}`} hint="in this period" />
+                <StatTile label="Per week" value={`${stats.averagePerWeek}`} hint="average" />
+                <StatTile label="Week streak" value={`${stats.currentStreak}`} hint={`best ${stats.longestStreak}`} />
+                <StatTile label="Typical session" value={typical !== null ? `${Math.round(typical)} min` : "-"} hint="median duration" />
             </div>
             <CalendarHeatmap
                 weeks={calendarWeeks}
@@ -439,6 +453,7 @@ function MusclePanel({
             ]}
             actions={
                 <Segmented<MuscleWindow>
+                    size="sm"
                     value={range}
                     options={[
                         { value: "average", label: "Avg / week" },
@@ -584,6 +599,7 @@ function RunningPanel({ logs }: { logs: GymLogEntry[] }) {
             ]}
             actions={
                 <Segmented<RunMetric>
+                    size="sm"
                     value={metric}
                     options={[
                         { value: "distance", label: "Distance" },
@@ -595,9 +611,9 @@ function RunningPanel({ logs }: { logs: GymLogEntry[] }) {
             }
         >
             <div className="grid grid-cols-3 gap-3">
-                <Tile label="Runs" value={`${data.length}`} />
-                <Tile label="Total distance" value={`${total} ${d}`} />
-                <Tile label="Best pace" value={paces.length ? `${formatPaceValue(Math.min(...paces))} /${d}` : "-"} />
+                <StatTile label="Runs" value={`${data.length}`} />
+                <StatTile label="Total distance" value={`${total} ${d}`} />
+                <StatTile label="Best pace" value={paces.length ? `${formatPaceValue(Math.min(...paces))} /${d}` : "-"} />
             </div>
             {points.length === 0 ? (
                 <EmptyState>No {metric} recorded for these runs.</EmptyState>
