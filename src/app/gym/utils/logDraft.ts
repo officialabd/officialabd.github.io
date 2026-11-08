@@ -17,12 +17,13 @@ import type {
     Unit,
     WeightUnit,
 } from "../types";
-import { convertWeight, isWeightUnit } from "./units";
+import { isTimeUnit } from "./units";
 
-export const emptySet = (): GymSet => ({ value: null, reps: null, distance: null, completed: null });
+export const emptySet = (): GymSet => ({ value: null, reps: null, distance: null, calories: null, completed: null });
 
-export const isSetFilled = (set: GymSet): boolean =>
-    (set.value !== null && set.value !== undefined) || (set.distance !== null && set.distance !== undefined);
+/** A set counts as done when its main value is entered: reps for reps-only exercises, otherwise weight/time or distance. */
+export const isSetFilled = (set: GymSet, type: ExerciseType): boolean =>
+    type === "reps" ? set.reps !== null : set.value !== null || set.distance !== null;
 
 export const resizeSets = (sets: GymSet[], count: number): GymSet[] => {
     const safe = Math.max(0, count);
@@ -51,22 +52,28 @@ export const withPer = <T extends ExerciseShape>(ex: T, per: Per, distanceUnit: 
             ...ex,
             per,
             type: "time",
-            unit: isWeightUnit(ex.unit) ? "mins" : ex.unit,
+            unit: isTimeUnit(ex.unit) ? ex.unit : "mins",
             distanceUnit: ex.distanceUnit ?? distanceUnit,
         };
     }
     return { ...ex, per, distanceUnit: null };
 };
 
-/** Change exercise type, resetting the unit to a sensible default for that type. */
+const DEFAULT_UNIT: Record<ExerciseType, (weightUnit: WeightUnit) => Unit> = {
+    weight: (weightUnit) => weightUnit,
+    time: () => "mins",
+    reps: () => "reps",
+};
+
+/** Change exercise type, resetting the unit to a sensible default for that type. Only timed exercises can be running. */
 export const withType = <T extends ExerciseShape>(ex: T, type: ExerciseType, weightUnit: WeightUnit): T => {
     if (ex.type === type) return ex;
-    const per = type === "weight" && ex.per === "running" ? "fullBody" : ex.per;
+    const per = type !== "time" && ex.per === "running" ? "fullBody" : ex.per;
     return {
         ...ex,
         type,
         per,
-        unit: type === "weight" ? weightUnit : "mins",
+        unit: DEFAULT_UNIT[type](weightUnit),
         distanceUnit: per === "running" ? ex.distanceUnit : null,
     };
 };
@@ -74,37 +81,27 @@ export const withType = <T extends ExerciseShape>(ex: T, type: ExerciseType, wei
 export const logExerciseFromLibrary = (ex: GymExercise): GymLogExercise => ({
     exerciseId: ex.id,
     name: ex.name,
-    group: ex.group,
+    groups: ex.groups,
     type: ex.type,
     unit: ex.unit,
     per: ex.per,
     distanceUnit: ex.distanceUnit,
     completed: null,
+    skipped: false,
     sets: resizeSets([], ex.setsNo || DEFAULT_SETS),
 });
 
-/** Recompute the completed flags from the set values. */
+/** Recompute the completed flags from the set values. A skipped exercise is never completed. */
 export const normalizeLogExercise = (ex: GymLogExercise): GymLogExercise => {
-    const sets = ex.sets.map((s) => ({ ...s, completed: isSetFilled(s) ? true : null }));
+    const sets = ex.sets.map((s) => ({ ...s, completed: isSetFilled(s, ex.type) ? true : null }));
     const allFilled = sets.length > 0 && sets.every((s) => s.completed);
-    return { ...ex, sets, completed: allFilled ? true : null };
+    return { ...ex, sets, completed: allFilled && !ex.skipped ? true : null };
 };
 
-/** Change the unit of an exercise. Weight values are converted so they keep their meaning. */
-export const withUnit = (ex: GymLogExercise, unit: Unit): GymLogExercise => {
-    if (ex.unit === unit) return ex;
-    if (isWeightUnit(ex.unit) && isWeightUnit(unit)) {
-        const from = ex.unit;
-        return {
-            ...ex,
-            unit,
-            sets: ex.sets.map((s) => ({ ...s, value: s.value === null ? null : convertWeight(s.value, from, unit) })),
-        };
-    }
-    return { ...ex, unit };
-};
+/** Change the unit an exercise is recorded in. Values are kept as entered (no conversion). */
+export const withUnit = (ex: GymLogExercise, unit: Unit): GymLogExercise => (ex.unit === unit ? ex : { ...ex, unit });
 
-/** Switch every weight exercise of a draft to one weight unit (converting values). */
+/** Record every weight exercise of a draft in one weight unit. Values are kept as entered. */
 export const withWeightUnit = <T extends Pick<LogDraft, "exercises">>(draft: T, unit: WeightUnit): T => ({
     ...draft,
     exercises: draft.exercises.map((ex) => (isWeightExercise(ex) ? withUnit(ex, unit) : ex)),
@@ -120,6 +117,7 @@ const baseDraft = (plan: GymPlan, day: GymPlanDay, date: string): Omit<LogDraft,
     dayId: day.id,
     dayTitle: day.title,
     date,
+    gym: null,
     note: "",
     status: null,
     startedAt: null,
@@ -192,7 +190,7 @@ export const buildDraftFromPreviousSession = (
         const libraryExercise = prev.exerciseId ? library.get(prev.exerciseId) : undefined;
         const fresh: GymLogExercise = libraryExercise
             ? logExerciseFromLibrary(libraryExercise)
-            : { ...prev, completed: null, sets: resizeSets([], prev.sets.length || DEFAULT_SETS) };
+            : { ...prev, completed: null, skipped: false, sets: resizeSets([], prev.sets.length || DEFAULT_SETS) };
         return fillWeightsFrom(fresh, prev);
     }),
 });

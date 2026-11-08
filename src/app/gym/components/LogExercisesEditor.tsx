@@ -4,10 +4,11 @@ import { useState } from "react";
 import { DISTANCE_UNITS, PER_OPTIONS, TIME_UNITS, WEIGHT_UNITS } from "../constants";
 import type { DistanceUnit, GymExercise, GymLogExercise, GymSet, Per, TimeUnit, Unit } from "../types";
 import {
-    buildGroupColors,
     computeSpeed,
+    formatGroups,
     formatPace,
     getExerciseStatus,
+    groupColor,
     isTimeUnit,
     isWeightExercise,
     logExerciseFromLibrary,
@@ -18,7 +19,7 @@ import {
     withUnit,
 } from "../utils";
 import { ExercisePicker } from "./ExercisePicker";
-import { MinusIcon, PlusIcon, SearchIcon } from "./icons";
+import { MinusIcon, PlusIcon, SearchIcon, SkipIcon } from "./icons";
 import { compactInputClass, IconButton } from "./ui";
 
 interface LogExercisesEditorProps {
@@ -36,8 +37,8 @@ export function LogExercisesEditor({ exercises, onChange, library, editable, def
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [isPicking, setIsPicking] = useState(false);
 
-    const groupColor = buildGroupColors(exercises.map((ex) => ex.group));
     const completedCount = exercises.filter((ex) => getExerciseStatus(ex).label === "Completed").length;
+    const skippedCount = exercises.filter((ex) => ex.skipped).length;
     const selected = selectedIndex !== null ? exercises[selectedIndex] : undefined;
 
     const replaceAt = (index: number, ex: GymLogExercise) =>
@@ -58,7 +59,7 @@ export function LogExercisesEditor({ exercises, onChange, library, editable, def
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <div className="text-sm text-slate-400 font-semibold">
-                    Exercises ({completedCount}/{exercises.length}):
+                    Exercises ({completedCount}/{exercises.length}){skippedCount > 0 && `, ${skippedCount} skipped`}:
                 </div>
                 {editable && (
                     <IconButton
@@ -93,20 +94,39 @@ export function LogExercisesEditor({ exercises, onChange, library, editable, def
                                 }`}
                                 onClick={() => setSelectedIndex(isSelected ? null : index)}
                             >
-                                <div className={`w-1.5 self-stretch ${groupColor(ex.group)}`} />
+                                <div className={`w-1.5 self-stretch ${groupColor(ex.groups)}`} />
                                 <div className="flex items-center justify-between flex-1 px-3 py-3">
-                                    <span className={`text-sm font-medium truncate flex-1 ${isSelected ? "text-blue-200" : "text-slate-200"}`}>
+                                    <span
+                                        className={`text-sm font-medium truncate flex-1 ${isSelected ? "text-blue-200" : "text-slate-200"} ${
+                                            ex.skipped ? "line-through" : ""
+                                        }`}
+                                    >
                                         {ex.name || "Exercise"}
                                     </span>
                                     <div className="flex items-center gap-2 ml-2">
                                         <span className={`text-xs font-semibold ${status.textColor}`}>
-                                            {status.filled}/{status.total}
+                                            {ex.skipped ? "Skipped" : `${status.filled}/${status.total}`}
                                         </span>
+                                        {editable && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    replaceAt(index, { ...ex, skipped: !ex.skipped });
+                                                }}
+                                                className={`p-1 ${ex.skipped ? "text-amber-300 hover:text-amber-200" : "text-slate-400 hover:text-slate-200"}`}
+                                                aria-label={ex.skipped ? "Unskip exercise" : "Skip exercise"}
+                                                aria-pressed={ex.skipped}
+                                                title={ex.skipped ? "Unskip" : "Skip"}
+                                            >
+                                                <SkipIcon className="w-4 h-4" />
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                openExerciseSearch(ex.name, ex.group);
+                                                openExerciseSearch(ex.name, formatGroups(ex.groups));
                                             }}
                                             className="p-1 text-indigo-300 hover:text-indigo-100"
                                             aria-label="Search exercise"
@@ -137,7 +157,7 @@ export function LogExercisesEditor({ exercises, onChange, library, editable, def
             {selected && selectedIndex !== null && (
                 <SetEditor
                     exercise={selected}
-                    editable={editable}
+                    editable={editable && !selected.skipped}
                     defaultDistanceUnit={defaultDistanceUnit}
                     onChange={(ex) => replaceAt(selectedIndex, ex)}
                 />
@@ -162,6 +182,7 @@ const parseNumber = (value: string): number | null => (value === "" ? null : Num
 function SetEditor({ exercise, editable, defaultDistanceUnit, onChange }: SetEditorProps) {
     const isRunning = exercise.per === "running";
     const isWeight = isWeightExercise(exercise);
+    const isRepsOnly = exercise.type === "reps";
     const timeUnit: TimeUnit = isTimeUnit(exercise.unit) ? exercise.unit : "mins";
     const unitOptions: Unit[] = exercise.type === "time" ? TIME_UNITS : WEIGHT_UNITS;
 
@@ -192,7 +213,8 @@ function SetEditor({ exercise, editable, defaultDistanceUnit, onChange }: SetEdi
             <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                     <div className="text-sm font-semibold text-teal-200 truncate">{exercise.name || "Exercise"}</div>
-                    {exercise.group && <div className="text-xs text-slate-400">{exercise.group}</div>}
+                    {exercise.groups.length > 0 && <div className="text-xs text-slate-400">{formatGroups(exercise.groups)}</div>}
+                    {exercise.skipped && <div className="text-xs text-amber-300">Skipped. Unskip it to enter values.</div>}
                 </div>
                 <div className="flex items-center gap-2">
                     <IconButton
@@ -215,19 +237,23 @@ function SetEditor({ exercise, editable, defaultDistanceUnit, onChange }: SetEdi
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-400">Unit:</span>
-                <select
-                    className={compactInputClass}
-                    value={exercise.unit}
-                    disabled={!editable}
-                    onChange={(e) => onChange(withUnit(exercise, e.target.value as Unit))}
-                >
-                    {unitOptions.map((u) => (
-                        <option key={u} value={u}>
-                            {unitLabel(u)}
-                        </option>
-                    ))}
-                </select>
+                {!isRepsOnly && (
+                    <>
+                        <span className="text-xs text-slate-400">Unit:</span>
+                        <select
+                            className={compactInputClass}
+                            value={exercise.unit}
+                            disabled={!editable}
+                            onChange={(e) => onChange(withUnit(exercise, e.target.value as Unit))}
+                        >
+                            {unitOptions.map((u) => (
+                                <option key={u} value={u}>
+                                    {unitLabel(u)}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
                 {isRunning && (
                     <>
                         <span className="text-xs text-slate-400">Distance:</span>
@@ -269,10 +295,13 @@ function SetEditor({ exercise, editable, defaultDistanceUnit, onChange }: SetEdi
                             <tr className="text-xs text-slate-400 border-b border-slate-700 text-left">
                                 <th className="py-2 w-12">Set #</th>
                                 {isRunning && <th className="py-2">Distance ({unitLabel(exercise.distanceUnit)})</th>}
-                                <th className="py-2">
-                                    {isWeight ? "Weight" : "Time"} ({unitLabel(exercise.unit)})
-                                </th>
-                                {isWeight && <th className="py-2">Reps</th>}
+                                {!isRepsOnly && (
+                                    <th className="py-2">
+                                        {isWeight ? "Weight" : "Time"} ({unitLabel(exercise.unit)})
+                                    </th>
+                                )}
+                                {(isWeight || isRepsOnly) && <th className="py-2">Reps</th>}
+                                {isRunning && <th className="py-2">kcal</th>}
                                 {isRunning && <th className="py-2">Pace / Speed</th>}
                             </tr>
                         </thead>
@@ -285,10 +314,13 @@ function SetEditor({ exercise, editable, defaultDistanceUnit, onChange }: SetEdi
                                     <tr key={setIndex} className="border-b border-slate-800/50 last:border-b-0">
                                         <td className="py-2 text-slate-300">{setIndex + 1}</td>
                                         {isRunning && <td className="py-2 pr-2">{numberInput(setIndex, "distance", "0.01", "decimal")}</td>}
-                                        <td className="py-2 pr-2">
-                                            {numberInput(setIndex, "value", isWeight ? "0.5" : "1", "decimal")}
-                                        </td>
-                                        {isWeight && <td className="py-2">{numberInput(setIndex, "reps", "1", "numeric")}</td>}
+                                        {!isRepsOnly && (
+                                            <td className="py-2 pr-2">
+                                                {numberInput(setIndex, "value", isWeight ? "0.5" : "1", "decimal")}
+                                            </td>
+                                        )}
+                                        {(isWeight || isRepsOnly) && <td className="py-2">{numberInput(setIndex, "reps", "1", "numeric")}</td>}
+                                        {isRunning && <td className="py-2 pr-2">{numberInput(setIndex, "calories", "1", "numeric")}</td>}
                                         {isRunning && (
                                             <td className="py-2 text-xs text-slate-300">
                                                 {pace ? (

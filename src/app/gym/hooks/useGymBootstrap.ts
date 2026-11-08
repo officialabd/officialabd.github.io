@@ -10,6 +10,7 @@ import {
     usePlansStore,
     useProfileStore,
     useSessionStore,
+    useStatsStore,
     useUIStore,
 } from "../stores";
 
@@ -20,14 +21,36 @@ const clearAll = () => {
     usePlansStore.getState().clear();
     useSessionStore.getState().clear();
     useLogsStore.getState().clear();
+    useStatsStore.getState().clear();
     useProfileStore.getState().clear();
     useUIStore.getState().reset();
 };
 
 /**
- * Prepares the signed-in user's data: migrates legacy data once,
- * then loads profile, exercise library, plans and any running session.
+ * (Re)load all of the user's data into the stores: profile, exercise library,
+ * plans and any running session. Also used after an import replaces data.
  */
+export async function loadAccount(uid: string): Promise<void> {
+    useSessionStore.getState().clear();
+    useLogsStore.getState().clear();
+    useStatsStore.getState().clear();
+
+    const [{ profile }] = await Promise.all([
+        gymService.fetchUser(uid),
+        useExercisesStore.getState().load(),
+        usePlansStore.getState().load(),
+    ]);
+    useProfileStore.getState().setProfile(profile);
+    useUIStore.getState().setLogsWeightDisplay(profile.units.weight);
+
+    const session = useSessionStore.getState();
+    if (!(await session.loadRunning())) {
+        const firstPlan = usePlansStore.getState().plans[0];
+        if (firstPlan) session.selectPlan(firstPlan.id);
+    }
+}
+
+/** Prepares the signed-in user's data: migrates legacy data once, then loads everything. */
 export function useGymBootstrap(user: User | null) {
     const [status, setStatus] = useState<BootstrapStatus>("idle");
     const [error, setError] = useState<string | null>(null);
@@ -37,22 +60,7 @@ export function useGymBootstrap(user: User | null) {
         setError(null);
         try {
             await migrateUserIfNeeded(uid);
-            const [{ profile }] = await Promise.all([
-                gymService.fetchUser(uid),
-                useExercisesStore.getState().load(),
-                usePlansStore.getState().load(),
-            ]);
-            useProfileStore.getState().setProfile(profile);
-            useUIStore.getState().setLogsWeightDisplay(profile.units.weight);
-
-            const session = useSessionStore.getState();
-            if (await session.loadRunning()) {
-                const { planId, dayId } = useSessionStore.getState();
-                useLogsStore.getState().focusDay(planId, dayId);
-            } else {
-                const firstPlan = usePlansStore.getState().plans[0];
-                if (firstPlan) session.selectPlan(firstPlan.id);
-            }
+            await loadAccount(uid);
             setStatus("ready");
         } catch (err) {
             console.error("Failed to load gym data", err);

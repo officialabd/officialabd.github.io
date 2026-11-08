@@ -23,6 +23,7 @@ import type {
     WeightEntry,
     WeightUnit,
 } from "../types";
+import { parseGroups } from "../utils/groups";
 
 type Data = Record<string, any>;
 
@@ -32,15 +33,16 @@ const arr = (v: unknown): any[] => (Array.isArray(v) ? v.filter((x) => x !== nul
 const oneOf = <T extends string>(v: unknown, options: readonly T[], fallback: T): T =>
     options.includes(v as T) ? (v as T) : fallback;
 
-const EXERCISE_TYPES = ["weight", "time"] as const;
-const UNITS = ["kg", "lb", "secs", "mins", "hours"] as const;
+const EXERCISE_TYPES = ["weight", "time", "reps"] as const;
+const WEIGHT_AND_TIME_UNITS = ["kg", "lb", "secs", "mins", "hours"] as const;
 const PERS = ["1hand", "2hands", "1leg", "2legs", "fullBody", "running"] as const;
 const DISTANCE_UNITS = ["km", "mi"] as const;
 const WEIGHT_UNITS = ["kg", "lb"] as const;
 const HEIGHT_UNITS = ["cm", "in"] as const;
 
 const parseType = (v: unknown): ExerciseType => oneOf(v, EXERCISE_TYPES, "weight");
-const parseUnit = (v: unknown, type: ExerciseType): Unit => oneOf(v, UNITS, type === "time" ? "mins" : "kg");
+const parseUnit = (v: unknown, type: ExerciseType): Unit =>
+    type === "reps" ? "reps" : oneOf(v, WEIGHT_AND_TIME_UNITS, type === "time" ? "mins" : "kg");
 const parsePer = (v: unknown): Per => oneOf(v, PERS, "1hand");
 const parseDistanceUnit = (v: unknown, per: Per): DistanceUnit | null =>
     per === "running" ? oneOf(v, DISTANCE_UNITS, "km") : null;
@@ -55,7 +57,7 @@ export const exerciseFromFirestore = (id: string, data: Data): GymExercise => {
     return {
         id,
         name: str(data.name),
-        group: str(data.group),
+        groups: parseGroups(data.groups, data.group),
         type,
         unit: parseUnit(data.unit, type),
         per,
@@ -69,7 +71,7 @@ export const exerciseFromFirestore = (id: string, data: Data): GymExercise => {
 export const exerciseToFirestore = (ex: GymExerciseInput & { createdAt: number; updatedAt: number }) => ({
     name: ex.name,
     nameKey: ex.name.toLowerCase(),
-    group: ex.group,
+    groups: ex.groups,
     type: ex.type,
     unit: ex.unit,
     per: ex.per,
@@ -120,6 +122,7 @@ const setFromFirestore = (data: Data): GymSet => ({
     value: num(data.value),
     reps: num(data.reps),
     distance: num(data.distance),
+    calories: num(data.calories),
     completed: data.completed === true ? true : null,
 });
 
@@ -129,12 +132,13 @@ export const logExerciseFromFirestore = (data: Data): GymLogExercise => {
     return {
         exerciseId: typeof data.exerciseId === "string" ? data.exerciseId : null,
         name: str(data.name),
-        group: str(data.group),
+        groups: parseGroups(data.groups, data.group),
         type,
         unit: parseUnit(data.unit, type),
         per,
         distanceUnit: parseDistanceUnit(data.distanceUnit, per),
         completed: data.completed === true ? true : null,
+        skipped: data.skipped === true,
         sets: arr(data.sets).map(setFromFirestore),
     };
 };
@@ -146,6 +150,7 @@ export const logFromFirestore = (id: string, data: Data): GymLogEntry => ({
     dayId: str(data.dayId),
     dayTitle: str(data.dayTitle),
     date: str(data.date),
+    gym: str(data.gym) || null,
     note: str(data.note),
     exercises: arr(data.exercises).map(logExerciseFromFirestore),
     status: oneOf<SessionStatus | "">(data.status, ["running", "completed"], "") || null,
@@ -158,16 +163,18 @@ export const logFromFirestore = (id: string, data: Data): GymLogEntry => ({
 const logExerciseToFirestore = (ex: GymLogExercise) => ({
     exerciseId: ex.exerciseId,
     name: ex.name,
-    group: ex.group,
+    groups: ex.groups,
     type: ex.type,
     unit: ex.unit,
     per: ex.per,
     distanceUnit: ex.per === "running" ? ex.distanceUnit ?? "km" : null,
     completed: ex.completed,
+    skipped: ex.skipped,
     sets: ex.sets.map((s) => ({
         value: s.value,
         reps: s.reps,
         distance: s.distance,
+        calories: s.calories,
         completed: s.completed,
     })),
 });
@@ -178,6 +185,7 @@ export const logToFirestore = (log: LogDraft & { createdAt: number; updatedAt: n
     dayId: log.dayId,
     dayTitle: log.dayTitle,
     date: log.date,
+    gym: log.gym,
     note: log.note,
     exercises: log.exercises.map(logExerciseToFirestore),
     status: log.status,
@@ -219,6 +227,9 @@ export const profileFromFirestore = (data: Data | undefined): GymProfile => {
         heightHistory: arr(data?.heightHistory)
             .map((e): HeightEntry => measurementFromFirestore<HeightUnit>(e, HEIGHT_UNITS, "cm"))
             .sort(byDateDesc),
+        targetBmi: num(data?.targetBmi),
+        gyms: arr(data?.gyms).filter((g): g is string => typeof g === "string" && !!g.trim()),
+        defaultGym: str(data?.defaultGym) || null,
         onboardedAt: num(data?.onboardedAt),
     };
 };
@@ -229,6 +240,9 @@ export const profileToFirestore = (profile: GymProfile) => ({
     units: { ...profile.units },
     weightHistory: profile.weightHistory.map((e) => ({ ...e })),
     heightHistory: profile.heightHistory.map((e) => ({ ...e })),
+    targetBmi: profile.targetBmi,
+    gyms: [...profile.gyms],
+    defaultGym: profile.defaultGym,
     onboardedAt: profile.onboardedAt,
 });
 

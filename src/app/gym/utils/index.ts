@@ -4,6 +4,8 @@ import { isSetFilled } from "./logDraft";
 
 export * from "./units";
 export * from "./logDraft";
+export * from "./groups";
+export * from "./stats";
 
 /** Generate a unique ID using crypto.randomUUID or a fallback. */
 export const generateId = (): string =>
@@ -14,6 +16,42 @@ export const generateId = (): string =>
 /** Key used to decide whether two exercise names refer to the same exercise (case-insensitive). */
 export const exerciseNameKey = (name: string): string => name.toLowerCase();
 
+/** Name as stored: trimmed, with runs of spaces collapsed. */
+export const cleanName = (name: string): string => name.trim().replace(/\s+/g, " ");
+
+/** Lowercase letters and digits only, without a plural "s" — "Sit-ups" and "situp" compare equal. */
+const looseKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+
+/** Levenshtein distance, stopping early once it exceeds `max`. */
+const editDistance = (a: string, b: string, max: number): number => {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+        const row = [i];
+        for (let j = 1; j <= b.length; j++) {
+            row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        }
+        if (Math.min(...row) > max) return max + 1;
+        prev = row;
+    }
+    return prev[b.length];
+};
+
+/**
+ * Existing names that look like the same exercise as `name` (typo, spacing, punctuation or plural),
+ * excluding exact case-insensitive matches, which are rejected separately.
+ */
+export const similarNames = (name: string, existing: string[]): string[] => {
+    const key = looseKey(name);
+    if (key.length < 3) return [];
+    const exact = exerciseNameKey(cleanName(name));
+    return existing.filter((other) => {
+        if (exerciseNameKey(other) === exact) return false;
+        const otherKey = looseKey(other);
+        return otherKey === key || (Math.min(key.length, otherKey.length) >= 5 && editDistance(key, otherKey, 2) <= 2);
+    });
+};
+
 // ============================================================================
 // Dates
 // ============================================================================
@@ -23,12 +61,6 @@ export const toLocalISODate = (d: Date): string =>
     new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export const todayISO = (): string => toLocalISODate(new Date());
-
-export const lastMonthISO = (): string => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return toLocalISODate(d);
-};
 
 /** Format a local ISO date (YYYY-MM-DD) without timezone shifts. */
 export const formatISODate = (iso: string | null | undefined): string => {
@@ -81,7 +113,7 @@ export const unitLabel = (unit: string | null | undefined): string => (unit ? UN
 // Exercise status
 // ============================================================================
 
-export type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted";
+export type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted" | "Skipped";
 
 export interface ExerciseStatus {
     label: ExerciseStatusLabel;
@@ -94,7 +126,13 @@ export interface ExerciseStatus {
 
 export const getExerciseStatus = (exercise: GymLogExercise): ExerciseStatus => {
     const total = exercise.sets.length;
-    const filled = exercise.sets.filter((s) => isSetFilled(s)).length;
+    const filled = exercise.sets.filter((s) => isSetFilled(s, exercise.type)).length;
+    if (exercise.skipped) {
+        return {
+            label: "Skipped", filled, total,
+            textColor: "text-slate-400", bgColor: "bg-slate-400", rowColor: "bg-slate-900/60 border-slate-700 opacity-60",
+        };
+    }
     if (total > 0 && filled === total) {
         return {
             label: "Completed", filled, total,
@@ -114,37 +152,10 @@ export const getExerciseStatus = (exercise: GymLogExercise): ExerciseStatus => {
 };
 
 // ============================================================================
-// Muscle group colors
-// ============================================================================
-
-const GROUP_PALETTE = [
-    "bg-rose-500",
-    "bg-amber-500",
-    "bg-emerald-500",
-    "bg-cyan-500",
-    "bg-violet-500",
-    "bg-pink-500",
-    "bg-lime-500",
-    "bg-orange-500",
-    "bg-teal-500",
-    "bg-indigo-500",
-];
-
-/** Assigns a stable color per muscle group, in order of first appearance. */
-export const buildGroupColors = (groups: (string | null | undefined)[]): ((group?: string | null) => string) => {
-    const colors: Record<string, string> = {};
-    groups.forEach((g) => {
-        const key = g?.toLowerCase().trim();
-        if (key && !colors[key]) colors[key] = GROUP_PALETTE[Object.keys(colors).length % GROUP_PALETTE.length];
-    });
-    return (group) => colors[group?.toLowerCase().trim() ?? ""] ?? "bg-slate-600";
-};
-
-// ============================================================================
 // Browser helpers
 // ============================================================================
 
-export const openExerciseSearch = (name: string, muscle?: string | null): void => {
+export const openExerciseSearch = (name: string, muscle?: string): void => {
     if (typeof window === "undefined") return;
     const query = encodeURIComponent(`${muscle ? `${muscle}: ` : ""}${name}`.trim());
     const url = `https://www.google.com/search?q=${query}`;

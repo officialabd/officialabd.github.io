@@ -1,73 +1,89 @@
 import { create } from "zustand";
-import { MIN_DAY_LOGS } from "../constants";
+import { DEFAULT_LOGS_DAYS, MIN_DAY_LOGS } from "../constants";
 import type { GymLogEntry, LogDraft, LogsFilter } from "../types";
 import * as gymService from "../services/gymService";
-import { lastMonthISO, normalizeLogExercise, todayISO } from "../utils";
+import { addDays, normalizeLogExercise, todayISO } from "../utils";
 import { requireUid } from "./authStore";
+import { useSessionStore } from "./sessionStore";
 
 interface LogsState {
     logs: GymLogEntry[];
     filter: LogsFilter;
+    /**
+     * Showing the default view of a running session's day: older sessions are added when the
+     * last 30 days have fewer than MIN_DAY_LOGS. A filter set by the user always shows exact results.
+     */
+    padToMinimum: boolean;
     isLoading: boolean;
     error: string | null;
     /** True when older sessions outside the date range were added to reach the minimum. */
     extendedBeyondRange: boolean;
 
-    setFilter: (partial: Partial<LogsFilter>) => void;
-    /** Point the filter at a plan day (used when a session starts). */
-    focusDay: (planId: string, dayId: string) => void;
+    /**
+     * Default view when the tab is opened: with a running session, that day's sessions of the
+     * last 30 days (at least MIN_DAY_LOGS); otherwise every session of the last 30 days.
+     */
+    showDefault: () => Promise<void>;
+    /** Change the filter (exact results) and reload. */
+    setFilter: (partial: Partial<LogsFilter>) => Promise<void>;
     load: () => Promise<void>;
     saveLog: (log: GymLogEntry, draft: LogDraft) => Promise<void>;
     deleteLog: (logId: string) => Promise<void>;
     clear: () => void;
 }
 
-const defaultFilter = (): LogsFilter => ({ from: lastMonthISO(), to: todayISO(), planId: "", dayId: "" });
+const recentFilter = (planId = "", dayId = ""): LogsFilter => {
+    const to = todayISO();
+    return { from: addDays(to, -DEFAULT_LOGS_DAYS), to, planId, dayId };
+};
 
 const inRange = (log: GymLogEntry, { from, to }: LogsFilter) => (!from || log.date >= from) && (!to || log.date <= to);
 
-/**
- * Logs matching the filter. When fewer than MIN_DAY_LOGS sessions fall in the date range,
- * the most recent matching sessions are added so a rarely trained day still shows history.
- */
-async function queryLogs(uid: string, filter: LogsFilter): Promise<{ logs: GymLogEntry[]; extended: boolean }> {
-    let matching: GymLogEntry[] | null = null;
-    let ranged: GymLogEntry[];
-
-    if (filter.dayId) {
-        matching = await gymService.fetchLogsByDay(uid, filter.dayId);
-        ranged = matching.filter((l) => inRange(l, filter));
-    } else if (filter.planId) {
-        matching = await gymService.fetchLogsByPlan(uid, filter.planId);
-        ranged = matching.filter((l) => inRange(l, filter));
-    } else {
-        ranged = await gymService.fetchLogsInRange(uid, filter.from, filter.to);
+/** Logs matching the filter, optionally topped up with the latest older sessions of the day. */
+async function queryLogs(uid: string, filter: LogsFilter, padToMinimum: boolean): Promise<{ logs: GymLogEntry[]; extended: boolean }> {
+    if (!filter.planId && !filter.dayId) {
+        return { logs: await gymService.fetchLogsInRange(uid, filter.from, filter.to), extended: false };
     }
+    const matching = filter.dayId
+        ? await gymService.fetchLogsByDay(uid, filter.dayId)
+        : await gymService.fetchLogsByPlan(uid, filter.planId);
+    const ranged = matching.filter((l) => inRange(l, filter));
+    if (!padToMinimum || ranged.length >= MIN_DAY_LOGS) return { logs: ranged, extended: false };
 
-    if (ranged.length >= MIN_DAY_LOGS) return { logs: ranged, extended: false };
-
-    const latest = matching?.slice(0, MIN_DAY_LOGS) ?? (await gymService.fetchLatestLogs(uid, MIN_DAY_LOGS));
-    const merged = new Map([...ranged, ...latest].map((l) => [l.id, l]));
+    const merged = new Map([...ranged, ...matching.slice(0, MIN_DAY_LOGS)].map((l) => [l.id, l]));
     const logs = gymService.sortLogsDesc(Array.from(merged.values()));
     return { logs, extended: logs.length > ranged.length };
 }
 
-export const useLogsStore = create<LogsState>((set, get) => ({
-    logs: [],
-    filter: defaultFilter(),
+const initialState = {
+    logs: [] as GymLogEntry[],
+    filter: recentFilter(),
+    padToMinimum: false,
     isLoading: false,
-    error: null,
+    error: null as string | null,
     extendedBeyondRange: false,
+};
 
-    setFilter: (partial) => set({ filter: { ...get().filter, ...partial } }),
+export const useLogsStore = create<LogsState>((set, get) => ({
+    ...initialState,
 
-    focusDay: (planId, dayId) => set({ filter: { ...get().filter, planId, dayId } }),
+    showDefault: () => {
+        const { draft, planId, dayId } = useSessionStore.getState();
+        const running = draft?.status === "running";
+        set({ filter: running ? recentFilter(planId, dayId) : recentFilter(), padToMinimum: running });
+        return get().load();
+    },
+
+    setFilter: (partial) => {
+        set({ filter: { ...get().filter, ...partial }, padToMinimum: false });
+        return get().load();
+    },
 
     load: async () => {
-        const filter = get().filter;
+        const { filter, padToMinimum } = get();
         set({ isLoading: true, error: null });
         try {
-            const { logs, extended } = await queryLogs(requireUid(), filter);
+            const { logs, extended } = await queryLogs(requireUid(), filter, padToMinimum);
             // Ignore stale responses if the filter changed while loading.
             if (get().filter !== filter) return;
             set({ logs, extendedBeyondRange: extended });
@@ -75,7 +91,7 @@ export const useLogsStore = create<LogsState>((set, get) => ({
             console.error("Failed to load logs", err);
             set({ error: "Could not load logs. Please try again." });
         } finally {
-            set({ isLoading: false });
+            if (get().filter === filter) set({ isLoading: false });
         }
     },
 
@@ -90,5 +106,5 @@ export const useLogsStore = create<LogsState>((set, get) => ({
         set({ logs: get().logs.filter((l) => l.id !== logId) });
     },
 
-    clear: () => set({ logs: [], filter: defaultFilter(), isLoading: false, error: null, extendedBeyondRange: false }),
+    clear: () => set({ ...initialState, filter: recentFilter() }),
 }));

@@ -6,3 +6,4 @@ export { ExercisesView } from "./ExercisesView";
 export { LogsFeed } from "./LogsFeed";
 export { ProfileView } from "./ProfileView";
 export { Onboarding } from "./Onboarding";
+export { StatsView } from "./StatsView";

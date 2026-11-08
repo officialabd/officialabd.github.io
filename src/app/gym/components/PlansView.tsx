@@ -5,9 +5,9 @@ import Card from "../../_layouts/card/card";
 import LinePulse from "../../_layouts/pulse/line";
 import type { GymExercise, GymPlan, GymPlanDay } from "../types";
 import { useExercisesStore, usePlansStore } from "../stores";
-import { buildGroupColors, confirmAction, exportToJsonFile, formatDate, openExerciseSearch, perLabel } from "../utils";
+import { confirmAction, formatDate, formatGroups, groupColor, openExerciseSearch, perLabel } from "../utils";
 import { ExercisePicker } from "./ExercisePicker";
-import { DownloadIcon, DragIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
+import { DragIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
 import { Button, EmptyState, Field, inputClass, listClass, Notice, rowClass, SectionTitle } from "./ui";
 
 export function PlansView() {
@@ -34,20 +34,10 @@ export function PlansView() {
                     <SectionTitle
                         text="Plans"
                         actions={
-                            <>
-                                <Button onClick={store.addPlan}>
-                                    <PlusIcon className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Create Plan</span>
-                                </Button>
-                                <Button
-                                    variant="success"
-                                    onClick={() => exportToJsonFile(plans, "gymPlans-backup")}
-                                    disabled={plans.length === 0}
-                                >
-                                    <DownloadIcon className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Export</span>
-                                </Button>
-                            </>
+                            <Button onClick={store.addPlan}>
+                                <PlusIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Create Plan</span>
+                            </Button>
                         }
                     />
                 }
@@ -227,7 +217,7 @@ function ExerciseSummary({ exercise }: { exercise: GymExercise }) {
         <>
             <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-sm font-medium text-slate-200 truncate">{exercise.name}</span>
-                {exercise.group && <span className="text-xs text-slate-400 truncate">{exercise.group}</span>}
+                {exercise.groups.length > 0 && <span className="text-xs text-slate-400 truncate">{formatGroups(exercise.groups)}</span>}
             </div>
             <span className="text-xs font-semibold text-slate-300 w-20">{perLabel(exercise.per)}</span>
             <span className={`text-xs font-semibold w-14 text-right ${exercise.setsNo > 0 ? "text-emerald-400" : "text-slate-500"}`}>
@@ -235,7 +225,7 @@ function ExerciseSummary({ exercise }: { exercise: GymExercise }) {
             </span>
             <button
                 type="button"
-                onClick={() => openExerciseSearch(exercise.name, exercise.group)}
+                onClick={() => openExerciseSearch(exercise.name, formatGroups(exercise.groups))}
                 className="p-1 text-indigo-300 hover:text-indigo-100"
                 aria-label="Search exercise"
             >
@@ -248,13 +238,12 @@ function ExerciseSummary({ exercise }: { exercise: GymExercise }) {
 function DayExercises({ day, library }: { day: GymPlanDay; library: Map<string, GymExercise> }) {
     const exercises = resolve(day, library);
     if (exercises.length === 0) return <EmptyState>No exercises in this day yet.</EmptyState>;
-    const groupColor = buildGroupColors(exercises.map((ex) => ex.group));
 
     return (
         <div className="rounded-xl border border-slate-700 overflow-hidden">
             {exercises.map((ex) => (
                 <div key={ex.id} className="flex items-center border-b border-slate-700 last:border-b-0 hover:bg-slate-800/30">
-                    <div className={`w-1.5 self-stretch ${groupColor(ex.group)}`} />
+                    <div className={`w-1.5 self-stretch ${groupColor(ex.groups)}`} />
                     <div className="flex items-center gap-2 flex-1 px-3 py-3">
                         <ExerciseSummary exercise={ex} />
                     </div>

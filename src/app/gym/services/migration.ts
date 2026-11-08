@@ -10,16 +10,13 @@
  *   name, so re-running an interrupted migration overwrites instead of duplicating.
  * - Log values, units and types are copied as-is; each logged exercise gains an exerciseId.
  */
-import { collection, doc, getDocs, setDoc, writeBatch, type DocumentReference } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "../../../../firebase";
 import { COLLECTIONS, SCHEMA_VERSION } from "../constants";
 import { exerciseToFirestore, logToFirestore, planToFirestore } from "./mappers";
 import { exercisesCol, fetchUser, logsCol, plansCol, userDoc } from "./gymService";
+import { commitInBatches, type WriteOp } from "./batch";
 import { transformLegacy, type LegacyData } from "./legacyTransform";
-
-const BATCH_LIMIT = 400;
-
-type Write = [DocumentReference, Record<string, unknown>];
 
 async function readLegacy(uid: string): Promise<LegacyData> {
     const [plansSnap, logsSnap] = await Promise.all([
@@ -43,17 +40,11 @@ export async function migrateUserIfNeeded(uid: string): Promise<void> {
     const legacy = await readLegacy(uid);
     const { exercises, plans, logs } = transformLegacy(legacy);
 
-    const writes: Write[] = [
-        ...exercises.map((ex): Write => [doc(exercisesCol(uid), ex.id), exerciseToFirestore(ex)]),
-        ...plans.map((p): Write => [doc(plansCol(uid), p.id), planToFirestore(p)]),
-        ...logs.map((l): Write => [doc(logsCol(uid), l.id), logToFirestore(l)]),
-    ];
-
-    for (let i = 0; i < writes.length; i += BATCH_LIMIT) {
-        const batch = writeBatch(db);
-        writes.slice(i, i + BATCH_LIMIT).forEach(([ref, data]) => batch.set(ref, data));
-        await batch.commit();
-    }
+    await commitInBatches([
+        ...exercises.map((ex): WriteOp => ({ kind: "set", ref: doc(exercisesCol(uid), ex.id), data: exerciseToFirestore(ex) })),
+        ...plans.map((p): WriteOp => ({ kind: "set", ref: doc(plansCol(uid), p.id), data: planToFirestore(p) })),
+        ...logs.map((l): WriteOp => ({ kind: "set", ref: doc(logsCol(uid), l.id), data: logToFirestore(l) })),
+    ]);
 
     // Marked last: an interrupted migration simply runs again on the next login.
     await setDoc(

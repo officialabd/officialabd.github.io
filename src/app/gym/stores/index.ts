@@ -6,3 +6,4 @@ export type { PrefillMode } from "./sessionStore";
 export { useLogsStore } from "./logsStore";
 export { useProfileStore } from "./profileStore";
 export { useUIStore } from "./uiStore";
+export { useStatsStore } from "./statsStore";

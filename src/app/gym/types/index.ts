@@ -2,13 +2,31 @@
 // Units & enums
 // ============================================================================
 
-export type ExerciseType = "weight" | "time";
+/** "reps": bodyweight exercises that only record reps. */
+export type ExerciseType = "weight" | "time" | "reps";
 export type WeightUnit = "kg" | "lb";
 export type TimeUnit = "secs" | "mins" | "hours";
-export type Unit = WeightUnit | TimeUnit;
+/** "reps" is the only unit of reps-only exercises. */
+export type Unit = WeightUnit | TimeUnit | "reps";
 export type DistanceUnit = "km" | "mi";
 export type HeightUnit = "cm" | "in";
 export type Per = "1hand" | "2hands" | "1leg" | "2legs" | "fullBody" | "running";
+export type MuscleGroup =
+    | "chest"
+    | "back"
+    | "traps"
+    | "shoulders"
+    | "biceps"
+    | "triceps"
+    | "forearms"
+    | "core"
+    | "glutes"
+    | "quads"
+    | "hamstrings"
+    | "adductors"
+    | "calves"
+    | "fullBody"
+    | "cardio";
 
 // ============================================================================
 // Exercise library — gymUsers/{uid}/exercises/{exerciseId}
@@ -17,9 +35,9 @@ export type Per = "1hand" | "2hands" | "1leg" | "2legs" | "fullBody" | "running"
 export interface GymExercise {
     id: string;
     name: string;
-    group: string;
+    groups: MuscleGroup[];
     type: ExerciseType;
-    /** Weight unit for "weight" exercises, time unit for "time" exercises. */
+    /** Weight unit for "weight" exercises, time unit for "time" exercises, "reps" for reps-only. */
     unit: Unit;
     per: Per;
     /** Only used when per === "running". */
@@ -57,11 +75,13 @@ export interface GymPlan {
 // ============================================================================
 
 export interface GymSet {
-    /** Weight (weight exercises) or duration (time / running exercises). */
+    /** Weight (weight exercises) or duration (time / running exercises). Unused for reps-only. */
     value: number | null;
     reps: number | null;
     /** Running only. */
     distance: number | null;
+    /** Running only, in kcal. */
+    calories: number | null;
     completed: boolean | null;
 }
 
@@ -69,12 +89,14 @@ export interface GymSet {
 export interface GymLogExercise {
     exerciseId: string | null;
     name: string;
-    group: string;
+    groups: MuscleGroup[];
     type: ExerciseType;
     unit: Unit;
     per: Per;
     distanceUnit: DistanceUnit | null;
     completed: boolean | null;
+    /** Explicitly skipped in the session (as opposed to left unfilled). */
+    skipped: boolean;
     sets: GymSet[];
 }
 
@@ -88,6 +110,8 @@ export interface GymLogEntry {
     dayTitle: string;
     /** Local ISO date (YYYY-MM-DD) the session belongs to. */
     date: string;
+    /** Gym the session took place at (one of the profile's gyms), if any. */
+    gym: string | null;
     note: string;
     exercises: GymLogExercise[];
     status: SessionStatus | null;
@@ -127,6 +151,12 @@ export interface GymProfile {
     units: UnitPreferences;
     weightHistory: WeightEntry[];
     heightHistory: HeightEntry[];
+    /** BMI the user aims for; drives the target weight shown in the profile. */
+    targetBmi: number | null;
+    /** Gyms the user trains at, used to label sessions. */
+    gyms: string[];
+    /** Gym new sessions start with. */
+    defaultGym: string | null;
     /** Set once the user finishes or skips onboarding. */
     onboardedAt: number | null;
 }
@@ -135,7 +165,7 @@ export interface GymProfile {
 // UI
 // ============================================================================
 
-export type ViewTab = "session" | "plans" | "exercises" | "logs" | "profile";
+export type ViewTab = "session" | "plans" | "exercises" | "logs" | "stats" | "profile";
 
 /** "logged" shows values in the unit they were recorded in. */
 export type WeightDisplay = "logged" | WeightUnit;

@@ -7,6 +7,7 @@ const TABS: { id: ViewTab; label: string }[] = [
     { id: "plans", label: "Plans" },
     { id: "exercises", label: "Exercises" },
     { id: "logs", label: "Logs" },
+    { id: "stats", label: "Stats" },
     { id: "profile", label: "Profile" },
 ];
 

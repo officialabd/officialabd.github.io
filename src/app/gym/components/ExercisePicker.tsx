@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { GymExercise } from "../types";
-import { perLabel } from "../utils";
+import { formatGroups, perLabel } from "../utils";
 import { CloseIcon } from "./icons";
 import { EmptyState, IconButton, inputClass } from "./ui";
 
@@ -23,7 +23,7 @@ export function ExercisePicker({ exercises, excludeIds = [], onPick, onClose }: 
         return exercises.filter(
             (ex) =>
                 !excludeIds.includes(ex.id) &&
-                (!term || ex.name.toLowerCase().includes(term) || ex.group.toLowerCase().includes(term))
+                (!term || ex.name.toLowerCase().includes(term) || formatGroups(ex.groups).toLowerCase().includes(term))
         );
     }, [exercises, excludeIds, search]);
 
@@ -59,7 +59,7 @@ export function ExercisePicker({ exercises, excludeIds = [], onPick, onClose }: 
                         >
                             <span className="min-w-0">
                                 <span className="block truncate text-sm font-medium text-slate-100">{ex.name}</span>
-                                {ex.group && <span className="block truncate text-xs text-slate-400">{ex.group}</span>}
+                                {ex.groups.length > 0 && <span className="block truncate text-xs text-slate-400">{formatGroups(ex.groups)}</span>}
                             </span>
                             <span className="shrink-0 text-xs text-slate-400">{perLabel(ex.per)}</span>
                         </button>

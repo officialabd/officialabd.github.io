@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AUTOSAVE_DELAY_MS } from "../constants";
+import { AUTOSAVE_DELAY_MS, STALE_SESSION_MS } from "../constants";
 import type { GymPlan, GymPlanDay, LogDraft, SaveState } from "../types";
 import * as gymService from "../services/gymService";
 import {
@@ -12,6 +12,7 @@ import {
 import { requireUid } from "./authStore";
 import { useExercisesStore } from "./exercisesStore";
 import { usePlansStore } from "./plansStore";
+import { useProfileStore } from "./profileStore";
 
 export type PrefillMode = "values" | "session";
 
@@ -28,6 +29,10 @@ interface SessionState {
     /** Describes where pre-filled values came from, shown to the user. */
     prefill: { mode: PrefillMode; date: string } | null;
     prefillMessage: string | null;
+    /** Last save time of a running session found idle for too long at load; null when not stale. */
+    staleSince: number | null;
+    /** The user picked the gym of this session; otherwise a not-started draft follows the default gym. */
+    gymChosen: boolean;
 
     selectPlan: (planId: string) => void;
     selectDay: (dayId: string) => void;
@@ -36,10 +41,17 @@ interface SessionState {
     loadPrevious: (mode: PrefillMode) => Promise<void>;
     loadRunning: () => Promise<boolean>;
 
+    /** Pick the gym of the session (overrides the default gym). */
+    setGym: (gym: string | null) => void;
+    /** Put the profile's default gym on a not-started draft, unless the user picked one. */
+    applyDefaultGym: () => void;
     /** Apply a change to the draft. Running sessions are auto-saved. */
     update: (updater: (draft: LogDraft) => LogDraft) => void;
     start: () => Promise<void>;
-    complete: () => Promise<void>;
+    /** Finish the running session, at `completedAt` (default: now). */
+    complete: (completedAt?: number) => Promise<void>;
+    /** Keep a stale session running and hide the prompt. */
+    dismissStale: () => void;
     cancel: () => Promise<void>;
     /** Save pending changes immediately (e.g. when the tab is hidden). */
     flush: () => Promise<void>;
@@ -57,6 +69,8 @@ const initialState = {
     isLoadingRunning: false,
     prefill: null as SessionState["prefill"],
     prefillMessage: null as string | null,
+    staleSince: null as number | null,
+    gymChosen: false,
 };
 
 const isRunning = (draft: LogDraft | null) => draft?.status === "running";
@@ -116,15 +130,35 @@ export const useSessionStore = create<SessionState>((set, get) => {
         return plan && day ? { plan, day } : null;
     };
 
+    /** The date carries over from the current draft (today for a first draft); the gym is the default unless picked. */
+    const draftContext = () => {
+        const { draft, gymChosen } = get();
+        return {
+            date: draft?.date ?? todayISO(),
+            gym: draft && gymChosen ? draft.gym : useProfileStore.getState().profile.defaultGym,
+        };
+    };
+
     const freshDraft = (): LogDraft | null => {
         const current = currentPlanDay();
         if (!current) return null;
-        const date = get().draft?.date ?? todayISO();
-        return buildDraftFromDay(current.plan, current.day, useExercisesStore.getState().byId, date);
+        const { date, gym } = draftContext();
+        return { ...buildDraftFromDay(current.plan, current.day, useExercisesStore.getState().byId, date), gym };
     };
 
-    const resetAfterSession = () =>
-        set({ draft: freshDraft(), logId: null, createdAt: null, saveState: "idle", prefill: null, prefillMessage: null });
+    const resetAfterSession = () => {
+        // The next session starts from the default gym again.
+        set({ gymChosen: false });
+        set({
+            draft: freshDraft(),
+            logId: null,
+            createdAt: null,
+            saveState: "idle",
+            prefill: null,
+            prefillMessage: null,
+            staleSince: null,
+        });
+    };
 
     return {
         ...initialState,
@@ -158,12 +192,12 @@ export const useSessionStore = create<SessionState>((set, get) => {
                     return;
                 }
                 const library = useExercisesStore.getState().byId;
-                const date = get().draft?.date ?? todayISO();
+                const { date, gym } = draftContext();
                 const draft =
                     mode === "values"
                         ? buildDraftWithPreviousValues(current.plan, current.day, library, previous, date)
                         : buildDraftFromPreviousSession(current.plan, current.day, library, previous, date);
-                set({ draft, prefill: { mode, date: previous.date } });
+                set({ draft: { ...draft, gym }, prefill: { mode, date: previous.date } });
             } finally {
                 set({ isBusy: false });
             }
@@ -174,7 +208,7 @@ export const useSessionStore = create<SessionState>((set, get) => {
             try {
                 const running = await gymService.fetchRunningLog(requireUid());
                 if (!running) return false;
-                const { id, createdAt, updatedAt: _, ...draft } = running;
+                const { id, createdAt, updatedAt, ...draft } = running;
                 set({
                     planId: running.planId,
                     dayId: running.dayId,
@@ -184,11 +218,24 @@ export const useSessionStore = create<SessionState>((set, get) => {
                     saveState: "saved",
                     prefill: null,
                     prefillMessage: null,
+                    staleSince: Date.now() - updatedAt > STALE_SESSION_MS ? updatedAt : null,
                 });
                 return true;
             } finally {
                 set({ isLoadingRunning: false });
             }
+        },
+
+        setGym: (gym) => {
+            set({ gymChosen: true });
+            get().update((d) => ({ ...d, gym }));
+        },
+
+        applyDefaultGym: () => {
+            const { draft, gymChosen } = get();
+            if (!draft || isRunning(draft) || gymChosen) return;
+            const gym = useProfileStore.getState().profile.defaultGym;
+            if (draft.gym !== gym) set({ draft: { ...draft, gym } });
         },
 
         update: (updater) => {
@@ -212,12 +259,12 @@ export const useSessionStore = create<SessionState>((set, get) => {
             if (saveTimer || get().saveState === "error") await autosave();
         },
 
-        complete: async () => {
+        complete: async (completedAt = Date.now()) => {
             if (!isRunning(get().draft)) return;
             cancelTimer();
             set({ isBusy: true, saveState: "saving" });
             try {
-                await persist({ status: "completed", completedAt: Date.now() });
+                await persist({ status: "completed", completedAt });
                 resetAfterSession();
             } catch (err) {
                 console.error("Failed to complete session", err);
@@ -240,6 +287,8 @@ export const useSessionStore = create<SessionState>((set, get) => {
                 set({ isBusy: false });
             }
         },
+
+        dismissStale: () => set({ staleSince: null }),
 
         clear: () => {
             cancelTimer();

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Basic from "../_layouts/texts/basic";
 import LinePulse from "../_layouts/pulse/line";
 import { useGymAuth, useGymBootstrap } from "./hooks";
-import { useLogsStore, useProfileStore, useUIStore } from "./stores";
+import { useLogsStore, useProfileStore, useStatsStore, useUIStore } from "./stores";
 import {
     AuthForm,
     ExercisesView,
@@ -13,6 +13,7 @@ import {
     PlansView,
     ProfileView,
     SessionLogger,
+    StatsView,
     TabNavigation,
 } from "./components";
 import { Button, Notice } from "./components/ui";
@@ -23,8 +24,9 @@ export default function GymPage() {
     const { status, error: loadError, retry } = useGymBootstrap(user);
     const { activeView, setActiveView, nowTs, tick } = useUIStore();
     const needsOnboarding = useProfileStore((s) => s.needsOnboarding());
-    const logsFilter = useLogsStore((s) => s.filter);
-    const loadLogs = useLogsStore((s) => s.load);
+    const profileName = useProfileStore((s) => s.profile.name);
+    const showDefaultLogs = useLogsStore((s) => s.showDefault);
+    const loadStats = useStatsStore((s) => s.load);
 
     const isReady = !!user && status === "ready";
 
@@ -34,10 +36,15 @@ export default function GymPage() {
         return () => clearInterval(id);
     }, [tick]);
 
-    // (Re)load logs whenever the logs tab is shown or its filter changes.
+    // Opening the logs tab shows its default view; filter changes reload from the Logs tab itself.
     useEffect(() => {
-        if (isReady && activeView === "logs") loadLogs();
-    }, [isReady, activeView, logsFilter, loadLogs]);
+        if (isReady && activeView === "logs") showDefaultLogs();
+    }, [isReady, activeView, showDefaultLogs]);
+
+    // Reload stats whenever the stats tab is shown, so finished sessions are included.
+    useEffect(() => {
+        if (isReady && activeView === "stats") loadStats();
+    }, [isReady, activeView, loadStats]);
 
     return (
         <div className="min-h-screen bg-[#0b1222] text-white">
@@ -59,7 +66,7 @@ export default function GymPage() {
                     </div>
                     {user && (
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2 text-xs sm:text-sm text-slate-200">
-                            <span className="font-semibold text-white break-all">Hello {user.email}</span>
+                            <span className="font-semibold text-white break-all">Hello {profileName || user.email}</span>
                             <span className="text-[11px] sm:text-xs text-slate-400">
                                 Logged in Session: {formatTime(sessionIssuedAt)} • Renews in{" "}
                                 {formatRemaining(sessionExpiresAt ? sessionExpiresAt - nowTs : null)}
@@ -93,6 +100,7 @@ export default function GymPage() {
                         {activeView === "plans" && <PlansView />}
                         {activeView === "exercises" && <ExercisesView />}
                         {activeView === "logs" && <LogsFeed />}
+                        {activeView === "stats" && <StatsView />}
                         {activeView === "profile" && <ProfileView />}
                     </div>
                 )}

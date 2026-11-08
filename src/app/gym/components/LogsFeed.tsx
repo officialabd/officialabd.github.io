@@ -10,8 +10,8 @@ import {
     computeSpeed,
     confirmAction,
     convertWeight,
-    exportToJsonFile,
     formatDuration,
+    formatGroups,
     formatISODate,
     formatPace,
     formatTime,
@@ -24,8 +24,8 @@ import {
     unitLabel,
 } from "../utils";
 import { LogExercisesEditor } from "./LogExercisesEditor";
-import { DownloadIcon, EditIcon } from "./icons";
-import { Button, EmptyState, Field, inputClass, Notice, SectionTitle, Segmented } from "./ui";
+import { EditIcon } from "./icons";
+import { Button, EmptyState, Field, GymSelect, inputClass, Notice, SectionTitle, Segmented } from "./ui";
 
 export function LogsFeed() {
     const { logs, filter, isLoading, error, extendedBeyondRange, setFilter, load } = useLogsStore();
@@ -38,7 +38,7 @@ export function LogsFeed() {
     return (
         <Card heading={<SectionTitle text="Logs" />}>
             <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
                     <Field label="Plan (optional)">
                         <select
                             className={inputClass}
@@ -76,15 +76,6 @@ export function LogsFeed() {
                     </Field>
                     <Button className="h-10" onClick={load}>
                         Refresh
-                    </Button>
-                    <Button
-                        className="h-10"
-                        variant="success"
-                        onClick={() => exportToJsonFile(logs, "gymLogs-backup")}
-                        disabled={logs.length === 0}
-                    >
-                        <DownloadIcon className="w-4 h-4" />
-                        Export Logs
                     </Button>
                 </div>
 
@@ -137,11 +128,25 @@ function SetChip({ set, exercise, weightDisplay }: { set: GymSet; exercise: GymL
                 <b>{set.distance ?? "-"}</b> {dist}
                 <span className="text-slate-400">in</span>
                 <b>{set.value ?? "-"}</b> {unitLabel(exercise.unit)}
+                {set.calories !== null && (
+                    <>
+                        <span className="text-slate-400">·</span>
+                        <b>{set.calories}</b> kcal
+                    </>
+                )}
                 {pace && (
                     <span className="text-slate-400">
                         ({pace}/{dist}, {speed} {dist}/h)
                     </span>
                 )}
+            </Chip>
+        );
+    }
+
+    if (exercise.type === "reps") {
+        return (
+            <Chip>
+                <b>{set.reps ?? "-"}</b> reps
             </Chip>
         );
     }
@@ -196,24 +201,25 @@ function LogEntryCard({ log, weightDisplay, onEdit }: { log: GymLogEntry; weight
                 <div>Started: {formatTime(log.startedAt)}</div>
                 <div>Finished: {formatTime(log.completedAt)}</div>
                 <div>Duration: {formatDuration(log.startedAt, log.completedAt)}</div>
+                <div>Gym: {log.gym ?? "No gym"}</div>
             </div>
             {log.note && <p className="text-sm text-slate-200">Session note: {log.note}</p>}
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/50 divide-y divide-slate-800">
                 {log.exercises.map((ex, idx) => {
                     const status = getExerciseStatus(ex);
-                    const filledSets = ex.sets.filter(isSetFilled);
+                    const filledSets = ex.sets.filter((s) => isSetFilled(s, ex.type));
                     return (
                         <div key={idx} className="px-3 py-2 space-y-1 sm:grid sm:grid-cols-[35%_10%_1fr_10%] sm:items-center sm:gap-3 sm:space-y-0">
                             <div className="flex justify-between sm:block">
                                 <div>
                                     <div className="text-sm font-semibold text-slate-100">{ex.name}</div>
-                                    {ex.group && <div className="text-xs text-slate-400">{ex.group}</div>}
+                                    {ex.groups.length > 0 && <div className="text-xs text-slate-400">{formatGroups(ex.groups)}</div>}
                                 </div>
                                 <span className="sm:hidden text-[11px] text-slate-300">
                                     {perLabel(ex.per)} •
                                     <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold text-black ${status.bgColor}`}>
-                                        {status.filled}/{status.total}
+                                        {ex.skipped ? "Skipped" : `${status.filled}/${status.total}`}
                                     </span>
                                 </span>
                             </div>
@@ -226,7 +232,7 @@ function LogEntryCard({ log, weightDisplay, onEdit }: { log: GymLogEntry; weight
                                 )}
                             </div>
                             <div className={`hidden sm:block text-center text-xs font-semibold ${status.textColor}`}>
-                                {status.filled}/{status.total}
+                                {ex.skipped ? "Skipped" : `${status.filled}/${status.total}`}
                             </div>
                         </div>
                     );
@@ -244,6 +250,7 @@ function LogEditor({ log, onDone }: { log: GymLogEntry; onDone: () => void }) {
     const { saveLog, deleteLog } = useLogsStore();
     const library = useExercisesStore((s) => s.exercises);
     const distanceUnit = useProfileStore((s) => s.profile.units.distance);
+    const gyms = useProfileStore((s) => s.profile.gyms);
     const [draft, setDraft] = useState<LogDraft>(() => {
         const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = log;
         return rest;
@@ -276,9 +283,12 @@ function LogEditor({ log, onDone }: { log: GymLogEntry; onDone: () => void }) {
             <div className="text-sm font-semibold text-teal-200">
                 Editing: {log.planTitle} • {log.dayTitle}
             </div>
-            <Field label="Date">
-                <input type="date" className={inputClass} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
-            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Date">
+                    <input type="date" className={inputClass} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+                </Field>
+                <GymSelect gyms={gyms} value={draft.gym} onChange={(gym) => setDraft({ ...draft, gym })} />
+            </div>
 
             <LogExercisesEditor
                 exercises={draft.exercises}

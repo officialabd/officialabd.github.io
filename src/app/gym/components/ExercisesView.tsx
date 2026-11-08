@@ -3,30 +3,42 @@
 import { useMemo, useState } from "react";
 import Card from "../../_layouts/card/card";
 import LinePulse from "../../_layouts/pulse/line";
-import { DEFAULT_SETS, DISTANCE_UNITS, PER_OPTIONS, TIME_UNITS, WEIGHT_UNITS } from "../constants";
-import type { DistanceUnit, ExerciseType, GymExercise, GymExerciseInput, Per, Unit } from "../types";
+import { DEFAULT_SETS, DISTANCE_UNITS, MUSCLE_GROUPS, PER_OPTIONS, TIME_UNITS, WEIGHT_UNITS } from "../constants";
+import type { DistanceUnit, ExerciseType, GymExercise, GymExerciseInput, MuscleGroup, Per, Unit } from "../types";
 import { useExercisesStore, usePlansStore, useProfileStore } from "../stores";
-import { buildGroupColors, confirmAction, exportToJsonFile, openExerciseSearch, perLabel, unitLabel, withPer, withType } from "../utils";
-import { DownloadIcon, PlusIcon, SearchIcon } from "./icons";
+import {
+    confirmAction,
+    formatGroups,
+    groupColor,
+    openExerciseSearch,
+    perLabel,
+    similarNames,
+    sortGroups,
+    unitLabel,
+    withPer,
+    withType,
+} from "../utils";
+import { MergeExercises } from "./MergeExercises";
+import { PlusIcon, SearchIcon } from "./icons";
 import { Button, EmptyState, Field, inputClass, Notice, SectionTitle } from "./ui";
 
-type Editing = { mode: "new" } | { mode: "edit"; exercise: GymExercise } | null;
+type Editing = { mode: "new" } | { mode: "edit"; exercise: GymExercise } | { mode: "merge" } | null;
+
+const TYPE_OPTIONS: { value: ExerciseType; label: string }[] = [
+    { value: "weight", label: "Weight" },
+    { value: "time", label: "Time" },
+    { value: "reps", label: "Reps only" },
+];
 
 export function ExercisesView() {
     const { exercises, isLoading } = useExercisesStore();
     const [search, setSearch] = useState("");
     const [editing, setEditing] = useState<Editing>(null);
 
-    const groups = useMemo(
-        () => Array.from(new Set(exercises.map((e) => e.group.trim()).filter(Boolean))).sort(),
-        [exercises]
-    );
-    const groupColor = buildGroupColors(groups);
-
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase();
         if (!term) return exercises;
-        return exercises.filter((e) => e.name.toLowerCase().includes(term) || e.group.toLowerCase().includes(term));
+        return exercises.filter((e) => e.name.toLowerCase().includes(term) || formatGroups(e.groups).toLowerCase().includes(term));
     }, [exercises, search]);
 
     return (
@@ -36,17 +48,12 @@ export function ExercisesView() {
                     text="Exercises"
                     actions={
                         <>
+                            <Button variant="neutral" onClick={() => setEditing({ mode: "merge" })} disabled={exercises.length < 2}>
+                                Merge
+                            </Button>
                             <Button onClick={() => setEditing({ mode: "new" })}>
                                 <PlusIcon className="w-4 h-4" />
                                 <span className="hidden sm:inline">New Exercise</span>
-                            </Button>
-                            <Button
-                                variant="success"
-                                onClick={() => exportToJsonFile(exercises, "gymExercises-backup")}
-                                disabled={exercises.length === 0}
-                            >
-                                <DownloadIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">Export</span>
                             </Button>
                         </>
                     }
@@ -59,9 +66,8 @@ export function ExercisesView() {
                     exercise, while past logs keep what was recorded.
                 </p>
 
-                {editing?.mode === "new" && (
-                    <ExerciseForm groups={groups} onDone={() => setEditing(null)} />
-                )}
+                {editing?.mode === "new" && <ExerciseForm onDone={() => setEditing(null)} />}
+                {editing?.mode === "merge" && <MergeExercises onDone={() => setEditing(null)} />}
 
                 <input
                     className={inputClass}
@@ -79,7 +85,7 @@ export function ExercisesView() {
                         {filtered.map((ex) =>
                             editing?.mode === "edit" && editing.exercise.id === ex.id ? (
                                 <div key={ex.id} className="border-b border-slate-700 last:border-b-0 p-2">
-                                    <ExerciseForm exercise={ex} groups={groups} onDone={() => setEditing(null)} />
+                                    <ExerciseForm exercise={ex} onDone={() => setEditing(null)} />
                                 </div>
                             ) : (
                                 <div
@@ -87,11 +93,13 @@ export function ExercisesView() {
                                     onClick={() => setEditing({ mode: "edit", exercise: ex })}
                                     className="flex items-center border-b border-slate-700 last:border-b-0 cursor-pointer hover:bg-slate-800/40"
                                 >
-                                    <div className={`w-1.5 self-stretch ${groupColor(ex.group)}`} />
+                                    <div className={`w-1.5 self-stretch ${groupColor(ex.groups)}`} />
                                     <div className="flex items-center gap-3 flex-1 px-3 py-3">
                                         <div className="flex flex-col flex-1 min-w-0">
                                             <span className="text-sm font-medium text-slate-200 truncate">{ex.name}</span>
-                                            {ex.group && <span className="text-xs text-slate-400 truncate">{ex.group}</span>}
+                                            {ex.groups.length > 0 && (
+                                                <span className="text-xs text-slate-400 truncate">{formatGroups(ex.groups)}</span>
+                                            )}
                                         </div>
                                         <span className="hidden sm:inline text-xs text-slate-400 w-20">{perLabel(ex.per)}</span>
                                         <span className="text-xs text-slate-400 w-12">{unitLabel(ex.unit)}</span>
@@ -102,7 +110,7 @@ export function ExercisesView() {
                                             type="button"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                openExerciseSearch(ex.name, ex.group);
+                                                openExerciseSearch(ex.name, formatGroups(ex.groups));
                                             }}
                                             className="p-1 text-indigo-300 hover:text-indigo-100"
                                             aria-label="Search exercise"
@@ -124,15 +132,44 @@ export function ExercisesView() {
 // Create / edit form
 // ============================================================================
 
-function ExerciseForm({ exercise, groups, onDone }: { exercise?: GymExercise; groups: string[]; onDone: () => void }) {
+/** Toggleable chips for the fixed muscle-group list. */
+function GroupPicker({ value, onChange }: { value: MuscleGroup[]; onChange: (groups: MuscleGroup[]) => void }) {
+    const toggle = (group: MuscleGroup) =>
+        onChange(value.includes(group) ? value.filter((g) => g !== group) : sortGroups([...value, group]));
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {MUSCLE_GROUPS.map((g) => {
+                const active = value.includes(g.value);
+                return (
+                    <button
+                        key={g.value}
+                        type="button"
+                        onClick={() => toggle(g.value)}
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                            active
+                                ? "border-teal-400 bg-teal-500/20 text-teal-100"
+                                : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500"
+                        }`}
+                    >
+                        <span className={`h-2 w-2 rounded-full ${g.color}`} />
+                        {g.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function ExerciseForm({ exercise, onDone }: { exercise?: GymExercise; onDone: () => void }) {
     const units = useProfileStore((s) => s.profile.units);
-    const { validateName, create, update, remove } = useExercisesStore();
+    const { exercises, validateName, create, update, remove } = useExercisesStore();
     const usagesOf = usePlansStore((s) => s.usagesOf);
 
     const [form, setForm] = useState<GymExerciseInput>(
         exercise ?? {
             name: "",
-            group: "",
+            groups: [],
             type: "weight",
             unit: units.weight,
             per: "2hands",
@@ -145,7 +182,10 @@ function ExerciseForm({ exercise, groups, onDone }: { exercise?: GymExercise; gr
 
     const usages = exercise ? usagesOf(exercise.id) : [];
     const unitOptions: Unit[] = form.type === "time" ? TIME_UNITS : WEIGHT_UNITS;
-    const listId = `groups-${exercise?.id ?? "new"}`;
+    const similar = useMemo(
+        () => similarNames(form.name, exercises.filter((e) => e.id !== exercise?.id).map((e) => e.name)),
+        [form.name, exercises, exercise?.id]
+    );
 
     const run = async (task: () => Promise<void>) => {
         setIsSaving(true);
@@ -162,12 +202,11 @@ function ExerciseForm({ exercise, groups, onDone }: { exercise?: GymExercise; gr
     };
 
     const handleSave = () => {
-        const input = { ...form, name: form.name.trim(), group: form.group.trim() };
-        const nameError = validateName(input.name, exercise?.id);
+        const nameError = validateName(form.name, exercise?.id);
         if (nameError) return setError(nameError);
         run(async () => {
-            if (exercise) await update({ ...exercise, ...input });
-            else await create(input);
+            if (exercise) await update({ ...exercise, ...form });
+            else await create(form);
         });
     };
 
@@ -178,28 +217,17 @@ function ExerciseForm({ exercise, groups, onDone }: { exercise?: GymExercise; gr
 
     return (
         <div className="space-y-3 rounded-xl border border-blue-500/30 bg-slate-900/40 p-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Name">
-                    <input
-                        autoFocus
-                        className={inputClass}
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    />
-                </Field>
-                <Field label="Muscle group">
-                    <input
-                        className={inputClass}
-                        list={listId}
-                        value={form.group}
-                        onChange={(e) => setForm({ ...form, group: e.target.value })}
-                    />
-                    <datalist id={listId}>
-                        {groups.map((g) => (
-                            <option key={g} value={g} />
-                        ))}
-                    </datalist>
-                </Field>
+            <Field label="Name">
+                <input autoFocus className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </Field>
+            {similar.length > 0 && (
+                <Notice tone="warn">
+                    Looks similar to: {similar.join(", ")}. If it&apos;s the same exercise, use that one (or merge them later).
+                </Notice>
+            )}
+            <div className="flex flex-col gap-2">
+                <span className="text-xs text-slate-400">Muscle groups</span>
+                <GroupPicker value={form.groups} onChange={(groups) => setForm({ ...form, groups })} />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -223,23 +251,28 @@ function ExerciseForm({ exercise, groups, onDone }: { exercise?: GymExercise; gr
                         disabled={form.per === "running"}
                         onChange={(e) => setForm(withType(form, e.target.value as ExerciseType, units.weight))}
                     >
-                        <option value="weight">Weight</option>
-                        <option value="time">Time</option>
-                    </select>
-                </Field>
-                <Field label={form.type === "time" ? "Time unit" : "Weight unit"}>
-                    <select
-                        className={inputClass}
-                        value={form.unit}
-                        onChange={(e) => setForm({ ...form, unit: e.target.value as Unit })}
-                    >
-                        {unitOptions.map((u) => (
-                            <option key={u} value={u}>
-                                {unitLabel(u)}
+                        {TYPE_OPTIONS.map((t) => (
+                            <option key={t.value} value={t.value}>
+                                {t.label}
                             </option>
                         ))}
                     </select>
                 </Field>
+                {form.type !== "reps" && (
+                    <Field label={form.type === "time" ? "Time unit" : "Weight unit"}>
+                        <select
+                            className={inputClass}
+                            value={form.unit}
+                            onChange={(e) => setForm({ ...form, unit: e.target.value as Unit })}
+                        >
+                            {unitOptions.map((u) => (
+                                <option key={u} value={u}>
+                                    {unitLabel(u)}
+                                </option>
+                            ))}
+                        </select>
+                    </Field>
+                )}
                 {form.per === "running" && (
                     <Field label="Distance unit">
                         <select

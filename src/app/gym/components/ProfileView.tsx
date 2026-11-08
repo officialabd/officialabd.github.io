@@ -1,23 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Card from "../../_layouts/card/card";
 import { HEIGHT_UNITS, WEIGHT_UNITS } from "../constants";
 import type { HeightUnit, MeasurementEntry, WeightUnit } from "../types";
 import { useProfileStore } from "../stores";
-import {
-    bmiCategory,
-    computeAge,
-    computeBmi,
-    confirmAction,
-    convertHeight,
-    convertWeight,
-    formatISODate,
-    unitLabel,
-} from "../utils";
+import { computeAge, confirmAction, convertHeight, convertWeight, formatISODate, unitLabel } from "../utils";
+import { BmiCard } from "./BmiCard";
+import { DataTransfer } from "./DataTransfer";
+import { GymsCard } from "./GymsCard";
 import { TrashIcon } from "./icons";
 import { AddMeasurement, BasicsFields, type BasicsValue } from "./ProfileForms";
 import { Button, EmptyState, SectionTitle } from "./ui";
+
+/** The weight converted to the other unit, e.g. "176.4 LB" for 80 kg. */
+const inOtherUnit = (value: number, unit: WeightUnit) => {
+    const other: WeightUnit = unit === "kg" ? "lb" : "kg";
+    return `${convertWeight(value, unit, other)} ${unitLabel(other)}`;
+};
+
+/** The height in the unit that isn't displayed, e.g. "68.1 Inches" for 173 cm. */
+const otherHeight = (value: number, unit: HeightUnit, shown: HeightUnit) => {
+    const other: HeightUnit = shown === "cm" ? "in" : "cm";
+    return `${convertHeight(value, unit, other)} ${unitLabel(other)}`;
+};
+
+/** A weight in both units; the unit it was entered in is marked. */
+function BothWeights({ value, unit }: { value: number; unit: WeightUnit }) {
+    return (
+        <>
+            {value} {unitLabel(unit)} <span className="text-xs font-normal text-slate-400">(entered)</span>
+            <span className="mx-2 text-slate-500">·</span>
+            {inOtherUnit(value, unit)}
+        </>
+    );
+}
 
 export function ProfileView() {
     const { profile, isSaving, save, addWeight, addHeight, removeWeight, removeHeight } = useProfileStore();
@@ -31,10 +48,6 @@ export function ProfileView() {
     const latestWeight = profile.weightHistory[0];
     const latestHeight = profile.heightHistory[0];
     const age = computeAge(profile.birthdate);
-    const bmi =
-        latestWeight && latestHeight
-            ? computeBmi(latestWeight.value, latestWeight.unit, latestHeight.value, latestHeight.unit)
-            : null;
     const basicsChanged =
         basics.name !== profile.name ||
         basics.birthdate !== profile.birthdate ||
@@ -44,21 +57,23 @@ export function ProfileView() {
         <div className="space-y-4">
             <Card heading={<SectionTitle text="Profile" />}>
                 <div className="space-y-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <Stat label="Age" value={age !== null ? `${age}` : "-"} />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 auto-rows-fr gap-3">
+                        <Stat
+                            label="Age"
+                            value={age !== null ? `${age}` : "-"}
+                            hint={profile.birthdate ? { label: formatISODate(profile.birthdate), color: "text-slate-400" } : undefined}
+                        />
                         <Stat
                             label="Weight"
-                            value={latestWeight ? `${convertWeight(latestWeight.value, latestWeight.unit, units.weight)} ${unitLabel(units.weight)}` : "-"}
+                            value={latestWeight ? `${latestWeight.value} ${unitLabel(latestWeight.unit)}` : "-"}
+                            hint={latestWeight ? { label: inOtherUnit(latestWeight.value, latestWeight.unit), color: "text-slate-400" } : undefined}
                         />
                         <Stat
                             label="Height"
                             value={latestHeight ? `${convertHeight(latestHeight.value, latestHeight.unit, units.height)} ${unitLabel(units.height)}` : "-"}
+                            hint={latestHeight ? { label: otherHeight(latestHeight.value, latestHeight.unit, units.height), color: "text-slate-400" } : undefined}
                         />
-                        <Stat
-                            label="BMI"
-                            value={bmi !== null ? `${bmi}` : "-"}
-                            hint={bmi !== null ? bmiCategory(bmi) : undefined}
-                        />
+                        <BmiCard weight={latestWeight} height={latestHeight} />
                     </div>
 
                     <BasicsFields value={basics} onChange={setBasics} />
@@ -76,12 +91,7 @@ export function ProfileView() {
             <Card heading={<SectionTitle text="Weight History" />}>
                 <div className="space-y-4">
                     <AddMeasurement<WeightUnit> label="Body weight" units={WEIGHT_UNITS} defaultUnit={units.weight} onAdd={addWeight} />
-                    <History
-                        entries={profile.weightHistory}
-                        display={(e) => convertWeight(e.value, e.unit, units.weight)}
-                        displayUnit={units.weight}
-                        onRemove={removeWeight}
-                    />
+                    <History entries={profile.weightHistory} render={(e) => <BothWeights value={e.value} unit={e.unit} />} onRemove={removeWeight} />
                 </div>
             </Card>
 
@@ -90,12 +100,24 @@ export function ProfileView() {
                     <AddMeasurement<HeightUnit> label="Height" units={HEIGHT_UNITS} defaultUnit={units.height} onAdd={addHeight} />
                     <History
                         entries={profile.heightHistory}
-                        display={(e) => convertHeight(e.value, e.unit, units.height)}
-                        displayUnit={units.height}
+                        render={(e) => (
+                            <>
+                                {convertHeight(e.value, e.unit, units.height)} {unitLabel(units.height)}
+                                {e.unit !== units.height && (
+                                    <span className="ml-2 text-xs font-normal text-slate-400">
+                                        (entered {e.value} {unitLabel(e.unit)})
+                                    </span>
+                                )}
+                            </>
+                        )}
                         onRemove={removeHeight}
                     />
                 </div>
             </Card>
+
+            <GymsCard />
+
+            <DataTransfer />
         </div>
     );
 }
@@ -112,13 +134,11 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: { l
 
 function History<U extends string>({
     entries,
-    display,
-    displayUnit,
+    render,
     onRemove,
 }: {
     entries: MeasurementEntry<U>[];
-    display: (entry: MeasurementEntry<U>) => number;
-    displayUnit: U;
+    render: (entry: MeasurementEntry<U>) => ReactNode;
     onRemove: (id: string) => Promise<void>;
 }) {
     if (entries.length === 0) return <EmptyState>No entries yet.</EmptyState>;
@@ -126,15 +146,8 @@ function History<U extends string>({
         <div className="rounded-xl border border-slate-700 overflow-hidden">
             {entries.map((e) => (
                 <div key={e.id} className="flex items-center justify-between gap-3 border-b border-slate-700 px-3 py-2 last:border-b-0">
-                    <span className="text-sm text-slate-300 w-28">{formatISODate(e.date)}</span>
-                    <span className="flex-1 text-sm font-semibold text-slate-100">
-                        {display(e)} {unitLabel(displayUnit)}
-                        {e.unit !== displayUnit && (
-                            <span className="ml-2 text-xs font-normal text-slate-400">
-                                (entered {e.value} {unitLabel(e.unit)})
-                            </span>
-                        )}
-                    </span>
+                    <span className="text-sm text-slate-300 w-28 shrink-0">{formatISODate(e.date)}</span>
+                    <span className="flex-1 text-sm font-semibold text-slate-100">{render(e)}</span>
                     <button
                         type="button"
                         onClick={() => confirmAction("Delete this entry?") && onRemove(e.id)}

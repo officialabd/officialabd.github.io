@@ -1,2 +1,2 @@
 export { useGymAuth } from "./useGymAuth";
-export { useGymBootstrap } from "./useGymBootstrap";
+export { useGymBootstrap, loadAccount } from "./useGymBootstrap";

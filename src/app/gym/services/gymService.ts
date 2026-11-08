@@ -20,6 +20,8 @@ import {
 import { db } from "../../../../firebase";
 import { COLLECTIONS } from "../constants";
 import type { GymExercise, GymExerciseInput, GymLogEntry, GymPlan, GymProfile, LogDraft } from "../types";
+import { mergeIntoLog, mergeIntoPlan } from "../utils/merge";
+import { commitInBatches, type WriteOp } from "./batch";
 import {
     exerciseFromFirestore,
     exerciseToFirestore,
@@ -89,6 +91,30 @@ export async function deleteExercise(uid: string, exerciseId: string): Promise<v
     await deleteDoc(doc(exercisesCol(uid), exerciseId));
 }
 
+/**
+ * Merge exercises into `keep`: every log and plan day referencing a removed exercise is
+ * re-linked to `keep`, then the removed exercises are deleted. References are rewritten
+ * before anything is deleted, so an interruption never leaves dangling links.
+ */
+export async function mergeExercises(uid: string, keep: GymExercise, removeIds: string[]): Promise<void> {
+    const remove = new Set(removeIds.filter((id) => id !== keep.id));
+    if (remove.size === 0) return;
+    const [plans, logs] = await Promise.all([fetchPlans(uid), fetchAllLogs(uid)]);
+    const now = Date.now();
+    const updates: WriteOp[] = [
+        ...plans.flatMap((plan): WriteOp[] => {
+            const merged = mergeIntoPlan(plan, keep.id, remove);
+            return merged ? [{ kind: "set", ref: doc(plansCol(uid), plan.id), data: planToFirestore({ ...merged, updatedAt: now }) }] : [];
+        }),
+        ...logs.flatMap((log): WriteOp[] => {
+            const merged = mergeIntoLog(log, keep, remove);
+            return merged ? [{ kind: "set", ref: doc(logsCol(uid), log.id), data: logToFirestore({ ...merged, updatedAt: now }) }] : [];
+        }),
+    ];
+    await commitInBatches(updates);
+    await commitInBatches(Array.from(remove, (id): WriteOp => ({ kind: "delete", ref: doc(exercisesCol(uid), id) })));
+}
+
 // ============================================================================
 // Plans
 // ============================================================================
@@ -128,11 +154,13 @@ const runLogsQuery = async (q: ReturnType<typeof query>): Promise<GymLogEntry[]>
 export const fetchLogsInRange = (uid: string, from: string, to: string) =>
     runLogsQuery(query(logsCol(uid), where("date", ">=", from), where("date", "<=", to)));
 
+export const fetchAllLogs = (uid: string) => runLogsQuery(query(logsCol(uid)));
+
 /** The `count` most recent sessions by session date. */
 export const fetchLatestLogs = (uid: string, count: number) =>
     runLogsQuery(query(logsCol(uid), orderBy("date", "desc"), limit(count)));
 
-export const fetchLogsByPlan =(uid: string, planId: string) =>
+export const fetchLogsByPlan = (uid: string, planId: string) =>
     runLogsQuery(query(logsCol(uid), where("planId", "==", planId)));
 
 export const fetchLogsByDay = (uid: string, dayId: string) =>

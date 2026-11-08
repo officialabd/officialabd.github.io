@@ -6,7 +6,6 @@ import { WEIGHT_UNITS } from "../constants";
 import type { GymLogExercise, WeightUnit } from "../types";
 import {
     useExercisesStore,
-    useLogsStore,
     usePlansStore,
     useProfileStore,
     useSessionStore,
@@ -14,7 +13,7 @@ import {
 } from "../stores";
 import { confirmAction, formatISODate, formatTime, isWeightExercise, isWeightUnit, todayISO, withWeightUnit } from "../utils";
 import { LogExercisesEditor } from "./LogExercisesEditor";
-import { Button, Field, inputClass, Notice, SaveIndicator, SectionTitle, Segmented } from "./ui";
+import { Button, Field, GymSelect, inputClass, Notice, SaveIndicator, SectionTitle, Segmented } from "./ui";
 
 /** The unit shared by all weight exercises, or null when mixed / none. */
 const sharedWeightUnit = (exercises: GymLogExercise[]): WeightUnit | null => {
@@ -27,10 +26,11 @@ export function SessionLogger() {
     const plans = usePlansStore((s) => s.plans);
     const library = useExercisesStore((s) => s.exercises);
     const distanceUnit = useProfileStore((s) => s.profile.units.distance);
+    const gyms = useProfileStore((s) => s.profile.gyms);
+    const defaultGym = useProfileStore((s) => s.profile.defaultGym);
     const nowTs = useUIStore((s) => s.nowTs);
-    const focusLogsDay = useLogsStore((s) => s.focusDay);
     const session = useSessionStore();
-    const { draft, planId, dayId, saveState, isBusy, prefill, prefillMessage, flush } = session;
+    const { draft, planId, dayId, saveState, isBusy, prefill, prefillMessage, staleSince, flush } = session;
 
     // Save pending edits right away when the page is hidden (e.g. phone locked).
     useEffect(() => {
@@ -49,23 +49,49 @@ export function SessionLogger() {
         if (current?.status !== "running" && !loaded) useSessionStore.getState().resetDraft();
     }, [plans, library]);
 
+    // Follow the default gym when it changes in the profile (until a gym is picked for this session).
+    useEffect(() => {
+        useSessionStore.getState().applyDefaultGym();
+    }, [defaultGym]);
+
     const selectedPlan = plans.find((p) => p.id === planId);
     const weightUnit = draft ? sharedWeightUnit(draft.exercises) : null;
     const hasWeightExercises = !!draft?.exercises.some(isWeightExercise);
 
-    const handleStart = async () => {
-        await session.start();
-        focusLogsDay(planId, dayId);
-    };
+    const handleStart = () => session.start();
 
     const handleCancel = () => {
         if (confirmAction("Cancel this session? Everything logged in it will be deleted.")) session.cancel();
     };
 
+    const showGym = gyms.length > 0 || !!draft?.gym;
+
     return (
         <Card heading={<SectionTitle text="Log Session" />}>
             <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {isRunning && staleSince && (
+                    <Notice tone="warn">
+                        <div className="space-y-2">
+                            <p>
+                                This session was started {formatTime(draft.startedAt)} and last updated {formatTime(staleSince)}. Did
+                                you forget to finish it?
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                <Button size="sm" variant="success" disabled={isBusy} onClick={() => session.complete(staleSince)}>
+                                    Complete at last update
+                                </Button>
+                                <Button size="sm" variant="danger" disabled={isBusy} onClick={handleCancel}>
+                                    Discard
+                                </Button>
+                                <Button size="sm" variant="neutral" disabled={isBusy} onClick={session.dismissStale}>
+                                    Keep going
+                                </Button>
+                            </div>
+                        </div>
+                    </Notice>
+                )}
+
+                <div className={`grid grid-cols-1 gap-4 ${showGym ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
                     <Field label="Plan">
                         <select
                             className={inputClass}
@@ -105,44 +131,41 @@ export function SessionLogger() {
                             onChange={(e) => session.update((d) => ({ ...d, date: e.target.value }))}
                         />
                     </Field>
+                    {showGym && (
+                        <GymSelect
+                            gyms={gyms}
+                            value={draft?.gym ?? null}
+                            disabled={!draft}
+                            onChange={session.setGym}
+                        />
+                    )}
                 </div>
 
                 {!draft || !dayId ? (
                     <p className="text-sm text-slate-400">Select a plan and day to start logging.</p>
                 ) : (
                     <div className="space-y-4">
-                        {!isRunning && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs text-slate-400">Start from:</span>
-                                <Button size="sm" variant="neutral" disabled={isBusy} onClick={() => session.loadPrevious("values")}>
-                                    Load previous values
-                                </Button>
-                                <Button size="sm" variant="neutral" disabled={isBusy} onClick={() => session.loadPrevious("session")}>
-                                    Load previous session
-                                </Button>
-                                {prefill && (
-                                    <Button size="sm" variant="ghost" onClick={session.resetDraft}>
-                                        Reset to plan
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                        {!isRunning && prefill && (
-                            <Notice>
-                                {prefill.mode === "values" ? "Weights" : "Exercises and weights"} loaded from the session on{" "}
-                                {formatISODate(prefill.date)}. Reps are left empty.
-                            </Notice>
-                        )}
-                        {!isRunning && prefillMessage && <Notice tone="warn">{prefillMessage}</Notice>}
-
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-3">
                             {!isRunning ? (
-                                <Button onClick={handleStart} disabled={isBusy || draft.exercises.length === 0}>
-                                    Start
-                                </Button>
+                                <>
+                                    <Button onClick={handleStart} disabled={isBusy || draft.exercises.length === 0}>
+                                        Start
+                                    </Button>
+                                    <Button variant="info" onClick={() => session.loadPrevious("values")} disabled={isBusy}>
+                                        Load previous values
+                                    </Button>
+                                    <Button variant="accent" onClick={() => session.loadPrevious("session")} disabled={isBusy}>
+                                        Load previous session
+                                    </Button>
+                                    {prefill && (
+                                        <Button variant="ghost" onClick={session.resetDraft}>
+                                            Reset to plan
+                                        </Button>
+                                    )}
+                                </>
                             ) : (
                                 <>
-                                    <Button variant="success" onClick={session.complete} disabled={isBusy}>
+                                    <Button variant="success" onClick={() => session.complete()} disabled={isBusy}>
                                         Complete
                                     </Button>
                                     <Button variant="danger" onClick={handleCancel} disabled={isBusy}>
@@ -153,14 +176,20 @@ export function SessionLogger() {
                             )}
                         </div>
 
-                        <div className="text-xs text-slate-400 space-y-0.5">
-                            <div>Status: {draft.status ?? "not started"}</div>
-                            <div>Started: {formatTime(draft.startedAt)}</div>
-                            <div>
-                                Duration:{" "}
-                                {draft.startedAt ? `${Math.max(0, Math.round((nowTs - draft.startedAt) / 60000))} mins` : "-"}
+                        {!isRunning && prefill && (
+                            <Notice>
+                                {prefill.mode === "values" ? "Weights" : "Exercises and weights"} loaded from the session on{" "}
+                                {formatISODate(prefill.date)}. Reps are left empty.
+                            </Notice>
+                        )}
+                        {!isRunning && prefillMessage && <Notice tone="warn">{prefillMessage}</Notice>}
+
+                        {isRunning && draft.startedAt && (
+                            <div className="text-xs text-slate-400 space-y-0.5">
+                                <div>Started: {formatTime(draft.startedAt)}</div>
+                                <div>Duration: {Math.max(0, Math.round((nowTs - draft.startedAt) / 60000))} mins</div>
                             </div>
-                        </div>
+                        )}
 
                         {hasWeightExercises && (
                             <Segmented<WeightUnit | "">

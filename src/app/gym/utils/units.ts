@@ -64,14 +64,34 @@ export const computeBmi = (weight: number, weightUnit: WeightUnit, height: numbe
     return round(kg / (meters * meters));
 };
 
-export const bmiCategory = (bmi: number): { label: string; color: string } => {
-    if (bmi < 18.5) return { label: "Underweight", color: "text-sky-300" };
-    if (bmi < 25) return { label: "Normal", color: "text-emerald-300" };
-    if (bmi < 30) return { label: "Overweight", color: "text-orange-300" };
-    return { label: "Obese", color: "text-rose-300" };
+/** Standard adult BMI categories (WHO). `max` is exclusive. */
+export const BMI_RANGES = [
+    { label: "Underweight", range: "Below 18.5", max: 18.5, color: "text-sky-300" },
+    { label: "Normal", range: "18.5 – 24.9", max: 25, color: "text-emerald-300" },
+    { label: "Overweight", range: "25 – 29.9", max: 30, color: "text-orange-300" },
+    { label: "Obese", range: "30 and above", max: Infinity, color: "text-rose-300" },
+] as const;
+
+export const bmiCategory = (bmi: number): { label: string; color: string } =>
+    BMI_RANGES.find((r) => bmi < r.max) ?? BMI_RANGES[BMI_RANGES.length - 1];
+
+export const MIN_TARGET_BMI = 12;
+export const MAX_TARGET_BMI = 40;
+
+/** Body weight in kg that gives `bmi` at the given height. */
+export const weightForBmi = (bmi: number, height: number, heightUnit: HeightUnit): number => {
+    const meters = (heightUnit === "cm" ? height : height * IN_IN_CM) / 100;
+    return round(bmi * meters * meters);
 };
 
-export const computeAge = (birthdate: string | null, today = new Date()): number | null => {
+
+/** Normal BMI range (18.5–24.9) as body weights in kg at the given height. */
+export const healthyWeightRange = (height: number, heightUnit: HeightUnit): [number, number] => [
+    weightForBmi(18.5, height, heightUnit),
+    weightForBmi(24.9, height, heightUnit),
+];
+
+export const computeAge =(birthdate: string | null, today = new Date()): number | null => {
     if (!birthdate) return null;
     const [y, m, d] = birthdate.split("-").map(Number);
     if (!y || !m || !d) return null;

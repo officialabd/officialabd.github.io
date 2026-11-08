@@ -12,6 +12,9 @@ const emptyProfile = (): GymProfile => ({
     units: { ...DEFAULT_UNITS },
     weightHistory: [],
     heightHistory: [],
+    targetBmi: null,
+    gyms: [],
+    defaultGym: null,
     onboardedAt: null,
 });
 
@@ -36,6 +39,10 @@ interface ProfileState {
     addHeight: (entry: MeasurementInput<HeightUnit>) => Promise<void>;
     removeWeight: (id: string) => Promise<void>;
     removeHeight: (id: string) => Promise<void>;
+    addGym: (name: string) => Promise<void>;
+    /** Removes a gym from the list. Past sessions keep their label. */
+    removeGym: (name: string) => Promise<void>;
+    setDefaultGym: (name: string | null) => Promise<void>;
     clear: () => void;
 }
 
@@ -74,6 +81,19 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     removeWeight: (id) => get().save({ weightHistory: get().profile.weightHistory.filter((e) => e.id !== id) }),
 
     removeHeight: (id) => get().save({ heightHistory: get().profile.heightHistory.filter((e) => e.id !== id) }),
+
+    addGym: (name) => {
+        const { gyms, defaultGym } = get().profile;
+        // The first gym becomes the default.
+        return get().save({ gyms: [...gyms, name], defaultGym: defaultGym ?? name });
+    },
+
+    removeGym: (name) => {
+        const { gyms, defaultGym } = get().profile;
+        return get().save({ gyms: gyms.filter((g) => g !== name), defaultGym: defaultGym === name ? null : defaultGym });
+    },
+
+    setDefaultGym: (defaultGym) => get().save({ defaultGym }),
 
     clear: () => set({ profile: emptyProfile(), isSaving: false }),
 }));
