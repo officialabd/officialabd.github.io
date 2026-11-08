@@ -1,230 +1,189 @@
 import { create } from "zustand";
-import type { GymPlan, GymPlanDay, GymExercise } from "../types";
+import type { GymPlan, GymPlanDay } from "../types";
+import * as gymService from "../services/gymService";
 import { generateId } from "../utils";
+import { requireUid } from "./authStore";
+import { useExercisesStore } from "./exercisesStore";
+
+/** Copy of `record` without `key`. */
+const without = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
+    const next = { ...record };
+    delete next[key];
+    return next;
+};
 
 interface PlansState {
-    // State
     plans: GymPlan[];
-    planDrafts: Record<string, GymPlan>;
-    planDirty: Record<string, boolean>;
+    /** Unsaved edits, keyed by plan ID. A plan is dirty when it has a draft. */
+    drafts: Record<string, GymPlan>;
     isLoading: boolean;
     savingPlanId: string | null;
+    selectedPlanId: string;
+    selectedDayId: string;
 
-    // Selection state
-    viewPlanId: string;
-    viewDayId: string;
-    editPlanId: string;
-    editDayId: string;
+    load: () => Promise<void>;
+    /** Current version of a plan (draft if edited, otherwise saved). */
+    getPlan: (planId: string) => GymPlan | undefined;
+    selectPlan: (planId: string) => void;
+    selectDay: (dayId: string) => void;
 
-    // Form state
-    newPlanTitle: string;
-    newDayTitle: string;
+    addPlan: () => Promise<void>;
+    savePlan: (planId: string) => Promise<void>;
+    discardPlan: (planId: string) => void;
+    deletePlan: (planId: string) => Promise<void>;
 
-    // Actions
-    setPlans: (plans: GymPlan[]) => void;
-    setLoading: (loading: boolean) => void;
-    setSavingPlanId: (planId: string | null) => void;
+    editPlan: (planId: string, updater: (plan: GymPlan) => GymPlan) => void;
+    editDay: (planId: string, dayId: string, updater: (day: GymPlanDay) => GymPlanDay) => void;
+    addDay: (planId: string) => void;
+    deleteDay: (planId: string, dayId: string) => void;
+    addExerciseToDay: (planId: string, dayId: string, exerciseId: string) => void;
+    removeExerciseFromDay: (planId: string, dayId: string, exerciseId: string) => void;
+    moveExercise: (planId: string, dayId: string, sourceId: string, targetId: string) => void;
 
-    // Selection actions
-    setViewPlanId: (id: string) => void;
-    setViewDayId: (id: string) => void;
-    setEditPlanId: (id: string) => void;
-    setEditDayId: (id: string) => void;
-
-    // Form actions
-    setNewPlanTitle: (title: string) => void;
-    setNewDayTitle: (title: string) => void;
-
-    // Draft actions
-    initializeDrafts: (plans: GymPlan[]) => void;
-    updatePlanDraft: (planId: string, updater: (draft: GymPlan) => GymPlan) => void;
-    updateDayDraft: (planId: string, dayId: string, updater: (day: GymPlanDay) => GymPlanDay) => void;
-    markPlanClean: (planId: string) => void;
-    addDayToPlan: (planId: string, title: string) => string; // Returns new day ID
-    deleteDayFromPlan: (planId: string, dayId: string) => void;
-    addExerciseToDay: (planId: string, dayId: string) => void;
-    deleteExerciseFromDay: (planId: string, dayId: string, exerciseIndex: number) => void;
-    reorderExercises: (planId: string, dayId: string, sourceId: string, targetId: string) => void;
-
-    // Cleanup
-    clearPlans: () => void;
-    removePlan: (planId: string) => void;
+    /** Plan days (saved or drafted) that reference an exercise. */
+    usagesOf: (exerciseId: string) => { plan: GymPlan; day: GymPlanDay }[];
+    clear: () => void;
 }
 
-export const usePlansStore = create<PlansState>((set, get) => ({
-    // Initial state
-    plans: [],
-    planDrafts: {},
-    planDirty: {},
+const initialState = {
+    plans: [] as GymPlan[],
+    drafts: {} as Record<string, GymPlan>,
     isLoading: false,
-    savingPlanId: null,
-    viewPlanId: "",
-    viewDayId: "",
-    editPlanId: "",
-    editDayId: "",
-    newPlanTitle: "",
-    newDayTitle: "",
+    savingPlanId: null as string | null,
+    selectedPlanId: "",
+    selectedDayId: "",
+};
 
-    // Basic setters
-    setPlans: (plans) => set({ plans }),
-    setLoading: (isLoading) => set({ isLoading }),
-    setSavingPlanId: (savingPlanId) => set({ savingPlanId }),
+export const usePlansStore = create<PlansState>((set, get) => ({
+    ...initialState,
 
-    // Selection setters
-    setViewPlanId: (viewPlanId) => set({ viewPlanId }),
-    setViewDayId: (viewDayId) => set({ viewDayId }),
-    setEditPlanId: (editPlanId) => set({ editPlanId }),
-    setEditDayId: (editDayId) => set({ editDayId }),
-
-    // Form setters
-    setNewPlanTitle: (newPlanTitle) => set({ newPlanTitle }),
-    setNewDayTitle: (newDayTitle) => set({ newDayTitle }),
-
-    // Initialize drafts from plans
-    initializeDrafts: (plans) => {
-        const drafts: Record<string, GymPlan> = {};
-        const dirty: Record<string, boolean> = {};
-        plans.forEach((p) => {
-            drafts[p.id] = { ...p, days: [...(p.days ?? [])] };
-            dirty[p.id] = false;
-        });
-        set({ planDrafts: drafts, planDirty: dirty });
-    },
-
-    // Update a plan draft
-    updatePlanDraft: async (planId, updater) => {
-        const { planDrafts, plans, planDirty } = get();
-        const base = planDrafts[planId] ?? plans.find((p) => p.id === planId);
-        if (!base) return;
-
-        const cloned: GymPlan = { ...base, days: [...(base.days ?? [])] };
-        const nextDraft = updater(cloned);
-
-        set({
-            planDrafts: { ...planDrafts, [planId]: nextDraft },
-            planDirty: { ...planDirty, [planId]: true },
-        });
-    },
-
-    // Update a day within a plan draft
-    updateDayDraft: (planId, dayId, updater) => {
-        get().updatePlanDraft(planId, (draft) => {
-            const next = { ...draft, days: [...(draft.days ?? [])] };
-            const idx = next.days.findIndex((d) => d.id === dayId);
-            if (idx === -1) return next;
-            next.days[idx] = updater({
-                ...next.days[idx],
-                exercises: [...(next.days[idx].exercises ?? [])],
+    load: async () => {
+        set({ isLoading: true });
+        try {
+            const plans = await gymService.fetchPlans(requireUid());
+            const { selectedPlanId, selectedDayId } = get();
+            const plan = plans.find((p) => p.id === selectedPlanId);
+            set({
+                plans,
+                drafts: {},
+                selectedPlanId: plan ? selectedPlanId : "",
+                selectedDayId: plan?.days.some((d) => d.id === selectedDayId) ? selectedDayId : "",
             });
-            return next;
-        });
+        } finally {
+            set({ isLoading: false });
+        }
     },
 
-    // Mark a plan as clean (saved)
-    markPlanClean: (planId) => {
-        const { planDirty } = get();
-        set({ planDirty: { ...planDirty, [planId]: false } });
-    },
+    getPlan: (planId) => get().drafts[planId] ?? get().plans.find((p) => p.id === planId),
 
-    // Add a new day to a plan
-    addDayToPlan: (planId, title) => {
-        const dayId = generateId();
-        const day: GymPlanDay = {
-            id: dayId,
-            title: title.trim(),
+    selectPlan: (selectedPlanId) => set({ selectedPlanId, selectedDayId: "" }),
+    selectDay: (selectedDayId) => set({ selectedDayId }),
+
+    addPlan: async () => {
+        const now = Date.now();
+        const created = await gymService.createPlan(requireUid(), {
+            title: `New Plan ${get().plans.length + 1}`,
             note: "",
-            order: Date.now(),
-            exercises: [],
-        };
-        get().updatePlanDraft(planId, (draft) => ({
-            ...draft,
-            days: [...(draft.days ?? []), day],
-        }));
-        return dayId;
+            createdAt: now,
+            updatedAt: now,
+            days: [],
+        });
+        set({ plans: [...get().plans, created], selectedPlanId: created.id, selectedDayId: "" });
     },
 
-    // Delete a day from a plan
-    deleteDayFromPlan: (planId, dayId) => {
-        const { viewDayId, editDayId } = get();
-        get().updatePlanDraft(planId, (draft) => ({
-            ...draft,
-            days: (draft.days ?? []).filter((d) => d.id !== dayId),
-        }));
-
-        // Clear selection if deleted day was selected
-        if (viewDayId === dayId) set({ viewDayId: "" });
-        if (editDayId === dayId) set({ editDayId: "" });
+    savePlan: async (planId) => {
+        const draft = get().drafts[planId];
+        if (!draft) return;
+        set({ savingPlanId: planId });
+        try {
+            // Drop references to exercises that no longer exist in the library.
+            const library = useExercisesStore.getState().byId;
+            const cleaned: GymPlan = {
+                ...draft,
+                days: draft.days.map((d) => ({ ...d, exerciseIds: d.exerciseIds.filter((id) => library.has(id)) })),
+            };
+            const saved = await gymService.updatePlan(requireUid(), cleaned);
+            const drafts = without(get().drafts, planId);
+            set({ plans: get().plans.map((p) => (p.id === planId ? saved : p)), drafts });
+        } finally {
+            set({ savingPlanId: null });
+        }
     },
 
-    // Add an exercise to a day
-    addExerciseToDay: (planId, dayId) => {
-        get().updateDayDraft(planId, dayId, (day) => ({
+    discardPlan: (planId) => {
+        const drafts = without(get().drafts, planId);
+        const saved = get().plans.find((p) => p.id === planId);
+        const dayStillExists = saved?.days.some((d) => d.id === get().selectedDayId);
+        set({ drafts, selectedDayId: dayStillExists ? get().selectedDayId : "" });
+    },
+
+    deletePlan: async (planId) => {
+        await gymService.deletePlan(requireUid(), planId);
+        const drafts = without(get().drafts, planId);
+        const wasSelected = get().selectedPlanId === planId;
+        set({
+            plans: get().plans.filter((p) => p.id !== planId),
+            drafts,
+            selectedPlanId: wasSelected ? "" : get().selectedPlanId,
+            selectedDayId: wasSelected ? "" : get().selectedDayId,
+        });
+    },
+
+    editPlan: (planId, updater) => {
+        const base = get().getPlan(planId);
+        if (!base) return;
+        set({ drafts: { ...get().drafts, [planId]: updater(base) } });
+    },
+
+    editDay: (planId, dayId, updater) =>
+        get().editPlan(planId, (plan) => ({
+            ...plan,
+            days: plan.days.map((d) => (d.id === dayId ? updater(d) : d)),
+        })),
+
+    addDay: (planId) => {
+        const id = generateId();
+        get().editPlan(planId, (plan) => ({
+            ...plan,
+            days: [...plan.days, { id, title: `Day ${plan.days.length + 1}`, note: "", exerciseIds: [] }],
+        }));
+        set({ selectedDayId: id });
+    },
+
+    deleteDay: (planId, dayId) => {
+        get().editPlan(planId, (plan) => ({ ...plan, days: plan.days.filter((d) => d.id !== dayId) }));
+        if (get().selectedDayId === dayId) set({ selectedDayId: "" });
+    },
+
+    addExerciseToDay: (planId, dayId, exerciseId) =>
+        get().editDay(planId, dayId, (day) =>
+            day.exerciseIds.includes(exerciseId) ? day : { ...day, exerciseIds: [...day.exerciseIds, exerciseId] }
+        ),
+
+    removeExerciseFromDay: (planId, dayId, exerciseId) =>
+        get().editDay(planId, dayId, (day) => ({
             ...day,
-            exercises: [
-                ...(day.exercises ?? []),
-                {
-                    id: generateId(),
-                    name: "",
-                    group: "",
-                    type: "weight",
-                    unit: "kg",
-                    per: "1hand",
-                    setsNo: 3,
-                } as GymExercise,
-            ],
-        }));
-    },
+            exerciseIds: day.exerciseIds.filter((id) => id !== exerciseId),
+        })),
 
-    // Delete an exercise from a day
-    deleteExerciseFromDay: (planId, dayId, exerciseIndex) => {
-        get().updateDayDraft(planId, dayId, (day) => ({
-            ...day,
-            exercises: (day.exercises ?? []).filter((_, i) => i !== exerciseIndex),
-        }));
-    },
-
-    // Reorder exercises via drag and drop
-    reorderExercises: (planId, dayId, sourceId, targetId) => {
+    moveExercise: (planId, dayId, sourceId, targetId) => {
         if (!sourceId || !targetId || sourceId === targetId) return;
-        get().updateDayDraft(planId, dayId, (day) => {
-            const exercises = [...(day.exercises ?? [])];
-            const fromIdx = exercises.findIndex((ex) => ex.id === sourceId);
-            const toIdx = exercises.findIndex((ex) => ex.id === targetId);
-            if (fromIdx === -1 || toIdx === -1) return day;
-            const [moved] = exercises.splice(fromIdx, 1);
-            exercises.splice(toIdx, 0, moved);
-            return { ...day, exercises };
+        get().editDay(planId, dayId, (day) => {
+            const ids = [...day.exerciseIds];
+            const from = ids.indexOf(sourceId);
+            const to = ids.indexOf(targetId);
+            if (from === -1 || to === -1) return day;
+            ids.splice(to, 0, ids.splice(from, 1)[0]);
+            return { ...day, exerciseIds: ids };
         });
     },
 
-    // Clear all plans (on logout)
-    clearPlans: () =>
-        set({
-            plans: [],
-            planDrafts: {},
-            planDirty: {},
-            viewPlanId: "",
-            viewDayId: "",
-            editPlanId: "",
-            editDayId: "",
-            newPlanTitle: "",
-            newDayTitle: "",
-        }),
+    usagesOf: (exerciseId) =>
+        get()
+            .plans.map((p) => get().getPlan(p.id)!)
+            .flatMap((plan) =>
+                plan.days.filter((day) => day.exerciseIds.includes(exerciseId)).map((day) => ({ plan, day }))
+            ),
 
-    // Remove a single plan
-    removePlan: (planId) => {
-        const { plans, planDrafts, planDirty, viewPlanId, editPlanId } = get();
-        const nextDrafts = { ...planDrafts };
-        const nextDirty = { ...planDirty };
-        delete nextDrafts[planId];
-        delete nextDirty[planId];
-
-        set({
-            plans: plans.filter((p) => p.id !== planId),
-            planDrafts: nextDrafts,
-            planDirty: nextDirty,
-            viewPlanId: viewPlanId === planId ? "" : viewPlanId,
-            editPlanId: editPlanId === planId ? "" : editPlanId,
-        });
-    },
+    clear: () => set({ ...initialState }),
 }));

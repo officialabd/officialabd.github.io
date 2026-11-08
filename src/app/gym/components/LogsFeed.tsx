@@ -1,298 +1,308 @@
 "use client";
 
-import type { GymPlan, GymLogEntry, LogsFilter } from "../types";
+import { useState, type ReactNode } from "react";
 import Card from "../../_layouts/card/card";
-import Basic from "../../_layouts/texts/basic";
 import LinePulse from "../../_layouts/pulse/line";
-import { formatTime, formatDuration, getExerciseStatus, exportToJsonFile } from "../utils";
-import { DownloadIcon } from "./icons";
+import { MIN_DAY_LOGS } from "../constants";
+import type { GymLogEntry, GymLogExercise, GymSet, LogDraft, WeightDisplay } from "../types";
+import { useExercisesStore, useLogsStore, usePlansStore, useProfileStore, useUIStore } from "../stores";
+import {
+    computeSpeed,
+    confirmAction,
+    convertWeight,
+    exportToJsonFile,
+    formatDuration,
+    formatISODate,
+    formatPace,
+    formatTime,
+    getExerciseStatus,
+    isSetFilled,
+    isTimeUnit,
+    isWeightExercise,
+    isWeightUnit,
+    perLabel,
+    unitLabel,
+} from "../utils";
+import { LogExercisesEditor } from "./LogExercisesEditor";
+import { DownloadIcon, EditIcon } from "./icons";
+import { Button, EmptyState, Field, inputClass, Notice, SectionTitle, Segmented } from "./ui";
 
-interface LogsFeedProps {
-    logs: GymLogEntry[];
-    plans: GymPlan[];
-    filter: LogsFilter;
-    isLoading: boolean;
-    onFilterChange: (filter: Partial<LogsFilter>) => void;
-    onRefresh: () => void;
-}
+export function LogsFeed() {
+    const { logs, filter, isLoading, error, extendedBeyondRange, setFilter, load } = useLogsStore();
+    const plans = usePlansStore((s) => s.plans);
+    const { logsWeightDisplay, setLogsWeightDisplay } = useUIStore();
+    const [editingId, setEditingId] = useState<string | null>(null);
 
-export function LogsFeed({
-    logs,
-    plans,
-    filter,
-    isLoading,
-    onFilterChange,
-    onRefresh,
-}: LogsFeedProps) {
-    const selectedFilterPlan = plans.find((p) => p.id === filter.planId);
+    const filterPlan = plans.find((p) => p.id === filter.planId);
 
     return (
-        <Card
-            heading={
-                <Basic
-                    text="Logs"
-                    fontFamily="font-RobotoMono"
-                    fontSize="text-2xl"
-                    textColor="text-teal-300"
-                />
-            }
-        >
+        <Card heading={<SectionTitle text="Logs" />}>
             <div className="space-y-4">
-                {/* Filters */}
                 <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
-                    <div className="flex flex-col gap-2">
-                        <label className="text-xs text-slate-400">Plan (optional)</label>
+                    <Field label="Plan (optional)">
                         <select
-                            className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                            className={inputClass}
                             value={filter.planId}
-                            onChange={(e) => onFilterChange({ planId: e.target.value })}
+                            onChange={(e) => setFilter({ planId: e.target.value, dayId: "" })}
                         >
                             <option value="">All plans</option>
                             {plans.map((p) => (
-                                <option key={`filter-${p.id}`} value={p.id}>
+                                <option key={p.id} value={p.id}>
                                     {p.title}
                                 </option>
                             ))}
                         </select>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-xs text-slate-400">Day (optional)</label>
+                    </Field>
+                    <Field label="Day (optional)">
                         <select
-                            className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                            className={inputClass}
                             value={filter.dayId}
-                            onChange={(e) => onFilterChange({ dayId: e.target.value })}
-                            disabled={!filter.planId}
+                            onChange={(e) => setFilter({ dayId: e.target.value })}
+                            disabled={!filterPlan}
                         >
                             <option value="">All days</option>
-                            {selectedFilterPlan?.days.map((d) => (
-                                <option key={`filter-day-${d.id}`} value={d.id}>
+                            {filterPlan?.days.map((d) => (
+                                <option key={d.id} value={d.id}>
                                     {d.title}
                                 </option>
                             ))}
                         </select>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-xs text-slate-400">From</label>
-                        <input
-                            type="date"
-                            className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                            value={filter.from}
-                            onChange={(e) => onFilterChange({ from: e.target.value })}
-                        />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-xs text-slate-400">To</label>
-                        <input
-                            type="date"
-                            className="rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                            value={filter.to}
-                            onChange={(e) => onFilterChange({ to: e.target.value })}
-                        />
-                    </div>
-                    <button
-                        onClick={onRefresh}
-                        className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400"
-                    >
+                    </Field>
+                    <Field label="From">
+                        <input type="date" className={inputClass} value={filter.from} onChange={(e) => setFilter({ from: e.target.value })} />
+                    </Field>
+                    <Field label="To">
+                        <input type="date" className={inputClass} value={filter.to} onChange={(e) => setFilter({ to: e.target.value })} />
+                    </Field>
+                    <Button className="h-10" onClick={load}>
                         Refresh
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        className="h-10"
+                        variant="success"
                         onClick={() => exportToJsonFile(logs, "gymLogs-backup")}
                         disabled={logs.length === 0}
-                        className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${logs.length > 0
-                            ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                            : "bg-slate-800 text-slate-500"
-                            }`}
                     >
                         <DownloadIcon className="w-4 h-4" />
                         Export Logs
-                    </button>
+                    </Button>
                 </div>
 
+                <Segmented<WeightDisplay>
+                    label="Show weights in:"
+                    value={logsWeightDisplay}
+                    options={[{ value: "logged", label: "As logged" }, { value: "kg" }, { value: "lb" }]}
+                    onChange={setLogsWeightDisplay}
+                />
+
                 {isLoading && <LinePulse />}
-                {!isLoading && logs.length === 0 && (
-                    <p className="text-sm text-slate-400">No logs in this range.</p>
+                {error && <Notice tone="error">{error}</Notice>}
+                {!isLoading && !error && logs.length === 0 && <EmptyState>No logs found.</EmptyState>}
+                {!isLoading && extendedBeyondRange && (
+                    <Notice>Fewer than {MIN_DAY_LOGS} sessions in this date range — older sessions are included.</Notice>
                 )}
 
-                {/* Log entries */}
                 <div className="space-y-4">
-                    {logs.map((log) => (
-                        <LogEntryCard key={log.id} log={log} />
-                    ))}
+                    {logs.map((log) =>
+                        editingId === log.id ? (
+                            <LogEditor key={log.id} log={log} onDone={() => setEditingId(null)} />
+                        ) : (
+                            <LogEntryCard
+                                key={log.id}
+                                log={log}
+                                weightDisplay={logsWeightDisplay}
+                                onEdit={log.status === "running" ? undefined : () => setEditingId(log.id)}
+                            />
+                        )
+                    )}
                 </div>
             </div>
         </Card>
     );
 }
 
-// Sub-component for individual log entry
-interface LogEntryCardProps {
-    log: GymLogEntry;
+// ============================================================================
+// Read-only log card
+// ============================================================================
+
+/** Formats one set for display, converting weights when a display unit is chosen (view only). */
+function SetChip({ set, exercise, weightDisplay }: { set: GymSet; exercise: GymLogExercise; weightDisplay: WeightDisplay }) {
+    if (exercise.per === "running") {
+        const timeUnit = isTimeUnit(exercise.unit) ? exercise.unit : "mins";
+        const pace = formatPace(set.distance, set.value, timeUnit);
+        const speed = computeSpeed(set.distance, set.value, timeUnit);
+        const dist = unitLabel(exercise.distanceUnit);
+        return (
+            <Chip>
+                <b>{set.distance ?? "-"}</b> {dist}
+                <span className="text-slate-400">in</span>
+                <b>{set.value ?? "-"}</b> {unitLabel(exercise.unit)}
+                {pace && (
+                    <span className="text-slate-400">
+                        ({pace}/{dist}, {speed} {dist}/h)
+                    </span>
+                )}
+            </Chip>
+        );
+    }
+
+    let value = set.value;
+    let unit = exercise.unit;
+    if (isWeightExercise(exercise) && isWeightUnit(unit) && weightDisplay !== "logged" && value !== null) {
+        value = convertWeight(value, unit, weightDisplay);
+        unit = weightDisplay;
+    }
+    return (
+        <Chip>
+            <b>{value ?? "-"}</b> {unitLabel(unit)}
+            {exercise.type === "weight" && (
+                <>
+                    <span className="text-slate-400">×</span>
+                    <b>{set.reps ?? "-"}</b>
+                </>
+            )}
+        </Chip>
+    );
 }
 
-function LogEntryCard({ log }: LogEntryCardProps) {
+function Chip({ children }: { children: ReactNode }) {
+    return (
+        <span className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] text-slate-100">
+            {children}
+        </span>
+    );
+}
+
+function LogEntryCard({ log, weightDisplay, onEdit }: { log: GymLogEntry; weightDisplay: WeightDisplay; onEdit?: () => void }) {
     return (
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
-            <div className="flex flex-wrap justify-between gap-2 text-sm text-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-200">
                 <span className="font-semibold text-teal-200">
                     {log.planTitle} • {log.dayTitle}
+                    {log.status === "running" && (
+                        <span className="ml-2 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[11px] text-amber-200">In progress</span>
+                    )}
                 </span>
-                <span>{log.date}</span>
+                <span className="flex items-center gap-2">
+                    {formatISODate(log.date)}
+                    {onEdit && (
+                        <button type="button" onClick={onEdit} className="p-1 text-amber-300 hover:text-amber-200" aria-label="Edit log">
+                            <EditIcon className="w-4 h-4" />
+                        </button>
+                    )}
+                </span>
             </div>
-            <div className="text-xs text-slate-400">
-                <span>Started: {formatTime(log.startedAt)}</span>
-                <br />
-                <span>Finished: {formatTime(log.completedAt)}</span>
-                <br />
-                <span>Duration: {formatDuration(log.startedAt, log.completedAt)}</span>
+            <div className="text-xs text-slate-400 space-y-0.5">
+                <div>Started: {formatTime(log.startedAt)}</div>
+                <div>Finished: {formatTime(log.completedAt)}</div>
+                <div>Duration: {formatDuration(log.startedAt, log.completedAt)}</div>
             </div>
-            {log.note && (
-                <p className="text-sm text-slate-200">Session note: {log.note}</p>
-            )}
+            {log.note && <p className="text-sm text-slate-200">Session note: {log.note}</p>}
 
-            {/* Desktop table */}
-            <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/50 hidden sm:block">
-                <table className="w-full text-sm border-collapse min-w-[640px] table-fixed">
-                    <thead className="text-slate-300">
-                        <tr>
-                            <th className="py-2 px-3 w-[35%] text-left">Exercise</th>
-                            <th className="py-2 px-3 w-[10%]">Per</th>
-                            <th className="py-2 px-3 w-[10%]">Sets #</th>
-                            <th className="py-2 px-3 w-[35%] text-left">Values per set</th>
-                            <th className="py-2 px-3 w-[10%]">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {log.exercises.map((ex, idx) => {
-                            const status = getExerciseStatus(ex.sets, ex.type);
-                            const isTimeType = ex.type === "time";
-                            const perValue = ex.per || "";
-                            let value = perValue;
-                            if (perValue.length > 0) {
-                                value = perValue.charAt(0).toUpperCase() + perValue.slice(1);
-                                if (perValue.charAt(0).match(/\d/)) {
-                                    value = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
-                                }
-                            }
-                            return (
-                                <tr
-                                    key={`${log.id}-${idx}`}
-                                    className="border-t border-slate-800"
-                                >
-                                    <td className="py-2 px-3">
-                                        <div className="text-sm text-slate-100 font-semibold">
-                                            {ex.name}
-                                        </div>
-                                        {ex.group && (
-                                            <div className="text-xs text-slate-400">
-                                                {ex.group}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="py-2 px-3 text-center">{value}</td>
-                                    <td className="py-2 px-3 text-center">{ex.sets.filter((s) => s.completed).length}/{ex.sets.length}</td>
-                                    <td className="py-2 px-3">
-                                        <div className="flex flex-wrap gap-1 justify-start">
-                                            {ex.sets.length === 0 && (
-                                                <span className="text-xs text-slate-500">-</span>
-                                            )}
-                                            {ex.sets.filter((s) => s.completed).map((s, i) => (
-                                                <span
-                                                    key={`${log.id}-${idx}-set-${i}`}
-                                                    className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-1 text-[11px] text-slate-100"
-                                                >
-                                                    <span className="font-bold">
-                                                        {s.value ?? "- "}
-                                                    </span>
-                                                    <span>
-                                                        {ex.unit ?? "kg"}
-                                                    </span>
-
-                                                    {!isTimeType && <>
-                                                        <span className="text-slate-400">×</span>
-                                                        <span className="font-semibold">
-                                                            {s.reps ?? "-"}
-                                                        </span>
-                                                    </>
-                                                    }
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="py-2 px-3 text-center text-xs">
-                                        <span className={`font-semibold ${status.textColor}`}>
-                                            {status.label}
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Mobile cards */}
-            <div className="space-y-1 sm:hidden">
+            <div className="rounded-lg border border-slate-800 bg-slate-900/50 divide-y divide-slate-800">
                 {log.exercises.map((ex, idx) => {
-                    const status = getExerciseStatus(ex.sets, ex.type);
-                    const isTimeType = ex.type === "time";
-                    const perValue = ex.per || "";
-                    let per = perValue;
-                    if (perValue.length > 0) {
-                        per = perValue.charAt(0).toUpperCase() + perValue.slice(1);
-                        if (perValue.charAt(0).match(/\d/)) {
-                            per = perValue.charAt(0) + ' ' + perValue.charAt(1).toUpperCase() + perValue.slice(2);
-                        }
-                    }
+                    const status = getExerciseStatus(ex);
+                    const filledSets = ex.sets.filter(isSetFilled);
                     return (
-                        <div
-                            key={`${log.id}-m-${idx}`}
-                            className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 space-y-1"
-                        >
-                            <div className="flex justify-between text-sm text-slate-100 font-semibold">
-                                <span>{ex.name}</span>
-
-                                <span className={`text-[11px] font-semibold text-slate-300`}>
-                                    {per} •
-                                    <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold ${status.bgColor} text-black`}>
-                                        {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}
+                        <div key={idx} className="px-3 py-2 space-y-1 sm:grid sm:grid-cols-[35%_10%_1fr_10%] sm:items-center sm:gap-3 sm:space-y-0">
+                            <div className="flex justify-between sm:block">
+                                <div>
+                                    <div className="text-sm font-semibold text-slate-100">{ex.name}</div>
+                                    {ex.group && <div className="text-xs text-slate-400">{ex.group}</div>}
+                                </div>
+                                <span className="sm:hidden text-[11px] text-slate-300">
+                                    {perLabel(ex.per)} •
+                                    <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold text-black ${status.bgColor}`}>
+                                        {status.filled}/{status.total}
                                     </span>
                                 </span>
                             </div>
-
-                            {ex.group && (
-                                <div className="text-[11px] text-slate-400">
-                                    {ex.group}
-                                </div>
-                            )}
-                            <div className="flex flex-wrap gap-1 text-[12px] text-slate-200">
-                                {ex.sets.length === 0 && (
-                                    <span className="ml-1 text-slate-500">-</span>
+                            <div className="hidden sm:block text-center text-xs text-slate-300">{perLabel(ex.per)}</div>
+                            <div className="flex flex-wrap gap-1">
+                                {filledSets.length === 0 ? (
+                                    <span className="text-xs text-slate-500">-</span>
+                                ) : (
+                                    filledSets.map((s, i) => <SetChip key={i} set={s} exercise={ex} weightDisplay={weightDisplay} />)
                                 )}
-                                {ex.sets.filter((s) => s.completed).map((s, i) => (
-                                    <span
-                                        key={`${log.id}-m-${idx}-set-${i}`}
-                                        className="mr-0.5 inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-800/60 px-2 py-0.5"
-                                    >
-                                        <span className="font-bold">
-                                            {s.value ?? "- "}
-                                        </span>
-                                        <span className="text-[10px]">
-                                            {ex.unit ?? "kg"}
-                                        </span>
-
-                                        {!isTimeType && <>
-                                            <span className="text-slate-400">×</span>
-                                            <span className="font-semibold">
-                                                {s.reps ?? "-"}
-                                            </span>
-                                        </>
-                                        }
-                                    </span>
-                                ))}
+                            </div>
+                            <div className={`hidden sm:block text-center text-xs font-semibold ${status.textColor}`}>
+                                {status.filled}/{status.total}
                             </div>
                         </div>
                     );
                 })}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// Log editor
+// ============================================================================
+
+function LogEditor({ log, onDone }: { log: GymLogEntry; onDone: () => void }) {
+    const { saveLog, deleteLog } = useLogsStore();
+    const library = useExercisesStore((s) => s.exercises);
+    const distanceUnit = useProfileStore((s) => s.profile.units.distance);
+    const [draft, setDraft] = useState<LogDraft>(() => {
+        const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = log;
+        return rest;
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const run = async (task: () => Promise<void>) => {
+        setIsSaving(true);
+        setError(null);
+        try {
+            await task();
+            onDone();
+        } catch (err) {
+            console.error(err);
+            setError("Could not save changes. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = () => {
+        if (confirmAction(`Delete the ${log.dayTitle} log from ${formatISODate(log.date)}? This cannot be undone.`)) {
+            run(() => deleteLog(log.id));
+        }
+    };
+
+    return (
+        <div className="rounded-xl border border-amber-700/50 bg-slate-950/60 p-4 space-y-4">
+            <div className="text-sm font-semibold text-teal-200">
+                Editing: {log.planTitle} • {log.dayTitle}
+            </div>
+            <Field label="Date">
+                <input type="date" className={inputClass} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+            </Field>
+
+            <LogExercisesEditor
+                exercises={draft.exercises}
+                onChange={(exercises) => setDraft({ ...draft, exercises })}
+                library={library}
+                editable
+                defaultDistanceUnit={distanceUnit}
+            />
+
+            <Field label="Session notes">
+                <textarea className={inputClass} rows={2} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+            </Field>
+
+            {error && <Notice tone="error">{error}</Notice>}
+            <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="save" disabled={isSaving} onClick={() => run(() => saveLog(log, draft))}>
+                    {isSaving ? "Saving..." : "Save"}
+                </Button>
+                <Button size="sm" variant="neutral" disabled={isSaving} onClick={onDone}>
+                    Cancel
+                </Button>
+                <Button size="sm" variant="danger" disabled={isSaving} onClick={handleDelete}>
+                    Delete log
+                </Button>
             </div>
         </div>
     );

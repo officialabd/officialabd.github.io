@@ -1,206 +1,168 @@
+/**
+ * Firestore access for the gym app. All data is scoped to `gymUsers/{uid}`.
+ *
+ * Queries use at most one equality or one range filter and sort on the client,
+ * so they only need Firestore's automatic single-field indexes.
+ */
 import {
     addDoc,
     collection,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
+    limit,
     orderBy,
     query,
     setDoc,
     where,
-    QueryConstraint,
 } from "firebase/firestore";
 import { db } from "../../../../firebase";
-import staticData from "../../staticData";
+import { COLLECTIONS } from "../constants";
+import type { GymExercise, GymExerciseInput, GymLogEntry, GymPlan, GymProfile, LogDraft } from "../types";
 import {
-    GymPlan,
-    GymLogEntry,
-    GymLogExercise,
-    GymSet,
+    exerciseFromFirestore,
+    exerciseToFirestore,
+    logFromFirestore,
+    logToFirestore,
     planFromFirestore,
     planToFirestore,
-    logEntryFromFirestore,
-    logEntryToFirestore,
-} from "../../models/Gym";
-import type { LogDraft } from "../types";
-import { todayISO } from "../utils";
-
-const gymCollections = staticData.firebaseConst.collections.gym;
+    profileFromFirestore,
+    profileToFirestore,
+} from "./mappers";
 
 // ============================================================================
-// PLANS SERVICE
+// References
 // ============================================================================
 
-/**
- * Get the plans subcollection path for a user
- */
-function plansCollection(userId: string) {
-    return collection(db, gymCollections.plans, userId, "plans");
-}
+export const userDoc = (uid: string) => doc(db, COLLECTIONS.users, uid);
+export const exercisesCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.exercises);
+export const plansCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.plans);
+export const logsCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.logs);
 
-/**
- * Get the logs subcollection path for a user
- */
-function logsCollection(userId: string) {
-    return collection(db, gymCollections.logs, userId, "logs");
-}
-
-/**
- * Fetch all plans for a user
- */
-export async function fetchPlans(userId: string): Promise<GymPlan[]> {
-    const snap = await getDocs(query(plansCollection(userId)));
-    const items = snap.docs.map((d) => planFromFirestore(d.id, d.data()));
-    items.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.title.localeCompare(b.title));
-    return items;
-}
-
-/**
- * Create a new plan
- */
-export async function createPlan(userId: string, plan: Omit<GymPlan, "id">): Promise<string> {
-    const docRef = await addDoc(plansCollection(userId), planToFirestore(plan as GymPlan));
-    return docRef.id;
-}
-
-/**
- * Update an existing plan
- */
-export async function updatePlan(userId: string, planId: string, plan: GymPlan): Promise<void> {
-    await setDoc(doc(plansCollection(userId), planId), planToFirestore(plan), { merge: true });
-}
-
-/**
- * Delete a plan
- */
-export async function deletePlan(userId: string, planId: string): Promise<void> {
-    await deleteDoc(doc(plansCollection(userId), planId));
-}
+/** Newest session first: by session date, then by creation time. */
+export const sortLogsDesc = (logs: GymLogEntry[]): GymLogEntry[] =>
+    [...logs].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
 
 // ============================================================================
-// LOGS SERVICE
+// User document (profile + schema version)
 // ============================================================================
 
-/**
- * Sanitize a log draft for writing to Firestore
- */
-export function sanitizeLogForWrite(draft: LogDraft): LogDraft {
+export async function fetchUser(uid: string): Promise<{ profile: GymProfile; schemaVersion: number }> {
+    const snap = await getDoc(userDoc(uid));
+    const data = snap.data();
     return {
-        ...draft,
-        planId: draft.planId ?? "",
-        planTitle: draft.planTitle ?? "",
-        dayId: draft.dayId ?? "",
-        dayTitle: draft.dayTitle ?? "",
-        date: draft.date ?? todayISO(),
-        userId: draft.userId ?? null,
-        note: draft.note ?? null,
-        startedAt: draft.startedAt ?? null,
-        completedAt: draft.completedAt ?? null,
-        status: draft.status ?? null,
-        exercises: (draft.exercises ?? []).filter(Boolean).map((ex: GymLogExercise) => {
-            const sets = Array.isArray(ex.sets)
-                ? ex.sets.map((s) => {
-                    const hasValue = s?.value !== null && s?.value !== undefined
-                    return {
-                        value: s?.value ?? null,
-                        reps: s?.reps ?? null,
-                        completed: hasValue ? true : null,
-                    } as GymSet;
-                })
-                : [];
-            const filled = sets.filter((s) => s.completed).length;
-            const completed = sets.length > 0 && filled === sets.length ? true : null;
-            return {
-                name: ex.name ?? "",
-                group: ex.group,
-                type: ex.type ?? "weight",
-                unit: ex.unit ?? "kg",
-                per: ex.per ?? "1hand",
-                completed,
-                sets,
-            } as GymLogExercise;
-        }),
+        profile: profileFromFirestore(data),
+        schemaVersion: typeof data?.schemaVersion === "number" ? data.schemaVersion : 0,
     };
 }
 
-/**
- * Fetch logs with optional filters
- */
-export async function fetchLogs(
-    userId: string,
-    options?: {
-        fromTs?: number;
-        toTs?: number;
-        planId?: string;
-        dayId?: string;
-    }
-): Promise<GymLogEntry[]> {
-    const constraints: QueryConstraint[] = [
-        orderBy("createdAt", "desc"),
-    ];
+export async function saveProfile(uid: string, profile: GymProfile): Promise<void> {
+    await setDoc(userDoc(uid), { ...profileToFirestore(profile), updatedAt: Date.now() }, { merge: true });
+}
 
-    if (options?.fromTs !== undefined) {
-        constraints.push(where("createdAt", ">=", options.fromTs));
-    }
-    if (options?.toTs !== undefined) {
-        constraints.push(where("createdAt", "<=", options.toTs));
-    }
-    if (options?.planId) {
-        constraints.push(where("planId", "==", options.planId));
-    }
-    if (options?.dayId) {
-        constraints.push(where("dayId", "==", options.dayId));
-    }
+// ============================================================================
+// Exercises
+// ============================================================================
 
-    const q = query(logsCollection(userId), ...constraints);
+export async function fetchExercises(uid: string): Promise<GymExercise[]> {
+    const snap = await getDocs(exercisesCol(uid));
+    return snap.docs
+        .map((d) => exerciseFromFirestore(d.id, d.data()))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+export async function createExercise(uid: string, input: GymExerciseInput): Promise<GymExercise> {
+    const now = Date.now();
+    const payload = exerciseToFirestore({ ...input, createdAt: now, updatedAt: now });
+    const ref = await addDoc(exercisesCol(uid), payload);
+    return exerciseFromFirestore(ref.id, payload);
+}
+
+export async function updateExercise(uid: string, exercise: GymExercise): Promise<GymExercise> {
+    const updated = { ...exercise, updatedAt: Date.now() };
+    await setDoc(doc(exercisesCol(uid), exercise.id), exerciseToFirestore(updated));
+    return updated;
+}
+
+export async function deleteExercise(uid: string, exerciseId: string): Promise<void> {
+    await deleteDoc(doc(exercisesCol(uid), exerciseId));
+}
+
+// ============================================================================
+// Plans
+// ============================================================================
+
+export async function fetchPlans(uid: string): Promise<GymPlan[]> {
+    const snap = await getDocs(plansCol(uid));
+    return snap.docs
+        .map((d) => planFromFirestore(d.id, d.data()))
+        .sort((a, b) => a.createdAt - b.createdAt || a.title.localeCompare(b.title));
+}
+
+export async function createPlan(uid: string, plan: Omit<GymPlan, "id">): Promise<GymPlan> {
+    const ref = await addDoc(plansCol(uid), planToFirestore(plan));
+    return { ...plan, id: ref.id };
+}
+
+export async function updatePlan(uid: string, plan: GymPlan): Promise<GymPlan> {
+    const updated = { ...plan, updatedAt: Date.now() };
+    await setDoc(doc(plansCol(uid), plan.id), planToFirestore(updated));
+    return updated;
+}
+
+export async function deletePlan(uid: string, planId: string): Promise<void> {
+    await deleteDoc(doc(plansCol(uid), planId));
+}
+
+// ============================================================================
+// Logs
+// ============================================================================
+
+const runLogsQuery = async (q: ReturnType<typeof query>): Promise<GymLogEntry[]> => {
     const snap = await getDocs(q);
-    return snap.docs.map((d) => logEntryFromFirestore(d.id, d.data()));
+    return sortLogsDesc(snap.docs.map((d) => logFromFirestore(d.id, d.data() as Record<string, any>)));
+};
+
+/** Logs whose session date is within [from, to] (inclusive, YYYY-MM-DD). */
+export const fetchLogsInRange = (uid: string, from: string, to: string) =>
+    runLogsQuery(query(logsCol(uid), where("date", ">=", from), where("date", "<=", to)));
+
+/** The `count` most recent sessions by session date. */
+export const fetchLatestLogs = (uid: string, count: number) =>
+    runLogsQuery(query(logsCol(uid), orderBy("date", "desc"), limit(count)));
+
+export const fetchLogsByPlan =(uid: string, planId: string) =>
+    runLogsQuery(query(logsCol(uid), where("planId", "==", planId)));
+
+export const fetchLogsByDay = (uid: string, dayId: string) =>
+    runLogsQuery(query(logsCol(uid), where("dayId", "==", dayId)));
+
+export async function fetchRunningLog(uid: string): Promise<GymLogEntry | null> {
+    const logs = await runLogsQuery(query(logsCol(uid), where("status", "==", "running")));
+    return logs[0] ?? null;
 }
 
-/**
- * Fetch running session (status = "running")
- */
-export async function fetchRunningSession(userId: string): Promise<GymLogEntry | null> {
-    const q = query(
-        logsCollection(userId),
-        where("status", "==", "running"),
-        orderBy("createdAt", "desc")
-    );
-    const snap = await getDocs(q);
-    if (snap.docs.length > 0) {
-        return logEntryFromFirestore(snap.docs[0].id, snap.docs[0].data());
-    }
-    return null;
+/** Most recent completed session of a plan day. */
+export async function fetchLastCompletedLog(uid: string, dayId: string): Promise<GymLogEntry | null> {
+    const logs = await fetchLogsByDay(uid, dayId);
+    return logs.find((l) => l.status === "completed") ?? null;
 }
 
-/**
- * Create a new log entry
- */
-export async function createLogEntry(userId: string, log: Omit<GymLogEntry, "id">): Promise<string> {
-    const sanitized = sanitizeLogForWrite(log as LogDraft);
-    const docRef = await addDoc(
-        logsCollection(userId),
-        logEntryToFirestore({ ...sanitized, createdAt: log.createdAt } as Omit<GymLogEntry, "id">)
-    );
-    return docRef.id;
+export async function createLog(uid: string, draft: LogDraft): Promise<GymLogEntry> {
+    const now = Date.now();
+    const payload = logToFirestore({ ...draft, createdAt: now, updatedAt: now });
+    const ref = await addDoc(logsCol(uid), payload);
+    return { ...draft, id: ref.id, createdAt: now, updatedAt: now };
 }
 
-/**
- * Update an existing log entry
- */
-export async function updateLogEntry(userId: string, logId: string, log: Omit<GymLogEntry, "id">): Promise<void> {
-    const sanitized = sanitizeLogForWrite(log as LogDraft);
-
-    await setDoc(
-        doc(logsCollection(userId), logId),
-        logEntryToFirestore({ ...sanitized, createdAt: log.createdAt } as Omit<GymLogEntry, "id">),
-        { merge: true }
-    );
+/** Overwrite a log. `createdAt` is preserved — it is never bumped by edits. */
+export async function updateLog(uid: string, logId: string, draft: LogDraft, createdAt: number): Promise<GymLogEntry> {
+    const now = Date.now();
+    await setDoc(doc(logsCol(uid), logId), logToFirestore({ ...draft, createdAt, updatedAt: now }));
+    return { ...draft, id: logId, createdAt, updatedAt: now };
 }
 
-/**
- * Delete a log entry
- */
-export async function deleteLogEntry(userId: string, logId: string): Promise<void> {
-    await deleteDoc(doc(logsCollection(userId), logId));
+export async function deleteLog(uid: string, logId: string): Promise<void> {
+    await deleteDoc(doc(logsCol(uid), logId));
 }

@@ -1,36 +1,46 @@
-import type { GymSet, ExerciseStatus, type } from "../types";
+import { PER_OPTIONS, UNIT_LABELS } from "../constants";
+import type { GymLogExercise, Per } from "../types";
+import { isSetFilled } from "./logDraft";
 
-/**
- * Generate a unique ID using crypto.randomUUID or fallback
- */
+export * from "./units";
+export * from "./logDraft";
+
+/** Generate a unique ID using crypto.randomUUID or a fallback. */
 export const generateId = (): string =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10);
+        : Math.random().toString(36).slice(2, 12);
 
-/**
- * Convert a Date to local ISO date string (YYYY-MM-DD)
- */
+/** Key used to decide whether two exercise names refer to the same exercise (case-insensitive). */
+export const exerciseNameKey = (name: string): string => name.toLowerCase();
+
+// ============================================================================
+// Dates
+// ============================================================================
+
+/** Convert a Date to a local ISO date string (YYYY-MM-DD). */
 export const toLocalISODate = (d: Date): string =>
     new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-/**
- * Get today's date in ISO format
- */
 export const todayISO = (): string => toLocalISODate(new Date());
 
-/**
- * Get date from one month ago in ISO format
- */
 export const lastMonthISO = (): string => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
     return toLocalISODate(d);
 };
 
-/**
- * Format a timestamp to a readable date/time string
- */
+/** Format a local ISO date (YYYY-MM-DD) without timezone shifts. */
+export const formatISODate = (iso: string | null | undefined): string => {
+    if (!iso) return "-";
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+export const formatDate = (ts: number | null | undefined): string =>
+    ts ? new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-";
+
 export const formatTime = (ts?: number | null): string =>
     ts
         ? new Date(ts).toLocaleString("en-US", {
@@ -43,72 +53,102 @@ export const formatTime = (ts?: number | null): string =>
         })
         : "-";
 
-/**
- * Calculate and format duration between two timestamps
- */
 export const formatDuration = (start?: number | null, end?: number | null): string => {
     if (!start || !end) return "-";
     const mins = Math.max(0, Math.round((end - start) / 60000));
     return `${mins} min`;
 };
 
-/**
- * Format remaining time in human-readable format
- */
 export const formatRemaining = (ms?: number | null): string => {
     if (ms === null || ms === undefined) return "-";
     if (ms <= 0) return "expired";
     const totalSec = Math.floor(ms / 1000);
     const hrs = Math.floor(totalSec / 3600);
     const mins = Math.floor((totalSec % 3600) / 60);
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
 };
 
-/**
- * Ensure an array of sets has exactly the specified count
- */
-export const ensureSetCount = (count: number, existing: GymSet[]): GymSet[] => {
-    const safe = Math.max(0, count);
-    const next = [...existing];
-    if (next.length < safe) {
-        while (next.length < safe) {
-            next.push({ value: null, reps: null, completed: false });
-        }
-    } else if (next.length > safe) {
-        next.length = safe;
-    }
-    return next;
-};
+// ============================================================================
+// Labels
+// ============================================================================
 
-/**
- * Get the completion status of an exercise based on its sets
- */
-export const getExerciseStatus = (sets: GymSet[], type?: type): ExerciseStatus => {
-    const total = sets?.length ?? 0;
-    const filled = (sets ?? []).filter((s) => {
-        if (!s) return false;
-        return s.value !== null && s.value !== undefined;
-    }).length;
+export const perLabel = (per: Per | null | undefined): string =>
+    PER_OPTIONS.find((p) => p.value === per)?.label ?? "";
 
+export const unitLabel = (unit: string | null | undefined): string => (unit ? UNIT_LABELS[unit] ?? unit : "");
+
+// ============================================================================
+// Exercise status
+// ============================================================================
+
+export type ExerciseStatusLabel = "Completed" | "Partial" | "Unattempted";
+
+export interface ExerciseStatus {
+    label: ExerciseStatusLabel;
+    filled: number;
+    total: number;
+    textColor: string;
+    bgColor: string;
+    rowColor: string;
+}
+
+export const getExerciseStatus = (exercise: GymLogExercise): ExerciseStatus => {
+    const total = exercise.sets.length;
+    const filled = exercise.sets.filter((s) => isSetFilled(s)).length;
     if (total > 0 && filled === total) {
-        return { label: "Completed", textColor: "text-emerald-300", bgColor: "bg-emerald-300" };
+        return {
+            label: "Completed", filled, total,
+            textColor: "text-emerald-300", bgColor: "bg-emerald-300", rowColor: "bg-emerald-900/30 border-emerald-700/50",
+        };
     }
     if (filled > 0) {
-        return { label: "Partial", textColor: "text-orange-300", bgColor: "bg-orange-300" };
+        return {
+            label: "Partial", filled, total,
+            textColor: "text-orange-300", bgColor: "bg-orange-300", rowColor: "bg-orange-900/30 border-orange-700/50",
+        };
     }
-    return { label: "Unattempted", textColor: "text-rose-300", bgColor: "bg-rose-300" };
+    return {
+        label: "Unattempted", filled, total,
+        textColor: "text-rose-300", bgColor: "bg-rose-300", rowColor: "bg-slate-900/60 border-slate-700",
+    };
 };
 
-/**
- * Open Google search for an exercise
- */
+// ============================================================================
+// Muscle group colors
+// ============================================================================
+
+const GROUP_PALETTE = [
+    "bg-rose-500",
+    "bg-amber-500",
+    "bg-emerald-500",
+    "bg-cyan-500",
+    "bg-violet-500",
+    "bg-pink-500",
+    "bg-lime-500",
+    "bg-orange-500",
+    "bg-teal-500",
+    "bg-indigo-500",
+];
+
+/** Assigns a stable color per muscle group, in order of first appearance. */
+export const buildGroupColors = (groups: (string | null | undefined)[]): ((group?: string | null) => string) => {
+    const colors: Record<string, string> = {};
+    groups.forEach((g) => {
+        const key = g?.toLowerCase().trim();
+        if (key && !colors[key]) colors[key] = GROUP_PALETTE[Object.keys(colors).length % GROUP_PALETTE.length];
+    });
+    return (group) => colors[group?.toLowerCase().trim() ?? ""] ?? "bg-slate-600";
+};
+
+// ============================================================================
+// Browser helpers
+// ============================================================================
+
 export const openExerciseSearch = (name: string, muscle?: string | null): void => {
     if (typeof window === "undefined") return;
     const query = encodeURIComponent(`${muscle ? `${muscle}: ` : ""}${name}`.trim());
     const url = `https://www.google.com/search?q=${query}`;
-    const isMobile =
-        typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (isMobile) {
         window.location.href = url;
     } else {
@@ -116,24 +156,19 @@ export const openExerciseSearch = (name: string, muscle?: string | null): void =
     }
 };
 
-/**
- * Export data to a JSON file and trigger download
- */
 export const exportToJsonFile = (data: unknown, filename: string): void => {
     if (typeof window === "undefined") return;
-
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const fullFilename = `${filename}-${timestamp}.json`;
-
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
     link.href = url;
-    link.download = fullFilename;
+    link.download = `${filename}-${timestamp}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
+
+export const confirmAction = (message: string): boolean =>
+    typeof window === "undefined" ? true : window.confirm(message);

@@ -1,271 +1,249 @@
 import { create } from "zustand";
-import type { GymPlan, GymPlanDay, GymLogExercise, GymSet, LogDraft, type, Unit } from "../types";
-import { todayISO, ensureSetCount } from "../utils";
-import { Per } from "@/app/models/Gym";
+import { AUTOSAVE_DELAY_MS } from "../constants";
+import type { GymPlan, GymPlanDay, LogDraft, SaveState } from "../types";
+import * as gymService from "../services/gymService";
+import {
+    buildDraftFromDay,
+    buildDraftFromPreviousSession,
+    buildDraftWithPreviousValues,
+    normalizeLogExercise,
+    todayISO,
+} from "../utils";
+import { requireUid } from "./authStore";
+import { useExercisesStore } from "./exercisesStore";
+import { usePlansStore } from "./plansStore";
+
+export type PrefillMode = "values" | "session";
 
 interface SessionState {
-    // Selection
-    logPlanId: string;
-    logDayId: string;
-
-    // Draft state
-    logDraft: LogDraft | null;
-    currentLogId: string | null; // ID of saved log for editing
-    isSubmitting: boolean;
+    planId: string;
+    dayId: string;
+    draft: LogDraft | null;
+    /** Firestore ID of the log once the session has been saved. */
+    logId: string | null;
+    createdAt: number | null;
+    saveState: SaveState;
+    isBusy: boolean;
     isLoadingRunning: boolean;
+    /** Describes where pre-filled values came from, shown to the user. */
+    prefill: { mode: PrefillMode; date: string } | null;
+    prefillMessage: string | null;
 
-    // Actions
-    setLogPlanId: (id: string) => void;
-    setLogDayId: (id: string) => void;
-    setLogDraft: (draft: LogDraft | null) => void;
-    setCurrentLogId: (id: string | null) => void;
-    setSubmitting: (submitting: boolean) => void;
-    setLoadingRunning: (loading: boolean) => void;
+    selectPlan: (planId: string) => void;
+    selectDay: (dayId: string) => void;
+    /** Rebuild the not-yet-started draft from the current plan day. */
+    resetDraft: () => void;
+    loadPrevious: (mode: PrefillMode) => Promise<void>;
+    loadRunning: () => Promise<boolean>;
 
-    // Draft manipulation
-    updateLogDraft: (updater: (draft: LogDraft) => LogDraft) => void;
-    startSession: () => void;
-    updateExerciseSets: (exerciseIndex: number, count: number) => void;
-    updateSetValue: (
-        exerciseIndex: number,
-        setIndex: number,
-        field: keyof GymSet,
-        value: number | null
-    ) => void;
-    updateExerciseUnit: (exerciseIndex: number, unit: Unit) => void;
-    updateSessionNote: (note: string) => void;
-    updateExercisePer: (exerciseIndex: number, per: Per) => void;
-
-    // Exercise manipulation
-    addExercise: (name: string, group: string, type?: type, unit?: Unit) => void;
-    removeExercise: (exerciseIndex: number) => void;
-    updateExerciseDetails: (exerciseIndex: number, name: string, group: string) => void;
-    updateExerciseType: (exerciseIndex: number, type: type, unit: Unit) => void;
-
-    // Initialize draft from plan/day
-    initializeFromPlanDay: (plan: GymPlan, day: GymPlanDay, userId: string | null) => void;
-
-    // Load running session from Firestore data
-    loadRunningSession: (log: {
-        id: string;
-        planId: string;
-        planTitle: string;
-        dayId: string;
-        dayTitle: string;
-        date: string;
-        userId?: string | null;
-        exercises: GymLogExercise[];
-        note?: string | null;
-        startedAt?: number | null;
-        completedAt?: number | null;
-        status?: "running" | "completed" | null;
-    }) => void;
-
-    // Clear session
-    clearSession: () => void;
-    resetForNewSession: (plan: GymPlan, day: GymPlanDay, userId: string | null) => void;
+    /** Apply a change to the draft. Running sessions are auto-saved. */
+    update: (updater: (draft: LogDraft) => LogDraft) => void;
+    start: () => Promise<void>;
+    complete: () => Promise<void>;
+    cancel: () => Promise<void>;
+    /** Save pending changes immediately (e.g. when the tab is hidden). */
+    flush: () => Promise<void>;
+    clear: () => void;
 }
 
-export const useSessionStore = create<SessionState>((set, get) => ({
-    // Initial state
-    logPlanId: "",
-    logDayId: "",
-    logDraft: null,
-    currentLogId: null,
-    isSubmitting: false,
+const initialState = {
+    planId: "",
+    dayId: "",
+    draft: null as LogDraft | null,
+    logId: null as string | null,
+    createdAt: null as number | null,
+    saveState: "idle" as SaveState,
+    isBusy: false,
     isLoadingRunning: false,
+    prefill: null as SessionState["prefill"],
+    prefillMessage: null as string | null,
+};
 
-    // Basic setters
-    setLogPlanId: (logPlanId) => set({ logPlanId }),
-    setLogDayId: (logDayId) => set({ logDayId }),
-    setLogDraft: (logDraft) => set({ logDraft }),
-    setCurrentLogId: (currentLogId) => set({ currentLogId }),
-    setSubmitting: (isSubmitting) => set({ isSubmitting }),
-    setLoadingRunning: (isLoadingRunning) => set({ isLoadingRunning }),
+const isRunning = (draft: LogDraft | null) => draft?.status === "running";
 
-    // Update the log draft
-    updateLogDraft: (updater) => {
-        const { logDraft } = get();
-        if (logDraft) {
-            set({ logDraft: updater(logDraft) });
-        }
-    },
+export const useSessionStore = create<SessionState>((set, get) => {
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Serializes writes so a create can never race with an update. */
+    let writeQueue: Promise<unknown> = Promise.resolve();
 
-    // Start a session (set startedAt and status)
-    startSession: () => {
-        get().updateLogDraft((draft) => {
-            return ({
+    const cancelTimer = () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = null;
+    };
+
+    const enqueue = <T,>(task: () => Promise<T>): Promise<T> => {
+        const run = writeQueue.then(task, task);
+        writeQueue = run.catch(() => undefined);
+        return run;
+    };
+
+    /** Write the latest draft (create on first save, update afterwards). */
+    const persist = (overrides: Partial<LogDraft> = {}) =>
+        enqueue(async () => {
+            const { draft, logId, createdAt } = get();
+            if (!draft) return;
+            const uid = requireUid();
+            const payload: LogDraft = {
                 ...draft,
-                startedAt: draft.startedAt ?? Date.now(),
-                status: "running",
-            })
-        });
-    },
-
-    // Update the number of sets for an exercise
-    updateExerciseSets: (exerciseIndex, count) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            exercises[exerciseIndex] = {
-                ...exercises[exerciseIndex],
-                sets: ensureSetCount(count, exercises[exerciseIndex].sets),
+                ...overrides,
+                exercises: draft.exercises.map(normalizeLogExercise),
             };
-            return { ...draft, exercises };
+            if (logId && createdAt) {
+                await gymService.updateLog(uid, logId, payload, createdAt);
+            } else {
+                const created = await gymService.createLog(uid, payload);
+                set({ logId: created.id, createdAt: created.createdAt });
+            }
         });
-    },
 
-    // Update a specific set value
-    updateSetValue: (exerciseIndex, setIndex, field, value) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            const sets = [...exercises[exerciseIndex].sets];
-            sets[setIndex] = { ...sets[setIndex], [field]: value };
-            exercises[exerciseIndex] = { ...exercises[exerciseIndex], sets };
-            return { ...draft, exercises };
-        });
-    },
+    const autosave = async () => {
+        cancelTimer();
+        set({ saveState: "saving" });
+        try {
+            await persist();
+            // Another edit may have scheduled a newer save meanwhile.
+            if (!saveTimer) set({ saveState: "saved" });
+        } catch (err) {
+            console.error("Autosave failed", err);
+            set({ saveState: "error" });
+        }
+    };
 
-    // Update exercise weight unit
-    updateExerciseUnit: (exerciseIndex, unit) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            exercises[exerciseIndex] = { ...exercises[exerciseIndex], unit: unit };
-            return { ...draft, exercises };
-        });
-    },
+    const currentPlanDay = (): { plan: GymPlan; day: GymPlanDay } | null => {
+        const { planId, dayId } = get();
+        const plan = usePlansStore.getState().plans.find((p) => p.id === planId);
+        const day = plan?.days.find((d) => d.id === dayId);
+        return plan && day ? { plan, day } : null;
+    };
 
-    updateExercisePer: (exerciseIndex, per) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            exercises[exerciseIndex] = { ...exercises[exerciseIndex], per: per };
-            return { ...draft, exercises };
-        });
-    },
+    const freshDraft = (): LogDraft | null => {
+        const current = currentPlanDay();
+        if (!current) return null;
+        const date = get().draft?.date ?? todayISO();
+        return buildDraftFromDay(current.plan, current.day, useExercisesStore.getState().byId, date);
+    };
 
-    // Update session note
-    updateSessionNote: (note) => {
-        get().updateLogDraft((draft) => ({ ...draft, note }));
-    },
+    const resetAfterSession = () =>
+        set({ draft: freshDraft(), logId: null, createdAt: null, saveState: "idle", prefill: null, prefillMessage: null });
 
-    // Add a new exercise (optionally specify set type and weight unit)
-    addExercise: (name, group, type = "weight", unit = "kg", per = "1hand" as Per) => {
-        get().updateLogDraft((draft) => {
-            const newExercise: GymLogExercise = {
-                name,
-                group: group || undefined,
-                type,
-                unit,
-                per: per || undefined,
-                completed: null,
-                sets: ensureSetCount(3, []),
-            };
-            return { ...draft, exercises: [...draft.exercises, newExercise] };
-        });
-    },
+    return {
+        ...initialState,
 
-    // Remove an exercise
-    removeExercise: (exerciseIndex) => {
-        get().updateLogDraft((draft) => {
-            const exercises = draft.exercises.filter((_, idx) => idx !== exerciseIndex);
-            return { ...draft, exercises };
-        });
-    },
+        selectPlan: (planId) => {
+            if (isRunning(get().draft)) return;
+            const plan = usePlansStore.getState().plans.find((p) => p.id === planId);
+            set({ planId, dayId: plan?.days[0]?.id ?? "", prefill: null, prefillMessage: null });
+            get().resetDraft();
+        },
 
-    // Update exercise name and muscle group
-    updateExerciseDetails: (exerciseIndex, name, group) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            exercises[exerciseIndex] = {
-                ...exercises[exerciseIndex],
-                name,
-                group: group || undefined,
-            };
-            return { ...draft, exercises };
-        });
-    },
+        selectDay: (dayId) => {
+            if (isRunning(get().draft)) return;
+            set({ dayId, prefill: null, prefillMessage: null });
+            get().resetDraft();
+        },
 
-    // Update exercise type and unit
-    updateExerciseType: (exerciseIndex, type, unit) => {
-        get().updateLogDraft((draft) => {
-            const exercises = [...draft.exercises];
-            if (!exercises[exerciseIndex]) return { ...draft };
-            exercises[exerciseIndex] = {
-                ...exercises[exerciseIndex],
-                type,
-                unit,
-            };
-            return { ...draft, exercises };
-        });
-    },
+        resetDraft: () => {
+            if (isRunning(get().draft)) return;
+            set({ draft: freshDraft(), prefill: null, prefillMessage: null });
+        },
 
-    // Initialize draft from plan and day
-    initializeFromPlanDay: (plan, day, userId) => {
-        const draft: LogDraft = {
-            planId: plan.id,
-            planTitle: plan.title,
-            dayId: day.id,
-            dayTitle: day.title,
-            date: todayISO(),
-            userId: userId ?? null,
-            exercises: (day.exercises ?? []).map((ex) => ({
-                name: ex.name,
-                group: ex.group,
-                type: ex.type ?? "weight",
-                unit: ex.unit ?? "kg",
-                per: ex.per ?? "1hand",
-                completed: null,
-                setsNo: ex.setsNo ?? 3,
-                sets: ensureSetCount(
-                    ex.setsNo ?? 3,
-                    []
-                ).map(() => ({
-                    value: null,
-                    reps: null,
-                })),
-            })),
-            note: "",
-            startedAt: undefined,
-            completedAt: undefined,
-            status: undefined,
-        };
-        set({ logDraft: draft, currentLogId: null });
-    },
+        loadPrevious: async (mode) => {
+            const current = currentPlanDay();
+            if (!current || isRunning(get().draft)) return;
+            set({ isBusy: true, prefillMessage: null });
+            try {
+                const previous = await gymService.fetchLastCompletedLog(requireUid(), current.day.id);
+                if (!previous) {
+                    set({ prefillMessage: `No completed "${current.day.title}" session found yet.` });
+                    return;
+                }
+                const library = useExercisesStore.getState().byId;
+                const date = get().draft?.date ?? todayISO();
+                const draft =
+                    mode === "values"
+                        ? buildDraftWithPreviousValues(current.plan, current.day, library, previous, date)
+                        : buildDraftFromPreviousSession(current.plan, current.day, library, previous, date);
+                set({ draft, prefill: { mode, date: previous.date } });
+            } finally {
+                set({ isBusy: false });
+            }
+        },
 
-    // Load a running session from Firestore
-    loadRunningSession: (log) => {
-        set({
-            logPlanId: log.planId,
-            logDayId: log.dayId,
-            currentLogId: log.id,
-            logDraft: {
-                planId: log.planId,
-                planTitle: log.planTitle,
-                dayId: log.dayId,
-                dayTitle: log.dayTitle,
-                date: log.date,
-                userId: log.userId,
-                exercises: log.exercises,
-                note: log.note,
-                startedAt: log.startedAt,
-                completedAt: log.completedAt,
-                status: log.status,
-            },
-        });
-    },
+        loadRunning: async () => {
+            set({ isLoadingRunning: true });
+            try {
+                const running = await gymService.fetchRunningLog(requireUid());
+                if (!running) return false;
+                const { id, createdAt, updatedAt: _, ...draft } = running;
+                set({
+                    planId: running.planId,
+                    dayId: running.dayId,
+                    draft,
+                    logId: id,
+                    createdAt,
+                    saveState: "saved",
+                    prefill: null,
+                    prefillMessage: null,
+                });
+                return true;
+            } finally {
+                set({ isLoadingRunning: false });
+            }
+        },
 
-    // Clear session completely
-    clearSession: () =>
-        set({
-            logPlanId: "",
-            logDayId: "",
-            logDraft: null,
-            currentLogId: null,
-            isSubmitting: false,
-            isLoadingRunning: false,
-        }),
+        update: (updater) => {
+            const { draft } = get();
+            if (!draft) return;
+            set({ draft: updater(draft) });
+            if (!isRunning(draft)) return;
+            cancelTimer();
+            set({ saveState: "saving" });
+            saveTimer = setTimeout(autosave, AUTOSAVE_DELAY_MS);
+        },
 
-    // Reset for a new session after completing
-    resetForNewSession: (plan, day, userId) => {
-        get().initializeFromPlanDay(plan, day, userId);
-    },
-}));
+        start: async () => {
+            const { draft } = get();
+            if (!draft || draft.status) return;
+            set({ draft: { ...draft, status: "running", startedAt: Date.now() } });
+            await autosave();
+        },
+
+        flush: async () => {
+            if (saveTimer || get().saveState === "error") await autosave();
+        },
+
+        complete: async () => {
+            if (!isRunning(get().draft)) return;
+            cancelTimer();
+            set({ isBusy: true, saveState: "saving" });
+            try {
+                await persist({ status: "completed", completedAt: Date.now() });
+                resetAfterSession();
+            } catch (err) {
+                console.error("Failed to complete session", err);
+                set({ saveState: "error" });
+            } finally {
+                set({ isBusy: false });
+            }
+        },
+
+        cancel: async () => {
+            if (!isRunning(get().draft)) return;
+            cancelTimer();
+            set({ isBusy: true });
+            try {
+                await writeQueue;
+                const { logId } = get();
+                if (logId) await enqueue(() => gymService.deleteLog(requireUid(), logId));
+                resetAfterSession();
+            } finally {
+                set({ isBusy: false });
+            }
+        },
+
+        clear: () => {
+            cancelTimer();
+            set({ ...initialState });
+        },
+    };
+});
