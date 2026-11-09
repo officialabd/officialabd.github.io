@@ -45,10 +45,18 @@ interface LogsState {
     upsert: (log: GymLogEntry) => void;
     /** Drop a log from the cache (after a delete). */
     remove: (logId: string) => void;
+    /**
+     * Most recent completed session of a plan day. Looks in recent logs first (cached and shared
+     * with the Logs tab); only when none is recent enough is the day's full history fetched.
+     */
+    lastCompleted: (dayId: string) => Promise<GymLogEntry | null>;
     saveLog: (log: GymLogEntry, draft: LogDraft) => Promise<void>;
     deleteLog: (logId: string) => Promise<void>;
     clear: () => void;
 }
+
+/** "Load previous" first looks this far back before fetching a day's whole history. */
+const RECENT_LOOKUP_DAYS = 60;
 
 const recentFilter = (planId = "", dayId = ""): LogsFilter => {
     const to = todayISO();
@@ -181,6 +189,19 @@ export const useLogsStore = create<LogsState>((set, get) => {
         },
 
         upsert: (log) => merge([log]),
+
+        lastCompleted: async (dayId) => {
+            const find = () => get().cache.find((l) => l.dayId === dayId && l.status === "completed") ?? null;
+            await ensureFrom(addDays(todayISO(), -RECENT_LOOKUP_DAYS));
+            if (find() || paddedDays.has(dayId)) return find();
+            const gen = generation;
+            const logs = await gymService.fetchLogsByDay(requireUid(), dayId);
+            if (gen === generation) {
+                paddedDays.add(dayId);
+                merge(logs);
+            }
+            return find();
+        },
 
         remove: (logId) => {
             set({ cache: get().cache.filter((l) => l.id !== logId) });

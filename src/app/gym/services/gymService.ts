@@ -165,12 +165,6 @@ export async function fetchRunningLog(uid: string): Promise<GymLogEntry | null> 
     return logs[0] ?? null;
 }
 
-/** Most recent completed session of a plan day. */
-export async function fetchLastCompletedLog(uid: string, dayId: string): Promise<GymLogEntry | null> {
-    const logs = await fetchLogsByDay(uid, dayId);
-    return logs.find((l) => l.status === "completed") ?? null;
-}
-
 export async function createLog(uid: string, draft: LogDraft): Promise<GymLogEntry> {
     const now = Date.now();
     const payload = logToFirestore({ ...draft, createdAt: now, updatedAt: now });

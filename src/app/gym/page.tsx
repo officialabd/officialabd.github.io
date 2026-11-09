@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import LinePulse from "../_layouts/pulse/line";
-import { useGymAuth, useGymBootstrap } from "./hooks";
+import { useGymAuth, useGymBootstrap, useReconnectOnResume } from "./hooks";
 import { useLogsStore, useProfileStore, useSessionStore, useUIStore } from "./stores";
 import {
     AuthForm,
@@ -25,6 +25,7 @@ export default function GymPage() {
     const showDefaultLogs = useLogsStore((s) => s.showDefault);
 
     const isReady = !!user && status === "ready";
+    useReconnectOnResume(!!user);
 
     // Refresh timers every minute.
     useEffect(() => {

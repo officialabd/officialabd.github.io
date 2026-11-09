@@ -188,7 +188,7 @@ export const useSessionStore = create<SessionState>((set, get) => {
             if (!current || isRunning(get().draft)) return;
             set({ isBusy: true, prefillMessage: null });
             try {
-                const previous = await gymService.fetchLastCompletedLog(requireUid(), current.day.id);
+                const previous = await useLogsStore.getState().lastCompleted(current.day.id);
                 if (!previous) {
                     set({ prefillMessage: `No completed "${current.day.title}" session found yet.` });
                     return;
@@ -200,6 +200,9 @@ export const useSessionStore = create<SessionState>((set, get) => {
                         ? buildDraftWithPreviousValues(current.plan, current.day, library, previous, date)
                         : buildDraftFromPreviousSession(current.plan, current.day, library, previous, date);
                 set({ draft: { ...draft, gym }, prefill: { mode, date: previous.date } });
+            } catch (err) {
+                console.error("Failed to load the previous session", err);
+                set({ prefillMessage: "Could not load the previous session. Check your connection and try again." });
             } finally {
                 set({ isBusy: false });
             }
