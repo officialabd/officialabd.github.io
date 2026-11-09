@@ -81,14 +81,17 @@ export function LogsFeed() {
                     <Field label="To">
                         <input type="date" className={inputClass} value={filter.to} onChange={(e) => setFilter({ to: e.target.value })} />
                     </Field>
-                    <Field as="div" label="Weights in">
-                        <Segmented<WeightDisplay>
-                            value={logsWeightDisplay}
-                            options={[{ value: "logged", label: "As logged" }, { value: "kg" }, { value: "lb" }]}
-                            onChange={setLogsWeightDisplay}
-                        />
-                    </Field>
-                    <RefreshButton onClick={load} disabled={isLoading} />
+                    {/* Weights in and Refresh share a row on phones; on wider screens they flow with the other filters. */}
+                    <div className="flex items-end gap-3 sm:contents">
+                        <Field as="div" label="Weights in">
+                            <Segmented<WeightDisplay>
+                                value={logsWeightDisplay}
+                                options={[{ value: "logged", label: "As logged" }, { value: "kg" }, { value: "lb" }]}
+                                onChange={setLogsWeightDisplay}
+                            />
+                        </Field>
+                        <RefreshButton onClick={load} disabled={isLoading} />
+                    </div>
                 </FilterBar>
 
                 {isLoading && <LinePulse />}

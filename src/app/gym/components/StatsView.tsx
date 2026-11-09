@@ -102,10 +102,13 @@ export function StatsView() {
                             </select>
                         </Field>
                     )}
-                    <Field as="div" label="Weights in">
-                        <Segmented value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
-                    </Field>
-                    <RefreshButton onClick={load} disabled={isLoading} />
+                    {/* Weights in and Refresh share a row on phones; on wider screens they flow with the other filters. */}
+                    <div className="flex items-end gap-3 sm:contents">
+                        <Field as="div" label="Weights in">
+                            <Segmented value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
+                        </Field>
+                        <RefreshButton onClick={load} disabled={isLoading} />
+                    </div>
                 </FilterBar>
 
                 {isLoading && allLogs.length === 0 && <LinePulse />}

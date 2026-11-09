@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { DISTANCE_UNITS, HEIGHT_UNITS, WEIGHT_UNITS } from "../constants";
 import type { UnitPreferences } from "../types";
-import { formatISODate, todayISO } from "../utils";
+import { todayISO } from "../utils";
 import { CalendarIcon, PlusIcon } from "./icons";
 import { Button, Field, inputClass, Segmented } from "./ui";
 
@@ -73,7 +73,7 @@ export const parseMeasurement = <U extends string>(m: MeasurementValue<U>) => {
 
 /**
  * Value + unit + date inputs for a body measurement.
- * On phones it's one compact row: a narrow value input, the unit, the date as a calendar icon
+ * On phones it's one compact row: the value input (filling the width), the unit, the date as a calendar icon
  * (tapping it opens the native date picker) and an optional trailing control (e.g. an add button),
  * which stays at the end of the row on every screen size.
  */
@@ -92,43 +92,40 @@ export function MeasurementFields<U extends string>({
     trailing?: ReactNode;
 }) {
     return (
-        <div className="space-y-1">
-            <div className="flex items-end gap-2 sm:gap-3">
-                <Field label={label} className="w-24 shrink-0 sm:w-auto sm:flex-1">
+        <div className="flex items-end gap-2 sm:gap-3">
+            <Field label={label} className="min-w-0 flex-1">
+                <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.1"
+                    className={inputClass}
+                    value={value.value}
+                    onChange={(e) => onChange({ ...value, value: e.target.value })}
+                />
+            </Field>
+            <Field as="div" label="Unit">
+                <Segmented value={value.unit} options={units.map((u) => ({ value: u }))} onChange={(unit) => onChange({ ...value, unit })} />
+            </Field>
+            <Field label="Date" className="sm:flex-1">
+                <div className="relative">
+                    <span
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 text-slate-300 sm:hidden"
+                        aria-hidden="true"
+                    >
+                        <CalendarIcon className="w-5 h-5" />
+                    </span>
+                    {/* Invisible over the icon on phones (so a tap opens the picker); a normal input on larger screens. */}
                     <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.1"
-                        className={inputClass}
-                        value={value.value}
-                        onChange={(e) => onChange({ ...value, value: e.target.value })}
+                        type="date"
+                        max={todayISO()}
+                        className={`${inputClass} absolute inset-0 opacity-0 sm:static sm:opacity-100`}
+                        value={value.date}
+                        onChange={(e) => onChange({ ...value, date: e.target.value })}
                     />
-                </Field>
-                <Field as="div" label="Unit">
-                    <Segmented value={value.unit} options={units.map((u) => ({ value: u }))} onChange={(unit) => onChange({ ...value, unit })} />
-                </Field>
-                <Field label="Date" className="sm:flex-1">
-                    <div className="relative">
-                        <span
-                            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 text-slate-300 sm:hidden"
-                            aria-hidden="true"
-                        >
-                            <CalendarIcon className="w-5 h-5" />
-                        </span>
-                        {/* Invisible over the icon on phones (so a tap opens the picker); a normal input on larger screens. */}
-                        <input
-                            type="date"
-                            max={todayISO()}
-                            className={`${inputClass} absolute inset-0 opacity-0 sm:static sm:opacity-100`}
-                            value={value.date}
-                            onChange={(e) => onChange({ ...value, date: e.target.value })}
-                        />
-                    </div>
-                </Field>
-                {trailing}
-            </div>
-            <p className="text-[11px] text-slate-400 sm:hidden">Date: {formatISODate(value.date)}</p>
+                </div>
+            </Field>
+            {trailing}
         </div>
     );
 }
