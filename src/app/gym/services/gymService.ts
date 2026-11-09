@@ -11,8 +11,6 @@ import {
     doc,
     getDoc,
     getDocs,
-    limit,
-    orderBy,
     query,
     setDoc,
     where,
@@ -20,6 +18,7 @@ import {
 import { db } from "../../../../firebase";
 import { COLLECTIONS } from "../constants";
 import type { GymExercise, GymExerciseInput, GymLogEntry, GymPlan, GymProfile, LogDraft } from "../types";
+import { sortLogsDesc } from "../utils/logQuery";
 import { mergeIntoLog, mergeIntoPlan } from "../utils/merge";
 import { commitInBatches, type WriteOp } from "./batch";
 import {
@@ -41,10 +40,6 @@ export const userDoc = (uid: string) => doc(db, COLLECTIONS.users, uid);
 export const exercisesCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.exercises);
 export const plansCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.plans);
 export const logsCol = (uid: string) => collection(db, COLLECTIONS.users, uid, COLLECTIONS.logs);
-
-/** Newest session first: by session date, then by creation time. */
-export const sortLogsDesc = (logs: GymLogEntry[]): GymLogEntry[] =>
-    [...logs].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
 
 // ============================================================================
 // User document (profile + schema version)
@@ -150,18 +145,7 @@ const runLogsQuery = async (q: ReturnType<typeof query>): Promise<GymLogEntry[]>
     return sortLogsDesc(snap.docs.map((d) => logFromFirestore(d.id, d.data() as Record<string, any>)));
 };
 
-/** Logs whose session date is within [from, to] (inclusive, YYYY-MM-DD). */
-export const fetchLogsInRange = (uid: string, from: string, to: string) =>
-    runLogsQuery(query(logsCol(uid), where("date", ">=", from), where("date", "<=", to)));
-
 export const fetchAllLogs = (uid: string) => runLogsQuery(query(logsCol(uid)));
-
-/** The `count` most recent sessions by session date. */
-export const fetchLatestLogs = (uid: string, count: number) =>
-    runLogsQuery(query(logsCol(uid), orderBy("date", "desc"), limit(count)));
-
-export const fetchLogsByPlan = (uid: string, planId: string) =>
-    runLogsQuery(query(logsCol(uid), where("planId", "==", planId)));
 
 export const fetchLogsByDay = (uid: string, dayId: string) =>
     runLogsQuery(query(logsCol(uid), where("dayId", "==", dayId)));

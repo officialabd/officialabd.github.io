@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
-import { migrateUserIfNeeded } from "../services/migration";
+import { migrateUser, needsMigration } from "../services/migration";
 import * as gymService from "../services/gymService";
 import {
     useExercisesStore,
@@ -10,7 +10,6 @@ import {
     usePlansStore,
     useProfileStore,
     useSessionStore,
-    useStatsStore,
     useUIStore,
 } from "../stores";
 
@@ -21,36 +20,37 @@ const clearAll = () => {
     usePlansStore.getState().clear();
     useSessionStore.getState().clear();
     useLogsStore.getState().clear();
-    useStatsStore.getState().clear();
     useProfileStore.getState().clear();
     useUIStore.getState().reset();
 };
 
 /**
- * (Re)load all of the user's data into the stores: profile, exercise library,
- * plans and any running session. Also used after an import replaces data.
+ * (Re)load all of the user's data into the stores: profile, exercise library, plans and any
+ * running session, in one parallel round of reads. Logs load lazily (Logs / Stats tabs).
+ * Also used after an import or merge replaces data. Returns the user's schema version.
  */
-export async function loadAccount(uid: string): Promise<void> {
+export async function loadAccount(uid: string): Promise<{ schemaVersion: number }> {
     useSessionStore.getState().clear();
     useLogsStore.getState().clear();
-    useStatsStore.getState().clear();
 
-    const [{ profile }] = await Promise.all([
+    const session = useSessionStore.getState();
+    const [{ profile, schemaVersion }, , , hasRunning] = await Promise.all([
         gymService.fetchUser(uid),
         useExercisesStore.getState().load(),
         usePlansStore.getState().load(),
+        session.loadRunning(),
     ]);
     useProfileStore.getState().setProfile(profile);
     useUIStore.getState().setLogsWeightDisplay(profile.units.weight);
 
-    const session = useSessionStore.getState();
-    if (!(await session.loadRunning())) {
+    if (!hasRunning) {
         const firstPlan = usePlansStore.getState().plans[0];
         if (firstPlan) session.selectPlan(firstPlan.id);
     }
+    return { schemaVersion };
 }
 
-/** Prepares the signed-in user's data: migrates legacy data once, then loads everything. */
+/** Prepares the signed-in user's data: loads everything, migrating legacy data first if needed. */
 export function useGymBootstrap(user: User | null) {
     const [status, setStatus] = useState<BootstrapStatus>("idle");
     const [error, setError] = useState<string | null>(null);
@@ -59,8 +59,12 @@ export function useGymBootstrap(user: User | null) {
         setStatus("loading");
         setError(null);
         try {
-            await migrateUserIfNeeded(uid);
-            await loadAccount(uid);
+            const { schemaVersion } = await loadAccount(uid);
+            // Legacy data is migrated once; then everything is loaded again from the new structure.
+            if (needsMigration(schemaVersion)) {
+                await migrateUser(uid);
+                await loadAccount(uid);
+            }
             setStatus("ready");
         } catch (err) {
             console.error("Failed to load gym data", err);

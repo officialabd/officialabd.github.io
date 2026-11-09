@@ -5,7 +5,7 @@ import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import { WEIGHT_UNITS } from "../constants";
 import type { GymExercise, GymLogEntry, WeightUnit } from "../types";
-import { useExercisesStore, usePlansStore, useProfileStore, useStatsStore } from "../stores";
+import { useExercisesStore, useLogsStore, usePlansStore, useProfileStore } from "../stores";
 import {
     addDays,
     bodyWeightTrend,
@@ -61,7 +61,9 @@ const PERIODS: { value: StatsPeriod; label: string }[] = [
 const STALL_WINDOW = 4;
 
 export function StatsView() {
-    const { logs: allLogs, isLoading, error, load } = useStatsStore();
+    const { all, isLoading: downloading, error, reload } = useLogsStore();
+    const isLoading = downloading || (all === null && !error);
+    const allLogs = useMemo(() => all ?? [], [all]);
     const library = useExercisesStore((s) => s.exercises);
     const libraryById = useExercisesStore((s) => s.byId);
     const profile = useProfileStore((s) => s.profile);
@@ -107,7 +109,7 @@ export function StatsView() {
                         <Field as="div" label="Weights in">
                             <Segmented value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
                         </Field>
-                        <RefreshButton onClick={load} disabled={isLoading} />
+                        <RefreshButton onClick={reload} disabled={isLoading} />
                     </div>
                 </FilterBar>
 

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import LinePulse from "../_layouts/pulse/line";
 import { useGymAuth, useGymBootstrap } from "./hooks";
-import { useLogsStore, useProfileStore, useStatsStore, useUIStore } from "./stores";
+import { useLogsStore, useProfileStore, useSessionStore, useUIStore } from "./stores";
 import {
     AuthForm,
     ExercisesView,
@@ -23,7 +23,7 @@ export default function GymPage() {
     const { activeView, setActiveView, tick } = useUIStore();
     const needsOnboarding = useProfileStore((s) => s.needsOnboarding());
     const showDefaultLogs = useLogsStore((s) => s.showDefault);
-    const loadStats = useStatsStore((s) => s.load);
+    const ensureLogs = useLogsStore((s) => s.ensureLoaded);
 
     const isReady = !!user && status === "ready";
 
@@ -33,15 +33,17 @@ export default function GymPage() {
         return () => clearInterval(id);
     }, [tick]);
 
-    // Opening the logs tab shows its default view; filter changes reload from the Logs tab itself.
+    // Opening the logs tab shows its default view (the running session's day, if any).
+    // Logs are downloaded once and reused by Logs and Stats; Refresh downloads them again.
     useEffect(() => {
-        if (isReady && activeView === "logs") showDefaultLogs();
-    }, [isReady, activeView, showDefaultLogs]);
-
-    // Reload stats whenever the stats tab is shown, so finished sessions are included.
-    useEffect(() => {
-        if (isReady && activeView === "stats") loadStats();
-    }, [isReady, activeView, loadStats]);
+        if (!isReady) return;
+        if (activeView === "logs") {
+            const { draft, planId, dayId } = useSessionStore.getState();
+            showDefaultLogs(draft?.status === "running" ? { planId, dayId } : null);
+        } else if (activeView === "stats") {
+            ensureLogs();
+        }
+    }, [isReady, activeView, showDefaultLogs, ensureLogs]);
 
     return (
         <div className="min-h-screen bg-[#0b1222] text-white">

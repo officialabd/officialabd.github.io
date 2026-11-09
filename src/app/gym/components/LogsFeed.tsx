@@ -28,7 +28,9 @@ import { EditIcon } from "./icons";
 import { Button, EmptyState, Field, FilterBar, GymSelect, inputClass, Notice, RefreshButton, SectionTitle, Segmented } from "./ui";
 
 export function LogsFeed() {
-    const { logs, filter, isLoading, error, extendedBeyondRange, setFilter, load } = useLogsStore();
+    const { all, logs, filter, isLoading: downloading, error, extendedBeyondRange, setFilter, reload } = useLogsStore();
+    // Not downloaded yet counts as loading, so "No logs found" doesn't flash first.
+    const isLoading = downloading || (all === null && !error);
     const plans = usePlansStore((s) => s.plans);
     const { logsWeightDisplay, setLogsWeightDisplay } = useUIStore();
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function LogsFeed() {
                                 onChange={setLogsWeightDisplay}
                             />
                         </Field>
-                        <RefreshButton onClick={load} disabled={isLoading} />
+                        <RefreshButton onClick={reload} disabled={isLoading} />
                     </div>
                 </FilterBar>
 

@@ -14,7 +14,7 @@ import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "../../../../firebase";
 import { COLLECTIONS, SCHEMA_VERSION } from "../constants";
 import { exerciseToFirestore, logToFirestore, planToFirestore } from "./mappers";
-import { exercisesCol, fetchUser, logsCol, plansCol, userDoc } from "./gymService";
+import { exercisesCol, logsCol, plansCol, userDoc } from "./gymService";
 import { commitInBatches, type WriteOp } from "./batch";
 import { transformLegacy, type LegacyData } from "./legacyTransform";
 
@@ -29,14 +29,14 @@ async function readLegacy(uid: string): Promise<LegacyData> {
     };
 }
 
-/**
- * Migrates the signed-in user's legacy data once. Safe to call on every login:
- * returns immediately when the user is already on the current schema.
- */
-export async function migrateUserIfNeeded(uid: string): Promise<void> {
-    const { schemaVersion } = await fetchUser(uid);
-    if (schemaVersion >= SCHEMA_VERSION) return;
+/** Whether a user document at `schemaVersion` still needs the migration. */
+export const needsMigration = (schemaVersion: number): boolean => schemaVersion < SCHEMA_VERSION;
 
+/**
+ * Migrates the signed-in user's legacy data. Call it only when `needsMigration` says so
+ * (the schema version comes from the user document read while loading the account).
+ */
+export async function migrateUser(uid: string): Promise<void> {
     const legacy = await readLegacy(uid);
     const { exercises, plans, logs } = transformLegacy(legacy);
 

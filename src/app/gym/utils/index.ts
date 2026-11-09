@@ -6,6 +6,7 @@ export * from "./units";
 export * from "./logDraft";
 export * from "./groups";
 export * from "./stats";
+export * from "./logQuery";
 
 /** Generate a unique ID using crypto.randomUUID or a fallback. */
 export const generateId = (): string =>

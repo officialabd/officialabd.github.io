@@ -12,6 +12,7 @@ import {
 import { requireUid } from "./authStore";
 import { useExercisesStore } from "./exercisesStore";
 import { usePlansStore } from "./plansStore";
+import { useLogsStore } from "./logsStore";
 import { useProfileStore } from "./profileStore";
 
 export type PrefillMode = "values" | "session";
@@ -103,10 +104,11 @@ export const useSessionStore = create<SessionState>((set, get) => {
                 exercises: draft.exercises.map(normalizeLogExercise),
             };
             if (logId && createdAt) {
-                await gymService.updateLog(uid, logId, payload, createdAt);
+                useLogsStore.getState().upsert(await gymService.updateLog(uid, logId, payload, createdAt));
             } else {
                 const created = await gymService.createLog(uid, payload);
                 set({ logId: created.id, createdAt: created.createdAt });
+                useLogsStore.getState().upsert(created);
             }
         });
 
@@ -281,7 +283,10 @@ export const useSessionStore = create<SessionState>((set, get) => {
             try {
                 await writeQueue;
                 const { logId } = get();
-                if (logId) await enqueue(() => gymService.deleteLog(requireUid(), logId));
+                if (logId) {
+                    await enqueue(() => gymService.deleteLog(requireUid(), logId));
+                    useLogsStore.getState().remove(logId);
+                }
                 resetAfterSession();
             } finally {
                 set({ isBusy: false });

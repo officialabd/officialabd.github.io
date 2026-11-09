@@ -2,31 +2,40 @@ import { create } from "zustand";
 import { DEFAULT_LOGS_DAYS, MIN_DAY_LOGS } from "../constants";
 import type { GymLogEntry, LogDraft, LogsFilter } from "../types";
 import * as gymService from "../services/gymService";
-import { addDays, normalizeLogExercise, todayISO } from "../utils";
+import { addDays, normalizeLogExercise, selectLogs, sortLogsDesc, todayISO } from "../utils";
 import { requireUid } from "./authStore";
-import { useSessionStore } from "./sessionStore";
 
 interface LogsState {
-    logs: GymLogEntry[];
-    filter: LogsFilter;
     /**
-     * Showing the default view of a running session's day: older sessions are added when the
-     * last 30 days have fewer than MIN_DAY_LOGS. A filter set by the user always shows exact results.
+     * Every log of the account, newest first, downloaded once per app load (null until then).
+     * The Logs and Stats tabs filter it on the device; writes update it in place.
      */
+    all: GymLogEntry[] | null;
+    filter: LogsFilter;
+    /** Default view of a running session's day: top up to MIN_DAY_LOGS with older sessions. */
     padToMinimum: boolean;
-    isLoading: boolean;
-    error: string | null;
+    /** Logs shown in the Logs tab (derived from `all` and the filter). */
+    logs: GymLogEntry[];
     /** True when older sessions outside the date range were added to reach the minimum. */
     extendedBeyondRange: boolean;
+    isLoading: boolean;
+    error: string | null;
 
+    /** Download all logs unless already loaded (or loading). */
+    ensureLoaded: () => Promise<void>;
+    /** Download all logs again (Refresh). */
+    reload: () => Promise<void>;
     /**
-     * Default view when the tab is opened: with a running session, that day's sessions of the
-     * last 30 days (at least MIN_DAY_LOGS); otherwise every session of the last 30 days.
+     * Default Logs view when the tab is opened: with a running session (its plan/day), that day's
+     * sessions of the last 30 days (at least MIN_DAY_LOGS); otherwise every session of the last 30 days.
      */
-    showDefault: () => Promise<void>;
-    /** Change the filter (exact results) and reload. */
-    setFilter: (partial: Partial<LogsFilter>) => Promise<void>;
-    load: () => Promise<void>;
+    showDefault: (running: { planId: string; dayId: string } | null) => Promise<void>;
+    /** Change the filter; results are exact (no padding). */
+    setFilter: (partial: Partial<LogsFilter>) => void;
+    /** Add or replace a log in the cache (after a session save). */
+    upsert: (log: GymLogEntry) => void;
+    /** Drop a log from the cache (after a delete). */
+    remove: (logId: string) => void;
     saveLog: (log: GymLogEntry, draft: LogDraft) => Promise<void>;
     deleteLog: (logId: string) => Promise<void>;
     clear: () => void;
@@ -37,74 +46,96 @@ const recentFilter = (planId = "", dayId = ""): LogsFilter => {
     return { from: addDays(to, -DEFAULT_LOGS_DAYS), to, planId, dayId };
 };
 
-const inRange = (log: GymLogEntry, { from, to }: LogsFilter) => (!from || log.date >= from) && (!to || log.date <= to);
-
-/** Logs matching the filter, optionally topped up with the latest older sessions of the day. */
-async function queryLogs(uid: string, filter: LogsFilter, padToMinimum: boolean): Promise<{ logs: GymLogEntry[]; extended: boolean }> {
-    if (!filter.planId && !filter.dayId) {
-        return { logs: await gymService.fetchLogsInRange(uid, filter.from, filter.to), extended: false };
-    }
-    const matching = filter.dayId
-        ? await gymService.fetchLogsByDay(uid, filter.dayId)
-        : await gymService.fetchLogsByPlan(uid, filter.planId);
-    const ranged = matching.filter((l) => inRange(l, filter));
-    if (!padToMinimum || ranged.length >= MIN_DAY_LOGS) return { logs: ranged, extended: false };
-
-    const merged = new Map([...ranged, ...matching.slice(0, MIN_DAY_LOGS)].map((l) => [l.id, l]));
-    const logs = gymService.sortLogsDesc(Array.from(merged.values()));
-    return { logs, extended: logs.length > ranged.length };
-}
-
-const initialState = {
-    logs: [] as GymLogEntry[],
+const initialState = () => ({
+    all: null as GymLogEntry[] | null,
     filter: recentFilter(),
     padToMinimum: false,
+    logs: [] as GymLogEntry[],
+    extendedBeyondRange: false,
     isLoading: false,
     error: null as string | null,
-    extendedBeyondRange: false,
-};
+});
 
-export const useLogsStore = create<LogsState>((set, get) => ({
-    ...initialState,
+export const useLogsStore = create<LogsState>((set, get) => {
+    /** Shared in-flight download, so concurrent callers wait for the same request. */
+    let pending: Promise<void> | null = null;
+    /** Bumped by clear(): a download started for a previous account/state is ignored. */
+    let generation = 0;
 
-    showDefault: () => {
-        const { draft, planId, dayId } = useSessionStore.getState();
-        const running = draft?.status === "running";
-        set({ filter: running ? recentFilter(planId, dayId) : recentFilter(), padToMinimum: running });
-        return get().load();
-    },
+    /** Recompute the Logs tab list from the cache and filter. */
+    const apply = () => {
+        const { all, filter, padToMinimum } = get();
+        const { logs, extended } = selectLogs(all ?? [], filter, padToMinimum ? MIN_DAY_LOGS : 0);
+        set({ logs, extendedBeyondRange: extended });
+    };
 
-    setFilter: (partial) => {
-        set({ filter: { ...get().filter, ...partial }, padToMinimum: false });
-        return get().load();
-    },
+    const setAll = (all: GymLogEntry[]) => {
+        set({ all: sortLogsDesc(all) });
+        apply();
+    };
 
-    load: async () => {
-        const { filter, padToMinimum } = get();
-        set({ isLoading: true, error: null });
-        try {
-            const { logs, extended } = await queryLogs(requireUid(), filter, padToMinimum);
-            // Ignore stale responses if the filter changed while loading.
-            if (get().filter !== filter) return;
-            set({ logs, extendedBeyondRange: extended });
-        } catch (err) {
-            console.error("Failed to load logs", err);
-            set({ error: "Could not load logs. Please try again." });
-        } finally {
-            if (get().filter === filter) set({ isLoading: false });
-        }
-    },
+    const download = () => {
+        pending ??= (async () => {
+            const gen = generation;
+            set({ isLoading: true, error: null });
+            try {
+                const all = await gymService.fetchAllLogs(requireUid());
+                if (gen === generation) setAll(all);
+            } catch (err) {
+                console.error("Failed to load logs", err);
+                if (gen === generation) set({ error: "Could not load your sessions. Please try again." });
+            } finally {
+                if (gen === generation) {
+                    set({ isLoading: false });
+                    pending = null;
+                }
+            }
+        })();
+        return pending;
+    };
 
-    saveLog: async (log, draft) => {
-        const normalized: LogDraft = { ...draft, exercises: draft.exercises.map(normalizeLogExercise) };
-        const saved = await gymService.updateLog(requireUid(), log.id, normalized, log.createdAt);
-        set({ logs: gymService.sortLogsDesc(get().logs.map((l) => (l.id === log.id ? saved : l))) });
-    },
+    return {
+        ...initialState(),
 
-    deleteLog: async (logId) => {
-        await gymService.deleteLog(requireUid(), logId);
-        set({ logs: get().logs.filter((l) => l.id !== logId) });
-    },
+        ensureLoaded: () => (get().all ? Promise.resolve() : download()),
 
-    clear: () => set({ ...initialState, filter: recentFilter() }),
-}));
+        reload: download,
+
+        showDefault: (running) => {
+            set({ filter: running ? recentFilter(running.planId, running.dayId) : recentFilter(), padToMinimum: !!running });
+            apply();
+            return get().ensureLoaded();
+        },
+
+        setFilter: (partial) => {
+            set({ filter: { ...get().filter, ...partial }, padToMinimum: false });
+            apply();
+        },
+
+        upsert: (log) => {
+            const { all } = get();
+            if (all) setAll([...all.filter((l) => l.id !== log.id), log]);
+        },
+
+        remove: (logId) => {
+            const { all } = get();
+            if (all) setAll(all.filter((l) => l.id !== logId));
+        },
+
+        saveLog: async (log, draft) => {
+            const normalized: LogDraft = { ...draft, exercises: draft.exercises.map(normalizeLogExercise) };
+            get().upsert(await gymService.updateLog(requireUid(), log.id, normalized, log.createdAt));
+        },
+
+        deleteLog: async (logId) => {
+            await gymService.deleteLog(requireUid(), logId);
+            get().remove(logId);
+        },
+
+        clear: () => {
+            generation++;
+            pending = null;
+            set(initialState());
+        },
+    };
+});
