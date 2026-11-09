@@ -23,7 +23,6 @@ export default function GymPage() {
     const { activeView, setActiveView, tick } = useUIStore();
     const needsOnboarding = useProfileStore((s) => s.needsOnboarding());
     const showDefaultLogs = useLogsStore((s) => s.showDefault);
-    const ensureLogs = useLogsStore((s) => s.ensureLoaded);
 
     const isReady = !!user && status === "ready";
 
@@ -34,16 +33,12 @@ export default function GymPage() {
     }, [tick]);
 
     // Opening the logs tab shows its default view (the running session's day, if any).
-    // Logs are downloaded once and reused by Logs and Stats; Refresh downloads them again.
+    // Logs download only the dates a tab needs and are reused by Logs and Stats.
     useEffect(() => {
-        if (!isReady) return;
-        if (activeView === "logs") {
-            const { draft, planId, dayId } = useSessionStore.getState();
-            showDefaultLogs(draft?.status === "running" ? { planId, dayId } : null);
-        } else if (activeView === "stats") {
-            ensureLogs();
-        }
-    }, [isReady, activeView, showDefaultLogs, ensureLogs]);
+        if (!isReady || activeView !== "logs") return;
+        const { draft, planId, dayId } = useSessionStore.getState();
+        showDefaultLogs(draft?.status === "running" ? { planId, dayId } : null);
+    }, [isReady, activeView, showDefaultLogs]);
 
     return (
         <div className="min-h-screen bg-[#0b1222] text-white">

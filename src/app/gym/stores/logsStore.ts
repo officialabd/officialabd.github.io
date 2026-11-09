@@ -5,25 +5,34 @@ import * as gymService from "../services/gymService";
 import { addDays, normalizeLogExercise, selectLogs, sortLogsDesc, todayISO } from "../utils";
 import { requireUid } from "./authStore";
 
+/**
+ * Whether logs from `from` onwards are all in the cache.
+ * `coveredFrom`: null = nothing loaded, "" = everything; `from` "" = everything.
+ */
+export const coversFrom = (coveredFrom: string | null, from: string): boolean =>
+    coveredFrom === "" || (coveredFrom !== null && from !== "" && coveredFrom <= from);
+
 interface LogsState {
     /**
-     * Every log of the account, newest first, downloaded once per app load (null until then).
-     * The Logs and Stats tabs filter it on the device; writes update it in place.
+     * Logs downloaded so far, newest first. Only the dates that were needed are downloaded
+     * (Logs: its date range, Stats: its period); the Logs and Stats tabs filter this cache.
      */
-    all: GymLogEntry[] | null;
+    cache: GymLogEntry[];
+    /** Every log dated on/after this is in the cache: null = nothing yet, "" = all logs. */
+    coveredFrom: string | null;
     filter: LogsFilter;
     /** Default view of a running session's day: top up to MIN_DAY_LOGS with older sessions. */
     padToMinimum: boolean;
-    /** Logs shown in the Logs tab (derived from `all` and the filter). */
+    /** Logs shown in the Logs tab (derived from the cache and the filter). */
     logs: GymLogEntry[];
     /** True when older sessions outside the date range were added to reach the minimum. */
     extendedBeyondRange: boolean;
     isLoading: boolean;
     error: string | null;
 
-    /** Download all logs unless already loaded (or loading). */
-    ensureLoaded: () => Promise<void>;
-    /** Download all logs again (Refresh). */
+    /** Make sure every log dated on/after `from` is cached ("" = all logs). */
+    ensureFrom: (from: string) => Promise<void>;
+    /** Download the cached range again (Refresh). */
     reload: () => Promise<void>;
     /**
      * Default Logs view when the tab is opened: with a running session (its plan/day), that day's
@@ -31,7 +40,7 @@ interface LogsState {
      */
     showDefault: (running: { planId: string; dayId: string } | null) => Promise<void>;
     /** Change the filter; results are exact (no padding). */
-    setFilter: (partial: Partial<LogsFilter>) => void;
+    setFilter: (partial: Partial<LogsFilter>) => Promise<void>;
     /** Add or replace a log in the cache (after a session save). */
     upsert: (log: GymLogEntry) => void;
     /** Drop a log from the cache (after a delete). */
@@ -47,7 +56,8 @@ const recentFilter = (planId = "", dayId = ""): LogsFilter => {
 };
 
 const initialState = () => ({
-    all: null as GymLogEntry[] | null,
+    cache: [] as GymLogEntry[],
+    coveredFrom: null as string | null,
     filter: recentFilter(),
     padToMinimum: false,
     logs: [] as GymLogEntry[],
@@ -57,69 +67,124 @@ const initialState = () => ({
 });
 
 export const useLogsStore = create<LogsState>((set, get) => {
-    /** Shared in-flight download, so concurrent callers wait for the same request. */
-    let pending: Promise<void> | null = null;
-    /** Bumped by clear(): a download started for a previous account/state is ignored. */
+    /** Downloads run one after another, so each one sees the coverage left by the previous. */
+    let queue: Promise<unknown> = Promise.resolve();
+    /** Bumped by reset(): downloads started before it are ignored. */
     let generation = 0;
+    /** Downloads of the current generation still running. */
+    let active = 0;
+    /** Plan days whose full history was fetched to top up the default view. */
+    let paddedDays = new Set<string>();
+
+    const reset = () => {
+        generation++;
+        active = 0;
+        paddedDays = new Set();
+    };
 
     /** Recompute the Logs tab list from the cache and filter. */
     const apply = () => {
-        const { all, filter, padToMinimum } = get();
-        const { logs, extended } = selectLogs(all ?? [], filter, padToMinimum ? MIN_DAY_LOGS : 0);
+        const { cache, filter, padToMinimum } = get();
+        const { logs, extended } = selectLogs(cache, filter, padToMinimum ? MIN_DAY_LOGS : 0);
         set({ logs, extendedBeyondRange: extended });
     };
 
-    const setAll = (all: GymLogEntry[]) => {
-        set({ all: sortLogsDesc(all) });
+    const merge = (logs: GymLogEntry[]) => {
+        const byId = new Map(get().cache.map((l) => [l.id, l]));
+        logs.forEach((l) => byId.set(l.id, l));
+        set({ cache: sortLogsDesc(Array.from(byId.values())) });
         apply();
     };
 
-    const download = () => {
-        pending ??= (async () => {
-            const gen = generation;
+    /** Queue a download; skipped when `isNeeded` is false by the time it runs. */
+    const download = (isNeeded: () => boolean, fetch: (uid: string) => Promise<void>) => {
+        const gen = generation;
+        const run = async () => {
+            if (gen !== generation || !isNeeded()) return;
+            active++;
             set({ isLoading: true, error: null });
             try {
-                const all = await gymService.fetchAllLogs(requireUid());
-                if (gen === generation) setAll(all);
+                await fetch(requireUid());
             } catch (err) {
                 console.error("Failed to load logs", err);
                 if (gen === generation) set({ error: "Could not load your sessions. Please try again." });
             } finally {
                 if (gen === generation) {
-                    set({ isLoading: false });
-                    pending = null;
+                    active--;
+                    set({ isLoading: active > 0 });
                 }
             }
-        })();
-        return pending;
+        };
+        const task = queue.then(run);
+        queue = task.catch(() => undefined);
+        return task;
+    };
+
+    const ensureFrom = (from: string) =>
+        download(
+            () => !coversFrom(get().coveredFrom, from),
+            async (uid) => {
+                const gen = generation;
+                // Only the missing part: from `from` up to where the cache already starts.
+                const logs = await gymService.fetchLogsBetween(uid, from, get().coveredFrom || null);
+                if (gen !== generation) return;
+                merge(logs);
+                set({ coveredFrom: from });
+            }
+        );
+
+    /** For the running session's default view: fetch the day's older sessions if fewer than the minimum are cached. */
+    const padDay = (dayId: string) =>
+        download(
+            () => get().padToMinimum && !paddedDays.has(dayId) && get().logs.length < MIN_DAY_LOGS,
+            async (uid) => {
+                const gen = generation;
+                const logs = await gymService.fetchLogsByDay(uid, dayId);
+                if (gen !== generation) return;
+                paddedDays.add(dayId);
+                merge(logs);
+            }
+        );
+
+    /** Load what the current Logs filter needs. */
+    const loadForFilter = async () => {
+        const { filter, padToMinimum } = get();
+        await ensureFrom(filter.from);
+        if (padToMinimum && filter.dayId) await padDay(filter.dayId);
     };
 
     return {
         ...initialState(),
 
-        ensureLoaded: () => (get().all ? Promise.resolve() : download()),
+        ensureFrom,
 
-        reload: download,
+        reload: async () => {
+            const { coveredFrom, filter } = get();
+            const target = coveredFrom ?? filter.from;
+            reset();
+            set({ cache: [], coveredFrom: null, isLoading: false, error: null });
+            apply();
+            await ensureFrom(target);
+            if (get().padToMinimum && get().filter.dayId) await padDay(get().filter.dayId);
+        },
 
         showDefault: (running) => {
             set({ filter: running ? recentFilter(running.planId, running.dayId) : recentFilter(), padToMinimum: !!running });
             apply();
-            return get().ensureLoaded();
+            return loadForFilter();
         },
 
         setFilter: (partial) => {
             set({ filter: { ...get().filter, ...partial }, padToMinimum: false });
             apply();
+            return loadForFilter();
         },
 
-        upsert: (log) => {
-            const { all } = get();
-            if (all) setAll([...all.filter((l) => l.id !== log.id), log]);
-        },
+        upsert: (log) => merge([log]),
 
         remove: (logId) => {
-            const { all } = get();
-            if (all) setAll(all.filter((l) => l.id !== logId));
+            set({ cache: get().cache.filter((l) => l.id !== logId) });
+            apply();
         },
 
         saveLog: async (log, draft) => {
@@ -133,8 +198,7 @@ export const useLogsStore = create<LogsState>((set, get) => {
         },
 
         clear: () => {
-            generation++;
-            pending = null;
+            reset();
             set(initialState());
         },
     };

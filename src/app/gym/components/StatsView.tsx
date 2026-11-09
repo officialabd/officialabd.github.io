@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Card from "./Card";
 import LinePulse from "../../_layouts/pulse/line";
 import { WEIGHT_UNITS } from "../constants";
 import type { GymExercise, GymLogEntry, WeightUnit } from "../types";
-import { useExercisesStore, useLogsStore, usePlansStore, useProfileStore } from "../stores";
+import { coversFrom, useExercisesStore, useLogsStore, usePlansStore, useProfileStore } from "../stores";
 import {
     addDays,
     bodyWeightTrend,
@@ -61,9 +61,7 @@ const PERIODS: { value: StatsPeriod; label: string }[] = [
 const STALL_WINDOW = 4;
 
 export function StatsView() {
-    const { all, isLoading: downloading, error, reload } = useLogsStore();
-    const isLoading = downloading || (all === null && !error);
-    const allLogs = useMemo(() => all ?? [], [all]);
+    const { cache: allLogs, coveredFrom, isLoading: downloading, error, reload, ensureFrom } = useLogsStore();
     const library = useExercisesStore((s) => s.exercises);
     const libraryById = useExercisesStore((s) => s.byId);
     const profile = useProfileStore((s) => s.profile);
@@ -74,6 +72,12 @@ export function StatsView() {
 
     const today = todayISO();
     const from = periodStart(period, today);
+    // Download only the period being viewed ("" = all); already cached dates are reused.
+    const needFrom = from ?? "";
+    useEffect(() => {
+        ensureFrom(needFrom);
+    }, [needFrom, ensureFrom]);
+    const isLoading = downloading || (!coversFrom(coveredFrom, needFrom) && !error);
     const logs = useMemo(() => filterLogs(allLogs, from, gym), [allLogs, from, gym]);
     const gymOptions = useMemo(
         () => Array.from(new Set([...profile.gyms, ...allLogs.map((l) => l.gym).filter((g): g is string => !!g)])),

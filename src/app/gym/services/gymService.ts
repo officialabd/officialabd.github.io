@@ -147,6 +147,16 @@ const runLogsQuery = async (q: ReturnType<typeof query>): Promise<GymLogEntry[]>
 
 export const fetchAllLogs = (uid: string) => runLogsQuery(query(logsCol(uid)));
 
+/** Logs dated on/after `from` ("" = no lower bound) and before `before` (null = no upper bound). */
+export const fetchLogsBetween = (uid: string, from: string, before: string | null) =>
+    runLogsQuery(
+        query(
+            logsCol(uid),
+            ...(from ? [where("date", ">=", from)] : []),
+            ...(before ? [where("date", "<", before)] : [])
+        )
+    );
+
 export const fetchLogsByDay = (uid: string, dayId: string) =>
     runLogsQuery(query(logsCol(uid), where("dayId", "==", dayId)));
 
