@@ -16,7 +16,7 @@ import {
     formatPace,
     formatTime,
     getExerciseStatus,
-    isSetFilled,
+    hasSetValues,
     isTimeUnit,
     isWeightExercise,
     isWeightUnit,
@@ -24,8 +24,8 @@ import {
     unitLabel,
 } from "../utils";
 import { LogExercisesEditor } from "./LogExercisesEditor";
-import { EditIcon, RefreshIcon } from "./icons";
-import { Button, EmptyState, Field, FilterBar, GymSelect, HeaderButton, inputClass, Notice, SectionTitle, Segmented } from "./ui";
+import { EditIcon } from "./icons";
+import { Button, EmptyState, Field, FilterBar, GymSelect, inputClass, Notice, RefreshButton, SectionTitle, Segmented } from "./ui";
 
 export function LogsFeed() {
     const { logs, filter, isLoading, error, extendedBeyondRange, setFilter, load } = useLogsStore();
@@ -38,13 +38,7 @@ export function LogsFeed() {
     return (
         <Card
             heading={
-                <SectionTitle
-                    text="Logs"
-                    pageTitle
-                    actions={
-                        <HeaderButton variant="neutral" icon={<RefreshIcon />} label="Refresh" onClick={load} disabled={isLoading} />
-                    }
-                />
+                <SectionTitle text="Logs" pageTitle />
             }
         >
             <div className="space-y-4">
@@ -94,6 +88,7 @@ export function LogsFeed() {
                             onChange={setLogsWeightDisplay}
                         />
                     </Field>
+                    <RefreshButton onClick={load} disabled={isLoading} />
                 </FilterBar>
 
                 {isLoading && <LinePulse />}
@@ -218,15 +213,15 @@ function LogEntryCard({ log, weightDisplay, onEdit }: { log: GymLogEntry; weight
             <div className="rounded-lg border border-slate-800 bg-slate-900/50 divide-y divide-slate-800">
                 {log.exercises.map((ex, idx) => {
                     const status = getExerciseStatus(ex);
-                    const filledSets = ex.sets.filter((s) => isSetFilled(s, ex.type));
+                    const filledSets = ex.sets.filter(hasSetValues);
                     return (
                         <div key={idx} className="px-3 py-2 space-y-1 sm:grid sm:grid-cols-[35%_10%_1fr_10%] sm:items-center sm:gap-3 sm:space-y-0">
-                            <div className="flex justify-between sm:block">
-                                <div>
+                            <div className="flex items-start justify-between gap-3 sm:block">
+                                <div className="min-w-0">
                                     <div className="text-sm font-semibold text-slate-100">{ex.name}</div>
                                     {ex.groups.length > 0 && <div className="text-xs text-slate-400">{formatGroups(ex.groups)}</div>}
                                 </div>
-                                <span className="sm:hidden text-[11px] text-slate-300">
+                                <span className="sm:hidden shrink-0 whitespace-nowrap text-[11px] text-slate-300">
                                     {perLabel(ex.per)} •
                                     <span className={`ml-1 rounded-md px-1 py-0.5 text-xs font-semibold text-black ${status.bgColor}`}>
                                         {ex.skipped ? "Skipped" : `${status.filled}/${status.total}`}

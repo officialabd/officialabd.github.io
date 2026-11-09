@@ -7,7 +7,7 @@ import type { GymExercise, GymPlan, GymPlanDay } from "../types";
 import { useExercisesStore, usePlansStore } from "../stores";
 import { confirmAction, formatDate, formatGroups, groupColor, openExerciseSearch, perLabel } from "../utils";
 import { ExercisePicker } from "./ExercisePicker";
-import { DragIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
+import { CheckIcon, DragIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
 import { Button, EmptyState, Field, HeaderButton, inputClass, listClass, Notice, rowClass, SectionTitle } from "./ui";
 
 export function PlansView() {
@@ -49,6 +49,7 @@ export function PlansView() {
                             {plans.map((p) => {
                                 const current = store.getPlan(p.id) ?? p;
                                 const selected = p.id === selectedPlanId;
+                                const editing = selected && isEditMode;
                                 return (
                                     <div
                                         key={p.id}
@@ -58,16 +59,32 @@ export function PlansView() {
                                         }}
                                         className={rowClass(selected)}
                                     >
-                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-                                            <span className={`font-medium min-w-[180px] ${selected ? "text-blue-300" : "text-slate-200"}`}>
-                                                {current.title}
-                                                {drafts[p.id] && <span className="ml-2 text-[11px] text-amber-300">• unsaved</span>}
-                                            </span>
-                                            <span className="text-sm text-slate-400">
-                                                {current.days.length} {current.days.length === 1 ? "day" : "days"}
-                                            </span>
-                                            <span className="text-xs text-slate-500">Created: {formatDate(p.createdAt)}</span>
-                                            <span className="text-xs text-slate-500">Updated: {formatDate(p.updatedAt)}</span>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-1">
+                                                <span className={`font-medium min-w-[180px] ${selected ? "text-blue-300" : "text-slate-200"}`}>
+                                                    {current.title}
+                                                    {drafts[p.id] && <span className="ml-2 text-[11px] text-amber-300">• unsaved</span>}
+                                                </span>
+                                                <span className="text-sm text-slate-400">
+                                                    {current.days.length} {current.days.length === 1 ? "day" : "days"}
+                                                </span>
+                                                <span className="text-xs text-slate-500">Created: {formatDate(p.createdAt)}</span>
+                                                <span className="text-xs text-slate-500">Updated: {formatDate(p.updatedAt)}</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!selected) store.selectPlan(p.id);
+                                                    setIsEditMode(!editing);
+                                                }}
+                                                className={`shrink-0 p-1 ${editing ? "text-emerald-300 hover:text-emerald-200" : "text-amber-300 hover:text-amber-200"}`}
+                                                aria-label={editing ? `Done editing ${current.title}` : `Edit ${current.title}`}
+                                                aria-pressed={editing}
+                                                title={editing ? "Done editing" : "Edit plan"}
+                                            >
+                                                {editing ? <CheckIcon className="w-4 h-4" /> : <EditIcon className="w-4 h-4" />}
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -75,19 +92,7 @@ export function PlansView() {
                         </div>
                     )}
 
-                    {plan && (
-                        <div className="flex items-center justify-between gap-3 pt-2">
-                            {plan.note && !isEditMode && <div className="text-sm text-slate-300 flex-1">{plan.note}</div>}
-                            <Button
-                                className="ml-auto"
-                                variant={isEditMode ? "neutral" : "primary"}
-                                onClick={() => setIsEditMode(!isEditMode)}
-                            >
-                                <EditIcon className="w-4 h-4" />
-                                {isEditMode ? "Done Editing" : "Edit Plan"}
-                            </Button>
-                        </div>
-                    )}
+                    {plan?.note && !isEditMode && <div className="text-sm text-slate-300">{plan.note}</div>}
 
                     {plan && isEditMode && (
                         <div className="space-y-4 rounded-2xl border border-blue-500/30 bg-slate-900/40 p-4 shadow-md">

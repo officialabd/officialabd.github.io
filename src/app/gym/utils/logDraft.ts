@@ -21,9 +21,21 @@ import { isTimeUnit } from "./units";
 
 export const emptySet = (): GymSet => ({ value: null, reps: null, distance: null, calories: null, completed: null });
 
-/** A set counts as done when its main value is entered: reps for reps-only exercises, otherwise weight/time or distance. */
-export const isSetFilled = (set: GymSet, type: ExerciseType): boolean =>
-    type === "reps" ? set.reps !== null : set.value !== null || set.distance !== null;
+/**
+ * Whether a set is complete:
+ * - weight exercises: both weight and reps entered;
+ * - reps-only exercises: reps entered;
+ * - running and other timed exercises: time entered.
+ */
+export const isSetFilled = (set: GymSet, exercise: { type: ExerciseType; per: Per }): boolean => {
+    if (exercise.type === "reps") return set.reps !== null;
+    if (isWeightExercise(exercise)) return set.value !== null && set.reps !== null;
+    return set.value !== null;
+};
+
+/** Whether anything was entered in a set, complete or not (logs still show partly filled sets). */
+export const hasSetValues = (set: GymSet): boolean =>
+    set.value !== null || set.reps !== null || set.distance !== null || set.calories !== null;
 
 export const resizeSets = (sets: GymSet[], count: number): GymSet[] => {
     const safe = Math.max(0, count);
@@ -93,7 +105,7 @@ export const logExerciseFromLibrary = (ex: GymExercise): GymLogExercise => ({
 
 /** Recompute the completed flags from the set values. A skipped exercise is never completed. */
 export const normalizeLogExercise = (ex: GymLogExercise): GymLogExercise => {
-    const sets = ex.sets.map((s) => ({ ...s, completed: isSetFilled(s, ex.type) ? true : null }));
+    const sets = ex.sets.map((s) => ({ ...s, completed: isSetFilled(s, ex) ? true : null }));
     const allFilled = sets.length > 0 && sets.every((s) => s.completed);
     return { ...ex, sets, completed: allFilled && !ex.skipped ? true : null };
 };

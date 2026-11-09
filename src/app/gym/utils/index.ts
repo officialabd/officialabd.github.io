@@ -132,7 +132,7 @@ export interface ExerciseStatus {
 
 export const getExerciseStatus = (exercise: GymLogExercise): ExerciseStatus => {
     const total = exercise.sets.length;
-    const filled = exercise.sets.filter((s) => isSetFilled(s, exercise.type)).length;
+    const filled = exercise.sets.filter((s) => isSetFilled(s, exercise)).length;
     if (exercise.skipped) {
         return {
             label: "Skipped", filled, total,

@@ -288,7 +288,7 @@ export const muscleSets = (logs: GymLogEntry[], library: Map<string, GymExercise
     const totals = new Map<MuscleGroup, number>();
     logs.forEach((log) =>
         doneExercises(log).forEach((ex) => {
-            const sets = ex.sets.filter((s) => isSetFilled(s, ex.type)).length;
+            const sets = ex.sets.filter((s) => isSetFilled(s, ex)).length;
             if (!sets) return;
             const groups = (ex.exerciseId && library.get(ex.exerciseId)?.groups) || ex.groups;
             groups.forEach((g) => totals.set(g, (totals.get(g) ?? 0) + sets));
@@ -322,7 +322,7 @@ export const repRangeCounts = (logs: GymLogEntry[]): number[] => {
         doneExercises(log).forEach((ex) => {
             if (ex.type === "time") return;
             ex.sets.forEach((s) => {
-                if (!s.reps || !isSetFilled(s, ex.type)) return;
+                if (!s.reps || !isSetFilled(s, ex)) return;
                 const i = REP_RANGES.findIndex((r) => s.reps! >= r.min && s.reps! <= r.max);
                 if (i >= 0) counts[i]++;
             });

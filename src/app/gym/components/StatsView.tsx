@@ -35,16 +35,15 @@ import {
     type StatsPeriod,
 } from "../utils";
 import { BarList, CalendarHeatmap, LineChart, SegmentedBar, SERIES_COLORS } from "./charts";
-import { RefreshIcon } from "./icons";
 import {
     compactInputClass,
     EmptyState,
     Field,
     FilterBar,
-    HeaderButton,
     InfoTip,
     inputClass,
     Notice,
+    RefreshButton,
     SectionTitle,
     Segmented,
     StatTile,
@@ -82,13 +81,7 @@ export function StatsView() {
     return (
         <Card
             heading={
-                <SectionTitle
-                    text="Stats"
-                    pageTitle
-                    actions={
-                        <HeaderButton variant="neutral" icon={<RefreshIcon />} label="Refresh" onClick={load} disabled={isLoading} />
-                    }
-                />
+                <SectionTitle text="Stats" pageTitle />
             }
         >
             <div className="space-y-4">
@@ -112,6 +105,7 @@ export function StatsView() {
                     <Field as="div" label="Weights in">
                         <Segmented value={unit} options={WEIGHT_UNITS.map((u) => ({ value: u }))} onChange={setUnit} />
                     </Field>
+                    <RefreshButton onClick={load} disabled={isLoading} />
                 </FilterBar>
 
                 {isLoading && allLogs.length === 0 && <LinePulse />}

@@ -15,7 +15,7 @@ import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import Basic from "../../_layouts/texts/basic";
 import type { SaveState } from "../types";
 import { unitLabel } from "../utils";
-import { CloseIcon, InfoIcon } from "./icons";
+import { CloseIcon, InfoIcon, RefreshIcon } from "./icons";
 
 /** Regular text input / select / textarea. */
 export const inputClass =
@@ -70,9 +70,22 @@ export function Field({
     );
 }
 
-/** One row of filters at the top of a tab. */
+/**
+ * One row of filters at the top of a tab. On phones every item takes a full row; on larger screens
+ * items size to their content, with a minimum width only for dropdowns/inputs (labelled Fields).
+ */
 export function FilterBar({ children }: { children: ReactNode }) {
-    return <div className="flex flex-wrap items-end gap-3 [&>*]:w-full sm:[&>*]:w-auto sm:[&>*]:min-w-[9rem]">{children}</div>;
+    return <div className="flex flex-wrap items-end gap-3 [&>*]:w-full sm:[&>*]:w-auto sm:[&>label]:min-w-[9rem]">{children}</div>;
+}
+
+/** Reload button, placed as the last item of a FilterBar. */
+export function RefreshButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+    return (
+        <Button variant="neutral" onClick={onClick} disabled={disabled}>
+            <RefreshIcon />
+            Refresh
+        </Button>
+    );
 }
 
 /** Small summary figure (label, value, optional hint), used in Profile and Stats. */
