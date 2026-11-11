@@ -182,9 +182,12 @@ export const exerciseRecords = (logs: GymLogEntry[], library: GymExercise[], uni
         ];
     });
 
-export type Trend = "stalled" | "declining";
+export type Trend = "improving" | "stalled" | "declining";
 
-export interface StalledExercise {
+/** Table order: the exercises that need attention first. */
+const TREND_ORDER: Record<Trend, number> = { declining: 0, stalled: 1, improving: 2 };
+
+export interface ExerciseTrend {
     exercise: GymExercise;
     trend: Trend;
     /** Best score before the recent window, and the best within it (e1RM, or top weight without reps). */
@@ -195,28 +198,33 @@ export interface StalledExercise {
 }
 
 /**
- * Exercises that haven't beaten their earlier best in the last `window` sessions.
- * Within 5% of the best counts as stalled; further below counts as declining.
+ * Each exercise's best of the last `window` sessions against its best before them.
+ * Above the earlier best counts as improving, within 5% below as stalled, further below as declining.
+ * Exercises with `window` sessions or fewer have nothing to compare and are left out.
  */
-export const stalledExercises = (
+export const exerciseTrends = (
     logs: GymLogEntry[],
     library: GymExercise[],
     unit: WeightUnit,
     window: number
-): StalledExercise[] =>
+): ExerciseTrend[] =>
     loggedWeightExercises(logs, library)
-        .flatMap((exercise): StalledExercise[] => {
+        .flatMap((exercise): ExerciseTrend[] => {
             const sessions = exerciseSessions(logs, exercise.id, unit);
             if (sessions.length <= window) return [];
             const score = (s: ExerciseSession) => s.e1rm ?? s.topWeight;
             const previousBest = Math.max(...sessions.slice(0, -window).map(score));
             const recentBest = Math.max(...sessions.slice(-window).map(score));
-            if (recentBest > previousBest) return [];
             const lastPrIndex = sessions.map((s) => s.isPr).lastIndexOf(true);
             return [
                 {
                     exercise,
-                    trend: recentBest >= previousBest * 0.95 ? "stalled" : "declining",
+                    trend:
+                        recentBest > previousBest
+                            ? "improving"
+                            : recentBest >= previousBest * 0.95
+                              ? "stalled"
+                              : "declining",
                     previousBest,
                     recentBest,
                     lastPrDate: sessions[lastPrIndex].date,
@@ -224,7 +232,7 @@ export const stalledExercises = (
                 },
             ];
         })
-        .sort((a, b) => b.sessionsSincePr - a.sessionsSincePr);
+        .sort((a, b) => TREND_ORDER[a.trend] - TREND_ORDER[b.trend] || b.sessionsSincePr - a.sessionsSincePr);
 
 // ============================================================================
 // Consistency

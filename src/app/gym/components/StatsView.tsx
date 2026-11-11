@@ -13,6 +13,7 @@ import {
     dateValue,
     exerciseRecords,
     exerciseSessions,
+    exerciseTrends,
     filterLogs,
     formatISODate,
     groupLabel,
@@ -27,12 +28,12 @@ import {
     round,
     runs,
     sessionDurations,
-    stalledExercises,
     todayISO,
     unitLabel,
     weekStart,
     weeksInPeriod,
     type StatsPeriod,
+    type Trend,
 } from "../utils";
 import { BarList, CalendarHeatmap, LineChart, SegmentedBar, SERIES_COLORS } from "./charts";
 import {
@@ -128,7 +129,7 @@ export function StatsView() {
                             <ConsistencyPanel logs={logs} from={from} today={today} />
                             <StrengthPanel logs={logs} library={library} unit={unit} />
                             <RecordsPanel logs={logs} library={library} unit={unit} />
-                            <StalledPanel logs={logs} library={library} unit={unit} />
+                            <ProgressPanel logs={logs} library={library} unit={unit} />
                             <MusclePanel logs={logs} from={from} today={today} library={libraryById} />
                             <RepRangePanel logs={logs} />
                             <DurationPanel logs={logs} />
@@ -379,14 +380,21 @@ function RecordsPanel({ logs, library, unit }: { logs: GymLogEntry[]; library: G
     );
 }
 
-function StalledPanel({ logs, library, unit }: { logs: GymLogEntry[]; library: GymExercise[]; unit: WeightUnit }) {
-    const stalled = useMemo(() => stalledExercises(logs, library, unit, STALL_WINDOW), [logs, library, unit]);
+const TREND_LABEL: Record<Trend, { text: string; color: string }> = {
+    improving: { text: "▲ Improving", color: "text-emerald-300" },
+    stalled: { text: "■ Stalled", color: "text-amber-200" },
+    declining: { text: "▼ Declining", color: "text-rose-300" },
+};
+
+function ProgressPanel({ logs, library, unit }: { logs: GymLogEntry[]; library: GymExercise[]; unit: WeightUnit }) {
+    const trends = useMemo(() => exerciseTrends(logs, library, unit, STALL_WINDOW), [logs, library, unit]);
     const u = unitLabel(unit);
     return (
         <Panel
-            title="Stalled or declining"
-            subtitle={`No new best in the last ${STALL_WINDOW} sessions.`}
+            title="Progress by exercise"
+            subtitle={`Your last ${STALL_WINDOW} sessions against your earlier best.`}
             tips={[
+                ["Improving", `A new best in the last ${STALL_WINDOW} sessions.`],
                 ["Stalled", `No new best in the last ${STALL_WINDOW} sessions, but within 5% of your earlier best.`],
                 ["Declining", `Your best of the last ${STALL_WINDOW} sessions is more than 5% below your earlier best.`],
                 ["Earlier best", `Your best Est. 1 Rep Max before the last ${STALL_WINDOW} sessions (heaviest set when no reps were logged).`],
@@ -394,17 +402,15 @@ function StalledPanel({ logs, library, unit }: { logs: GymLogEntry[]; library: G
                 ["Last PR", "When you last set a personal record, and how many sessions ago."],
             ]}
         >
-            {stalled.length === 0 ? (
-                <EmptyState>Everything with enough sessions is still progressing.</EmptyState>
+            {trends.length === 0 ? (
+                <EmptyState>No exercise has more than {STALL_WINDOW} sessions in this period yet.</EmptyState>
             ) : (
                 <Table head={["Exercise", "Status", "Earlier best", "Recent best", "Last PR"]}>
-                    {stalled.map((s) => (
+                    {trends.map((s) => (
                         <tr key={s.exercise.id}>
                             <Cell first>{s.exercise.name}</Cell>
                             <Cell>
-                                <span className={s.trend === "declining" ? "text-rose-300" : "text-amber-200"}>
-                                    {s.trend === "declining" ? "▼ Declining" : "■ Stalled"}
-                                </span>
+                                <span className={TREND_LABEL[s.trend].color}>{TREND_LABEL[s.trend].text}</span>
                             </Cell>
                             <Cell>{fmt(s.previousBest, u)}</Cell>
                             <Cell sub={pct(s.recentBest / s.previousBest)}>{fmt(s.recentBest, u)}</Cell>
