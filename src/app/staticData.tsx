@@ -17,7 +17,7 @@ const firebaseConst = {
             }
         },
         technologies: "technologies",
-        experiences: "experiences"
+        experiences: "experiences",
     }
 }
 
