@@ -10,7 +10,7 @@ import { doc, getDocs, setDoc, type CollectionReference } from "firebase/firesto
 import { SCHEMA_VERSION } from "../constants";
 import { commitInBatches, type WriteOp } from "./batch";
 import * as gymService from "./gymService";
-import { exerciseToFirestore, logToFirestore, planToFirestore, profileToFirestore } from "./mappers";
+import { dropNulls, exerciseToFirestore, logToFirestore, planToFirestore, profileToFirestore } from "./mappers";
 import { FILE_FORMAT, FILE_VERSION, scopeIncludes, type TransferData, type TransferFile, type TransferScope } from "./transferFormat";
 
 export * from "./transferFormat";
@@ -32,10 +32,11 @@ export async function buildExport(uid: string, scope: TransferScope, email: stri
         scope,
         exportedAt: new Date().toISOString(),
         email,
-        ...(user && { profile: user.profile }),
-        ...(exercises && { exercises }),
-        ...(plans && { plans }),
-        ...(logs && { logs }),
+        // Empty (null) fields are left out; importing reads a missing field as empty.
+        ...(user && { profile: dropNulls(user.profile) }),
+        ...(exercises && { exercises: dropNulls(exercises) }),
+        ...(plans && { plans: dropNulls(plans) }),
+        ...(logs && { logs: dropNulls(logs) }),
     };
 }
 

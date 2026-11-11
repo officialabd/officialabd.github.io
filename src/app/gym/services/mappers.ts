@@ -47,6 +47,22 @@ const parsePer = (v: unknown): Per => oneOf(v, PERS, "1hand");
 const parseDistanceUnit = (v: unknown, per: Per): DistanceUnit | null =>
     per === "running" ? oneOf(v, DISTANCE_UNITS, "km") : null;
 
+/**
+ * Remove `null` object fields at every depth (list items are kept as they are), so empty values aren't stored.
+ * Reads treat a missing field as `null`. Not for documents written with `merge`, where a missing field keeps its old value.
+ */
+export const dropNulls = <T>(value: T): T => {
+    if (Array.isArray(value)) return value.map(dropNulls) as T;
+    if (value !== null && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value)
+                .filter(([, v]) => v !== null)
+                .map(([k, v]) => [k, dropNulls(v)])
+        ) as T;
+    }
+    return value;
+};
+
 // ============================================================================
 // Exercises
 // ============================================================================
@@ -68,18 +84,19 @@ export const exerciseFromFirestore = (id: string, data: Data): GymExercise => {
     };
 };
 
-export const exerciseToFirestore = (ex: GymExerciseInput & { createdAt: number; updatedAt: number }) => ({
-    name: ex.name,
-    nameKey: ex.name.toLowerCase(),
-    groups: ex.groups,
-    type: ex.type,
-    unit: ex.unit,
-    per: ex.per,
-    distanceUnit: ex.per === "running" ? ex.distanceUnit ?? "km" : null,
-    setsNo: ex.setsNo,
-    createdAt: ex.createdAt,
-    updatedAt: ex.updatedAt,
-});
+export const exerciseToFirestore = (ex: GymExerciseInput & { createdAt: number; updatedAt: number }) =>
+    dropNulls({
+        name: ex.name,
+        nameKey: ex.name.toLowerCase(),
+        groups: ex.groups,
+        type: ex.type,
+        unit: ex.unit,
+        per: ex.per,
+        distanceUnit: ex.per === "running" ? ex.distanceUnit ?? "km" : null,
+        setsNo: ex.setsNo,
+        createdAt: ex.createdAt,
+        updatedAt: ex.updatedAt,
+    });
 
 // ============================================================================
 // Plans
@@ -179,21 +196,22 @@ const logExerciseToFirestore = (ex: GymLogExercise) => ({
     })),
 });
 
-export const logToFirestore = (log: LogDraft & { createdAt: number; updatedAt: number }) => ({
-    planId: log.planId,
-    planTitle: log.planTitle,
-    dayId: log.dayId,
-    dayTitle: log.dayTitle,
-    date: log.date,
-    gym: log.gym,
-    note: log.note,
-    exercises: log.exercises.map(logExerciseToFirestore),
-    status: log.status,
-    createdAt: log.createdAt,
-    updatedAt: log.updatedAt,
-    startedAt: log.startedAt,
-    completedAt: log.completedAt,
-});
+export const logToFirestore = (log: LogDraft & { createdAt: number; updatedAt: number }) =>
+    dropNulls({
+        planId: log.planId,
+        planTitle: log.planTitle,
+        dayId: log.dayId,
+        dayTitle: log.dayTitle,
+        date: log.date,
+        gym: log.gym,
+        note: log.note,
+        exercises: log.exercises.map(logExerciseToFirestore),
+        status: log.status,
+        createdAt: log.createdAt,
+        updatedAt: log.updatedAt,
+        startedAt: log.startedAt,
+        completedAt: log.completedAt,
+    });
 
 // ============================================================================
 // Profile
